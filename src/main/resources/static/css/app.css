@@ -103,9 +103,12 @@ code {
 }
 
 .brand {
-    font-weight: 700;
+    font-weight: 600;
     color: var(--fg);
-    letter-spacing: 0.02em;
+}
+
+.brand:hover {
+    text-decoration: none;
 }
 
 .site-nav,
