@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="zh-CN">
+<head th:replace="~{fragments/layout :: head('笔记 · byte-love')}"></head>
+<body>
+<header th:replace="~{fragments/layout :: nav}"></header>
+
+<main class="wrap">
+    <div class="section-head">
+        <h1>笔记</h1>
+        <span class="muted" th:text="'共 ' + ${noteCount} + ' 篇'">共 0 篇</span>
+    </div>
+
+    <ul class="item-list">
+        <li th:each="n : ${notes}">
+            <a th:href="@{/notes/{slug}(slug=${n.slug})}" th:text="${n.title}">标题</a>
+            <span class="badge" th:if="${n.visibility.name() != 'PUBLIC'}"
+                  th:text="${n.visibility.name() == 'MEMBER' ? '登录可见' : '私有'}">MEMBER</span>
+            <p class="summary" th:text="${n.summary}">摘要</p>
+        </li>
+    </ul>
+
+    <p class="empty" th:if="${#lists.isEmpty(notes)}">暂无笔记</p>
+</main>
+
+<footer th:replace="~{fragments/layout :: foot}"></footer>
+</body>
+</html>

@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="zh-CN">
+<head th:replace="~{fragments/layout :: head('后台')}"></head>
+<body>
+<header th:replace="~{fragments/layout :: nav}"></header>
+
+<main class="wrap wide">
+    <div class="section-head">
+        <h1>后台</h1>
+        <a th:href="@{/admin/new}" class="button">新建</a>
+    </div>
+
+    <table class="admin-table">
+        <thead>
+        <tr>
+            <th>ID</th>
+            <th>类型</th>
+            <th>Slug</th>
+            <th>标题</th>
+            <th>可见性</th>
+            <th>更新时间</th>
+            <th>操作</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr th:each="i : ${items}">
+            <td th:text="${i.id}">1</td>
+            <td th:text="${i.kind}">NOTE</td>
+            <td><code th:text="${i.slug}">slug</code></td>
+            <td th:text="${i.title}">标题</td>
+            <td th:text="${i.visibility}">PUBLIC</td>
+            <td th:text="${#temporals.format(i.updatedAt, 'yyyy-MM-dd HH:mm')}">2026-01-01 00:00</td>
+            <td class="actions">
+                <a th:href="@{/admin/{id}/edit(id=${i.id})}">编辑</a>
+                <form th:action="@{/admin/{id}/delete(id=${i.id})}" method="post" class="inline"
+                      onsubmit="return confirm('确认删除？');">
+                    <button type="submit" class="link-button danger">删除</button>
+                </form>
+            </td>
+        </tr>
+        </tbody>
+    </table>
+
+    <p class="empty" th:if="${#lists.isEmpty(items)}">还没有内容</p>
+</main>
+
+<footer th:replace="~{fragments/layout :: foot}"></footer>
+</body>
+</html>

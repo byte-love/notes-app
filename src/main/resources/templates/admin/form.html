@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="zh-CN">
+<head th:replace="~{fragments/layout :: head(${editing} ? '编辑' : '新建')}"></head>
+<body>
+<header th:replace="~{fragments/layout :: nav}"></header>
+
+<main class="wrap">
+    <h1 th:text="${editing} ? '编辑内容' : '新建内容'">新建</h1>
+
+    <form th:action="${editing} ? @{/admin/{id}/edit(id=${itemId})} : @{/admin/new}"
+          th:object="${form}" method="post" class="stack">
+
+        <label>
+            类型
+            <select th:field="*{kind}">
+                <option th:each="k : ${kinds}" th:value="${k}" th:text="${k}">NOTE</option>
+            </select>
+        </label>
+
+        <label>
+            Slug（URL 里用，小写字母数字连字符）
+            <input type="text" th:field="*{slug}" placeholder="session-vs-token">
+            <span class="error" th:if="${#fields.hasErrors('slug')}" th:errors="*{slug}"></span>
+        </label>
+
+        <label>
+            标题
+            <input type="text" th:field="*{title}">
+            <span class="error" th:if="${#fields.hasErrors('title')}" th:errors="*{title}"></span>
+        </label>
+
+        <label>
+            摘要
+            <input type="text" th:field="*{summary}">
+        </label>
+
+        <label>
+            可见性
+            <select th:field="*{visibility}">
+                <option th:each="v : ${visibilities}" th:value="${v}" th:text="${v}">PUBLIC</option>
+            </select>
+        </label>
+
+        <label>
+            父节点（留空 = 顶层）
+            <select th:field="*{parentId}">
+                <option th:value="null">（无）</option>
+                <option th:each="p : ${parents}" th:value="${p.id}"
+                        th:text="${p.kind.name() + ' · ' + p.title}">父节点</option>
+            </select>
+            <span class="error" th:if="${#fields.hasErrors('parentId')}" th:errors="*{parentId}"></span>
+        </label>
+
+        <label>
+            同级排序（小的在前）
+            <input type="number" th:field="*{sortOrder}" min="0">
+        </label>
+
+        <label>
+            正文（Markdown）
+            <textarea th:field="*{body}" rows="24" spellcheck="false"></textarea>
+            <span class="error" th:if="${#fields.hasErrors('body')}" th:errors="*{body}"></span>
+        </label>
+
+        <div class="actions">
+            <button type="submit">保存</button>
+            <a th:href="@{/admin}">取消</a>
+        </div>
+    </form>
+</main>
+
+<footer th:replace="~{fragments/layout :: foot}"></footer>
+</body>
+</html>

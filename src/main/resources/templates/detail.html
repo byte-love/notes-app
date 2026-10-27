@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="zh-CN">
+<head th:replace="~{fragments/layout :: head(${item.title})}"></head>
+<body>
+<header th:replace="~{fragments/layout :: nav}"></header>
+
+<div class="with-tree" th:classappend="${item.kind.name() == 'NOTE'} ? 'has-tree' : ''">
+    <aside class="tree-pane" th:if="${item.kind.name() == 'NOTE' and tree != null}">
+        <ul th:replace="~{fragments/tree :: nodes(${tree})}"></ul>
+    </aside>
+
+    <main class="doc-wrap">
+        <article class="doc">
+            <nav class="crumbs" th:if="${crumbs != null and #lists.size(crumbs) > 1}">
+                <a th:each="c, s : ${crumbs}"
+                   th:href="@{/notes/{s}(s=${c.slug})}"
+                   th:text="${c.title}"
+                   th:classappend="${s.last} ? 'here'"></a>
+            </nav>
+
+            <header class="doc-head">
+                <h1 th:text="${item.title}">标题</h1>
+                <p class="doc-meta">
+                    <time th:text="${#temporals.format(item.updatedAt, 'yyyy-MM-dd')}">2026-01-01</time>
+                    <span class="tag" th:if="${item.visibility.name() != 'PUBLIC'}"
+                          th:text="${item.visibility.name() == 'MEMBER' ? '登录可见' : '私有'}">登录可见</span>
+                </p>
+            </header>
+
+            <div class="markdown" th:utext="${html}"></div>
+        </article>
+
+        <aside class="toc" th:if="${!#lists.isEmpty(toc)}">
+            <ul>
+                <li th:each="h : ${toc}" th:class="'lv' + ${h.level()}">
+                    <a th:href="'#' + ${h.id()}" th:text="${h.text()}"></a>
+                </li>
+            </ul>
+        </aside>
+    </main>
+</div>
+
+<script>
+    (() => {
+        const links = [...document.querySelectorAll('.toc a')];
+        if (!links.length) return;
+        const byId = new Map(links.map((a) => [a.getAttribute('href').slice(1), a]));
+        const targets = [...byId.keys()].map((id) => document.getElementById(id)).filter(Boolean);
+        if (!targets.length) return;
+
+        const OFFSET = 96;
+        let active = null;
+
+        const setActive = (a) => {
+            if (!a || a === active) return;
+            if (active) active.classList.remove('on');
+            active = a;
+            active.classList.add('on');
+        };
+
+        const update = () => {
+            if (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 4) {
+                setActive(byId.get(targets[targets.length - 1].id));
+                return;
+            }
+            let current = targets[0];
+            for (const t of targets) {
+                if (t.getBoundingClientRect().top <= OFFSET) current = t;
+                else break;
+            }
+            setActive(byId.get(current.id));
+        };
+
+        let ticking = false;
+        const onScroll = () => {
+            if (ticking) return;
+            ticking = true;
+            requestAnimationFrame(() => {
+                ticking = false;
+                update();
+            });
+        };
+
+        window.addEventListener('scroll', onScroll, { passive: true });
+        window.addEventListener('resize', onScroll);
+        update();
+    })();
+</script>
+
+<script>
+    (() => {
+        const marks = document.querySelectorAll('.markdown [data-tip]');
+        if (!marks.length) return;
+
+        const tip = document.createElement('div');
+        tip.className = 'gl-tip';
+        document.body.appendChild(tip);
+
+        let current = null;
+
+        const show = (el) => {
+            current = el;
+            tip.textContent = el.getAttribute('data-tip');
+            tip.style.left = '0px';
+            tip.style.top = '0px';
+            tip.classList.add('on');
+
+            const r = el.getBoundingClientRect();
+            const tw = tip.offsetWidth;
+            const th = tip.offsetHeight;
+            let left = r.left + r.width / 2 - tw / 2;
+            left = Math.max(12, Math.min(left, window.innerWidth - tw - 12));
+            let top = r.bottom + 8;
+            if (top + th > window.innerHeight - 12) top = r.top - th - 8;
+            tip.style.left = Math.round(left) + 'px';
+            tip.style.top = Math.round(Math.max(12, top)) + 'px';
+        };
+
+        const hide = () => {
+            current = null;
+            tip.classList.remove('on');
+        };
+
+        const pick = (target) => (target.closest ? target.closest('.markdown [data-tip]') : null);
+
+        document.addEventListener('mouseover', (e) => {
+            const el = pick(e.target);
+            if (el) {
+                if (el !== current) show(el);
+            } else if (current) {
+                hide();
+            }
+        });
+
+        document.addEventListener('mouseout', (e) => {
+            const el = pick(e.target);
+            if (el && el === current && !el.contains(e.relatedTarget)) hide();
+        });
+
+        document.addEventListener('click', (e) => {
+            const el = pick(e.target);
+            if (el) show(el);
+            else hide();
+        });
+
+        window.addEventListener('scroll', hide, { passive: true });
+        window.addEventListener('resize', hide);
+    })();
+</script>
+
+<footer th:replace="~{fragments/layout :: foot}"></footer>
+</body>
+</html>

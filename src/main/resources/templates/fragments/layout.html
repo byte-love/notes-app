@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head th:fragment="head(pageTitle)">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title th:text="${pageTitle}">notes</title>
+    <script th:inline="javascript">
+        (() => {
+            try {
+                const saved = localStorage.getItem('theme');
+                if (saved === 'light' || saved === 'dark') document.documentElement.dataset.theme = saved;
+            } catch (e) {}
+        })();
+    </script>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body>
+
+<header th:fragment="nav" class="site-header">
+    <a class="brand" th:href="@{/}">byte-love</a>
+    <nav class="tabs" aria-label="站点分区">
+        <a class="tab" th:href="${tabProjectsHref}">项目</a>
+        <a class="tab is-active" th:href="@{/notes}" aria-current="page">笔记</a>
+    </nav>
+    <div class="header-tools">
+        <a sec:authorize="hasRole('OWNER')" th:href="@{/admin}">后台</a>
+        <form sec:authorize="isAuthenticated()" th:action="@{/logout}" method="post" class="inline">
+            <button type="submit" class="link-button">退出</button>
+        </form>
+        <a sec:authorize="!isAuthenticated()" th:href="@{/login}">登录</a>
+        <button class="theme-toggle" type="button" aria-label="切换深浅色">☀</button>
+    </div>
+</header>
+
+<footer th:fragment="foot" class="site-footer">
+    <span>byte-love</span>
+</footer>
+
+<script>
+    (() => {
+        const btn = document.querySelector('.theme-toggle');
+        if (!btn) return;
+        const mq = window.matchMedia('(prefers-color-scheme: dark)');
+        const current = () => document.documentElement.dataset.theme || (mq.matches ? 'dark' : 'light');
+        const sync = () => { btn.textContent = current() === 'dark' ? '☀' : '☾'; };
+        sync();
+        btn.addEventListener('click', () => {
+            const next = current() === 'dark' ? 'light' : 'dark';
+            document.documentElement.dataset.theme = next;
+            try { localStorage.setItem('theme', next); } catch (e) {}
+            sync();
+        });
+    })();
+</script>
+
+</body>
+</html>

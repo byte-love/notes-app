@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="zh-CN">
+<head th:replace="~{fragments/layout :: head('笔记 · byte-love')}"></head>
+<body>
+<header th:replace="~{fragments/layout :: nav}"></header>
+
+<div class="with-tree">
+    <aside class="tree-pane">
+        <ul th:if="${!#lists.isEmpty(items)}" th:replace="~{fragments/tree :: nodes(${tree})}"></ul>
+        <p class="empty" th:if="${#lists.isEmpty(items)}">暂无内容</p>
+    </aside>
+
+    <main class="tree-main">
+        <div class="page-head">
+            <h1>笔记</h1>
+            <span class="count" th:text="${#lists.size(items)} + ' 篇'">0 篇</span>
+        </div>
+
+        <ul class="item-list">
+            <li th:each="i : ${items}">
+                <div class="item-main">
+                    <a class="item-title" th:href="@{/notes/{s}(s=${i.slug})}" th:text="${i.title}">标题</a>
+                    <span class="tag" th:if="${i.visibility.name() != 'PUBLIC'}"
+                          th:text="${i.visibility.name() == 'MEMBER' ? '登录可见' : '私有'}">登录可见</span>
+                </div>
+                <p class="item-summary" th:if="${i.summary != null}" th:text="${i.summary}">摘要</p>
+                <time class="item-date" th:text="${#temporals.format(i.updatedAt, 'yyyy-MM-dd')}">2026-01-01</time>
+            </li>
+        </ul>
+    </main>
+</div>
+
+<footer th:replace="~{fragments/layout :: foot}"></footer>
+</body>
+</html>
