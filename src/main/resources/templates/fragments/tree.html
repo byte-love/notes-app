@@ -3,9 +3,13 @@
 <body>
 <ul th:fragment="nodes(nodes)" class="tree">
     <li th:each="n : ${nodes}">
-        <a th:href="@{/notes/{s}(s=${n.item.slug})}"
+        <a th:unless="${n.locked()}"
+           th:href="@{/notes/{s}(s=${n.item.slug})}"
            th:text="${n.item.title}"
            th:classappend="${activeId != null and activeId == n.item.id} ? 'on'"></a>
+        <a th:if="${n.locked()}" class="locked" th:href="@{/login}" title="需要登录后查看">
+            <span th:text="${n.item.title}"></span>
+        </a>
         <th:block th:if="${n.hasChildren()}">
             <ul th:replace="~{fragments/tree :: nodes(${n.children})}"></ul>
         </th:block>

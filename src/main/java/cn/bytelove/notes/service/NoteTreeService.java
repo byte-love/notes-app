@@ -8,6 +8,7 @@ import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * 单父节点的树。列表已经在 SQL 里按 sortOrder 排过，这里只做组装和防环。
@@ -15,7 +16,7 @@ import java.util.Map;
 @Service
 public class NoteTreeService {
 
-    public record Node(ContentItem item, List<Node> children) {
+    public record Node(ContentItem item, List<Node> children, boolean locked) {
 
         public boolean hasChildren() {
             return !children.isEmpty();
@@ -27,6 +28,10 @@ public class NoteTreeService {
                     .thenComparing(ContentItem::getTitle, Comparator.nullsLast(String::compareTo));
 
     public List<Node> build(List<ContentItem> items) {
+        return build(items, Set.of());
+    }
+
+    public List<Node> build(List<ContentItem> items, Set<Long> lockedIds) {
         Map<Long, ContentItem> byId = new LinkedHashMap<>();
         for (ContentItem item : items) {
             byId.put(item.getId(), item);
@@ -46,14 +51,15 @@ public class NoteTreeService {
 
         roots.sort(ORDER);
         childrenOf.values().forEach(list -> list.sort(ORDER));
-        return toNodes(roots, childrenOf);
+        return toNodes(roots, childrenOf, lockedIds);
     }
 
-    private List<Node> toNodes(List<ContentItem> nodes, Map<Long, List<ContentItem>> childrenOf) {
+    private List<Node> toNodes(List<ContentItem> nodes, Map<Long, List<ContentItem>> childrenOf,
+                               Set<Long> lockedIds) {
         List<Node> result = new ArrayList<>();
         for (ContentItem item : nodes) {
             List<ContentItem> kids = childrenOf.getOrDefault(item.getId(), List.of());
-            result.add(new Node(item, toNodes(kids, childrenOf)));
+            result.add(new Node(item, toNodes(kids, childrenOf, lockedIds), lockedIds.contains(item.getId())));
         }
         return result;
     }

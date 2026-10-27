@@ -6,6 +6,9 @@
 
 <div class="with-tree" th:classappend="${item.kind.name() == 'NOTE'} ? 'has-tree' : ''">
     <aside class="tree-pane" th:if="${item.kind.name() == 'NOTE' and tree != null}">
+        <p class="tree-hint" th:if="${lockedCount > 0}">
+            登录后可查看其余 <span th:text="${lockedCount}">0</span> 篇
+        </p>
         <ul th:replace="~{fragments/tree :: nodes(${tree})}"></ul>
     </aside>
 
@@ -22,8 +25,6 @@
                 <h1 th:text="${item.title}">标题</h1>
                 <p class="doc-meta">
                     <time th:text="${#temporals.format(item.updatedAt, 'yyyy-MM-dd')}">2026-01-01</time>
-                    <span class="tag" th:if="${item.visibility.name() != 'PUBLIC'}"
-                          th:text="${item.visibility.name() == 'MEMBER' ? '登录可见' : '私有'}">登录可见</span>
                 </p>
             </header>
 

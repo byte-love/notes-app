@@ -44,6 +44,18 @@ public class VisibilityService {
         return list;
     }
 
+    /**
+     * 只占位、不给正文：游客能看到「有这些笔记，但要登录」。
+     * PRIVATE 不放进来——连标题都不该出现在公开页面上。
+     */
+    public List<Visibility> lockedTo(Authentication auth) {
+        List<Visibility> list = new ArrayList<>();
+        if (!isAuthenticated(auth)) {
+            list.add(Visibility.MEMBER);
+        }
+        return list;
+    }
+
     public Role currentRole(Authentication auth) {
         if (isOwner(auth)) {
             return Role.OWNER;

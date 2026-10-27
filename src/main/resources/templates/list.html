@@ -16,15 +16,24 @@
             <span class="count" th:text="${#lists.size(items)} + ' 篇'">0 篇</span>
         </div>
 
+        <p class="tree-hint" th:if="${lockedCount > 0}">
+            登录后可查看其余 <span th:text="${lockedCount}">0</span> 篇
+        </p>
+
         <ul class="item-list">
             <li th:each="i : ${items}">
                 <div class="item-main">
-                    <a class="item-title" th:href="@{/notes/{s}(s=${i.slug})}" th:text="${i.title}">标题</a>
-                    <span class="tag" th:if="${i.visibility.name() != 'PUBLIC'}"
-                          th:text="${i.visibility.name() == 'MEMBER' ? '登录可见' : '私有'}">登录可见</span>
+                    <a th:unless="${lockedIds.contains(i.id)}" class="item-title"
+                       th:href="@{/notes/{s}(s=${i.slug})}" th:text="${i.title}">标题</a>
+                    <a th:if="${lockedIds.contains(i.id)}" class="item-title locked"
+                       th:href="@{/login}" title="需要登录后查看">
+                        <span th:text="${i.title}"></span>
+                    </a>
                 </div>
-                <p class="item-summary" th:if="${i.summary != null}" th:text="${i.summary}">摘要</p>
-                <time class="item-date" th:text="${#temporals.format(i.updatedAt, 'yyyy-MM-dd')}">2026-01-01</time>
+                <p class="item-summary" th:if="${i.summary != null and !lockedIds.contains(i.id)}"
+                   th:text="${i.summary}">摘要</p>
+                <time class="item-date" th:unless="${lockedIds.contains(i.id)}"
+                      th:text="${#temporals.format(i.updatedAt, 'yyyy-MM-dd')}">2026-01-01</time>
             </li>
         </ul>
     </main>

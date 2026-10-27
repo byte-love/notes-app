@@ -2,6 +2,7 @@ package cn.bytelove.notes.web;
 
 import cn.bytelove.notes.domain.ContentItem;
 import cn.bytelove.notes.domain.ContentKind;
+import cn.bytelove.notes.domain.Visibility;
 import cn.bytelove.notes.repo.ContentItemRepository;
 import cn.bytelove.notes.service.MarkdownRenderer;
 import cn.bytelove.notes.service.NoteTreeService;
@@ -14,7 +15,10 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 
 @Controller
 public class PublicController {
@@ -39,8 +43,7 @@ public class PublicController {
 
     @GetMapping("/notes")
     public String notes(Model model, Authentication auth) {
-        List<ContentItem> notes = list(ContentKind.NOTE, auth);
-        model.addAttribute("tree", tree.build(notes));
+        List<ContentItem> notes = load(model, ContentKind.NOTE, auth);
         model.addAttribute("items", notes);
         model.addAttribute("kind", ContentKind.NOTE);
         model.addAttribute("activeId", null);
@@ -55,7 +58,7 @@ public class PublicController {
 
     @GetMapping("/projects")
     public String projects(Model model, Authentication auth) {
-        List<ContentItem> list = list(ContentKind.PROJECT, auth);
+        List<ContentItem> list = load(model, ContentKind.PROJECT, auth);
         model.addAttribute("items", list);
         model.addAttribute("kind", ContentKind.PROJECT);
         return "list";
@@ -72,10 +75,8 @@ public class PublicController {
                 .filter(i -> visibility.canView(i.getVisibility(), auth))
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
 
-        List<ContentItem> siblings = list(kind, auth);
-
+        List<ContentItem> siblings = load(model, kind, auth);
         if (kind == ContentKind.NOTE) {
-            model.addAttribute("tree", tree.build(siblings));
             model.addAttribute("crumbs", tree.breadcrumb(siblings, item));
             model.addAttribute("activeId", item.getId());
         }
@@ -86,7 +87,27 @@ public class PublicController {
         return "detail";
     }
 
-    private List<ContentItem> list(ContentKind kind, Authentication auth) {
-        return items.findByKindAndVisibilityInOrderByUpdatedAtDesc(kind, visibility.visibleTo(auth));
+    /**
+     * 取「能看的」+「只给标题占位的」，一起装配目录树。返回值按更新时间倒序。
+     */
+    private List<ContentItem> load(Model model, ContentKind kind, Authentication auth) {
+        List<ContentItem> visible = items.findByKindAndVisibilityInOrderByUpdatedAtDesc(kind, visibility.visibleTo(auth));
+        List<Visibility> lockedVisibilities = visibility.lockedTo(auth);
+        List<ContentItem> locked = lockedVisibilities.isEmpty()
+                ? List.of()
+                : items.findByKindAndVisibilityInOrderByUpdatedAtDesc(kind, lockedVisibilities);
+
+        Set<Long> lockedIds = new LinkedHashSet<>();
+        for (ContentItem item : locked) {
+            lockedIds.add(item.getId());
+        }
+
+        List<ContentItem> all = new ArrayList<>(visible);
+        all.addAll(locked);
+
+        model.addAttribute("tree", tree.build(all, lockedIds));
+        model.addAttribute("lockedIds", lockedIds);
+        model.addAttribute("lockedCount", locked.size());
+        return all;
     }
 }
