@@ -18,18 +18,20 @@
 <body>
 
 <header th:fragment="nav" class="site-header">
-    <a class="brand" th:href="@{/}">byte-love</a>
-    <nav class="tabs" aria-label="站点分区">
-        <a class="tab" th:href="${tabProjectsHref}">项目</a>
-        <a class="tab is-active" th:href="@{/notes}" aria-current="page">笔记</a>
-    </nav>
-    <div class="header-tools">
-        <a sec:authorize="hasRole('OWNER')" th:href="@{/admin}">后台</a>
-        <form sec:authorize="isAuthenticated()" th:action="@{/logout}" method="post" class="inline">
-            <button type="submit" class="link-button">退出</button>
-        </form>
-        <a sec:authorize="!isAuthenticated()" th:href="@{/login}">登录</a>
-        <button class="theme-toggle" type="button" aria-label="切换深浅色">☀</button>
+    <div class="header-inner">
+        <a class="brand" th:href="@{/}">byte-love</a>
+        <nav class="tabs" aria-label="站点分区">
+            <a class="tab" th:href="${tabProjectsHref}">项目</a>
+            <a class="tab is-active" th:href="@{/notes}" aria-current="page">笔记</a>
+        </nav>
+        <div class="header-tools">
+            <a sec:authorize="hasRole('OWNER')" th:href="@{/admin}">后台</a>
+            <form sec:authorize="isAuthenticated()" th:action="@{/logout}" method="post" class="inline">
+                <button type="submit" class="link-button">退出</button>
+            </form>
+            <a sec:authorize="!isAuthenticated()" th:href="@{/login}">登录</a>
+            <button class="theme-toggle" type="button" aria-label="切换深浅色">☀</button>
+        </div>
     </div>
 </header>
 

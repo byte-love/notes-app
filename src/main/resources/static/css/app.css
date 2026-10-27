@@ -88,11 +88,18 @@ code {
 }
 
 .site-header {
+    border-bottom: 1px solid var(--line);
+}
+
+/* 和作品集站同一列：max-width 860 + 左右 20px，切换 tab 时导航不会横跳 */
+.header-inner {
     display: flex;
     align-items: center;
     gap: 1.5rem;
-    padding: 0.9rem 1.5rem;
-    border-bottom: 1px solid var(--line);
+    max-width: 860px;
+    margin: 0 auto;
+    height: 56px;
+    padding: 0 20px;
 }
 
 .brand {
@@ -972,5 +979,16 @@ button:hover,
         border-bottom: 1px solid var(--line);
         padding-bottom: 0.8rem;
         margin-bottom: 1.6rem;
+    }
+}
+
+@media (max-width: 560px) {
+    .header-inner {
+        gap: 0.6rem;
+        padding: 0 14px;
+    }
+
+    .header-inner .tab {
+        padding: 5px 8px;
     }
 }
