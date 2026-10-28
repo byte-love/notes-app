@@ -33,8 +33,8 @@ public class AccountSeeder implements ApplicationRunner {
     @Override
     @Transactional
     public void run(ApplicationArguments args) {
-        seed(props.ownerUsername(), props.ownerPassword(), "Owner", Role.OWNER);
-        seed(props.viewerUsername(), props.viewerPassword(), "Viewer", Role.VIEWER);
+        seed(props.ownerUsername(), props.ownerPassword(), "管理员", Role.ADMIN);
+        seed(props.viewerUsername(), props.viewerPassword(), "用户", Role.USER);
     }
 
     private void seed(String username, String rawPassword, String displayName, Role role) {

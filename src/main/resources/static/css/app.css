@@ -1007,11 +1007,12 @@ button:hover,
 .tree .tree-group::before {
     content: "▾";
     position: absolute;
-    left: 0.16rem;
+    left: 0.12rem;
     top: 50%;
     transform: translateY(-50%);
-    font-size: 0.6rem;
-    color: var(--fg-3);
+    font-size: 0.82rem;
+    line-height: 1;
+    color: var(--fg-2);
 }
 
 .tree li.folded > .tree-group::before {

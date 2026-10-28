@@ -25,7 +25,8 @@ public class SecurityConfig {
                         .requestMatchers("/", "/notes", "/notes/**", "/projects", "/projects/**",
                                 "/bagu", "/bagu/**", "/algo", "/algo/**",
                                 "/login", "/api/**", "/css/**", "/media/**", "/favicon.ico", "/error").permitAll()
-                        .requestMatchers("/admin/**", "/star/**", "/memo").hasRole("OWNER")
+                        .requestMatchers("/admin/**").hasRole("ADMIN")
+                        .requestMatchers("/star/**", "/memo").authenticated()
                         .anyRequest().authenticated()
                 )
                 .formLogin(login -> login
@@ -33,7 +34,7 @@ public class SecurityConfig {
                         .successHandler((request, response, authentication) -> {
                             attempts.loginSucceeded(authentication.getName());
                             boolean owner = authentication.getAuthorities().stream()
-                                    .anyMatch(a -> "ROLE_OWNER".equals(a.getAuthority()));
+                                    .anyMatch(a -> "ROLE_ADMIN".equals(a.getAuthority()));
                             response.sendRedirect(request.getContextPath() + (owner ? "/admin" : "/notes"));
                         })
                         .failureHandler((request, response, exception) -> {

@@ -58,9 +58,9 @@ public class VisibilityService {
 
     public Role currentRole(Authentication auth) {
         if (isOwner(auth)) {
-            return Role.OWNER;
+            return Role.ADMIN;
         }
-        return isAuthenticated(auth) ? Role.VIEWER : null;
+        return isAuthenticated(auth) ? Role.USER : null;
     }
 
     private boolean hasRole(Authentication auth, String role) {
