@@ -14,7 +14,7 @@
             } catch (e) {}
         })();
     </script>
-    <link rel="stylesheet" th:href="@{/css/app.css(v=9)}">
+    <link rel="stylesheet" th:href="@{/css/app.css(v=10)}">
 </head>
 <body>
 
@@ -41,7 +41,8 @@
     </div>
 </header>
 
-<footer th:fragment="foot" class="site-footer">
+<th:block th:fragment="foot">
+<footer class="site-footer">
     <span>byte-love</span>
 </footer>
 
@@ -61,6 +62,29 @@
         });
     })();
 </script>
+
+<script>
+    // 树的分组折叠状态记在 localStorage，下次进来自动恢复
+    (() => {
+        const buttons = document.querySelectorAll('.tree-group[data-key]');
+        if (!buttons.length) return;
+        buttons.forEach((btn) => {
+            const li = btn.closest('li');
+            if (!li) return;
+            const key = 'tree-fold:' + btn.dataset.key;
+            try {
+                if (localStorage.getItem(key) === '1') li.classList.add('folded');
+            } catch (e) {}
+            btn.addEventListener('click', () => {
+                li.classList.toggle('folded');
+                try {
+                    localStorage.setItem(key, li.classList.contains('folded') ? '1' : '0');
+                } catch (e) {}
+            });
+        });
+    })();
+</script>
+</th:block>
 
 </body>
 </html>

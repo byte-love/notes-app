@@ -938,14 +938,45 @@ button:hover,
 }
 
 .tree a,
-.tree .locked {
+.tree .locked,
+.tree .tree-group {
     display: block;
+    width: 100%;
+    text-align: left;
+    border: 0;
+    background: none;
+    font-family: inherit;
     padding: 0.26rem 0.5rem;
     border-radius: 6px;
     color: var(--fg-2);
     font-size: 0.86rem;
     line-height: 1.45;
     text-decoration: none;
+}
+
+/* 分组标题是一颗折叠按钮，不是链接 */
+.tree .tree-group {
+    position: relative;
+    padding-left: 0.95rem;
+    cursor: pointer;
+}
+
+.tree .tree-group::before {
+    content: "▾";
+    position: absolute;
+    left: 0.16rem;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 0.6rem;
+    color: var(--fg-3);
+}
+
+.tree li.folded > .tree-group::before {
+    content: "▸";
+}
+
+.tree li.folded > ul {
+    display: none;
 }
 
 .tree > li {
@@ -958,12 +989,17 @@ button:hover,
 
 /* 顶层当小标题：和上一组拉开间距，字号收紧、字重加重 */
 .tree > li > a,
-.tree > li > .locked {
+.tree > li > .locked,
+.tree > li > .tree-group {
     color: var(--fg);
     font-weight: 600;
     font-size: 0.86rem;
     letter-spacing: 0.01em;
     padding: 0.34rem 0.5rem;
+}
+
+.tree > li > .tree-group {
+    padding-left: 0.95rem;
 }
 
 /* 二级是正文层级：正常字重，比分类低一档亮度 */
@@ -983,7 +1019,8 @@ button:hover,
 }
 
 .tree a:hover,
-.tree .locked:hover {
+.tree .locked:hover,
+.tree .tree-group:hover {
     color: var(--fg);
     background: var(--bg-2);
     text-decoration: none;

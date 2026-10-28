@@ -2,12 +2,15 @@
 <html xmlns:th="http://www.thymeleaf.org">
 <body>
 <ul th:fragment="nodes(nodes)" class="tree">
-    <li th:each="n : ${nodes}">
-        <a th:unless="${n.locked()}"
+    <li th:each="n : ${nodes}" th:classappend="${n.hasChildren()} ? 'has-kids' : ''">
+        <button th:if="${n.hasChildren()}" type="button" class="tree-group"
+                th:attr="data-key=${n.item.slug}" th:text="${n.item.title}"
+                th:classappend="${activeId != null and activeId == n.item.id} ? 'on'"></button>
+        <a th:unless="${n.hasChildren() or n.locked()}"
            th:href="${basePath + '/' + n.item.slug}"
            th:text="${n.item.title}"
            th:classappend="${activeId != null and activeId == n.item.id} ? 'on'"></a>
-        <a th:if="${n.locked()}" class="locked" th:href="@{/login}" title="需要登录后查看">
+        <a th:if="${not n.hasChildren() and n.locked()}" class="locked" th:href="@{/login}" title="需要登录后查看">
             <span th:text="${n.item.title}"></span>
         </a>
         <th:block th:if="${n.hasChildren()}">
