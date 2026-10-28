@@ -974,7 +974,7 @@ button:hover,
     content: "";
     position: absolute;
     left: -0.95rem;
-    top: 1.02rem;
+    top: 1.03rem;
     width: 0.62rem;
     height: 1px;
     background: var(--tree-guide);
@@ -1024,7 +1024,7 @@ button:hover,
 }
 
 .tree > li {
-    margin-top: 0.9rem;
+    margin-top: 1.4rem;
 }
 
 .tree > li:first-child {
@@ -1037,22 +1037,32 @@ button:hover,
 .tree > li > .tree-group {
     color: var(--fg);
     font-weight: 600;
-    font-size: 0.86rem;
+    font-size: 0.9rem;
     letter-spacing: 0.01em;
-    padding: 0.34rem 0.5rem;
+    padding: 0.4rem 0.5rem;
 }
 
 .tree > li > .tree-group {
     padding-left: 0.95rem;
 }
 
+/* 二级分组（如笔记的「面试问答」）也要比叶子重，否则整棵树看起来是平的 */
+.tree ul > li > .tree-group {
+    font-weight: 600;
+    font-size: 0.86rem;
+    color: var(--fg);
+    padding: 0.34rem 0.5rem;
+}
+
+/* 没有嵌套子目录时（项目区那种两层结构），靠字号和间距撑出层次 */
+
 /* 二级是正文层级：正常字重，比分类低一档亮度 */
 .tree ul > li > a,
 .tree ul > li > .locked {
     font-weight: 400;
-    font-size: 0.84rem;
+    font-size: 0.82rem;
     color: var(--fg-2);
-    padding: 0.24rem 0.5rem;
+    padding: 0.42rem 0.5rem;
 }
 
 .tree ul ul a,
