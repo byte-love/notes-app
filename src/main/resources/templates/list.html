@@ -12,7 +12,7 @@
 
     <main class="tree-main">
         <div class="page-head">
-            <h1>笔记</h1>
+            <h1 th:text="${pageTitle}">笔记</h1>
             <span class="count" th:text="${#lists.size(items)} + ' 篇'">0 篇</span>
         </div>
 
@@ -24,7 +24,7 @@
             <li th:each="i : ${items}">
                 <div class="item-main">
                     <a th:unless="${lockedIds.contains(i.id)}" class="item-title"
-                       th:href="@{/notes/{s}(s=${i.slug})}" th:text="${i.title}">标题</a>
+                       th:href="${basePath + '/' + i.slug}" th:text="${i.title}">标题</a>
                     <a th:if="${lockedIds.contains(i.id)}" class="item-title locked"
                        th:href="@{/login}" title="需要登录后查看">
                         <span th:text="${i.title}"></span>

@@ -4,7 +4,7 @@
 <ul th:fragment="nodes(nodes)" class="tree">
     <li th:each="n : ${nodes}">
         <a th:unless="${n.locked()}"
-           th:href="@{/notes/{s}(s=${n.item.slug})}"
+           th:href="${basePath + '/' + n.item.slug}"
            th:text="${n.item.title}"
            th:classappend="${activeId != null and activeId == n.item.id} ? 'on'"></a>
         <a th:if="${n.locked()}" class="locked" th:href="@{/login}" title="需要登录后查看">

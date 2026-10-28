@@ -43,12 +43,27 @@ public class PublicController {
 
     @GetMapping("/notes")
     public String notes(Model model, Authentication auth) {
-        List<ContentItem> notes = load(model, ContentKind.NOTE, auth);
-        model.addAttribute("items", notes);
-        model.addAttribute("kind", ContentKind.NOTE);
-        model.addAttribute("activeId", null);
-        model.addAttribute("blank", true);
-        return "list";
+        return listing(ContentKind.NOTE, "笔记", model, auth);
+    }
+
+    @GetMapping("/bagu")
+    public String bagu(Model model, Authentication auth) {
+        return listing(ContentKind.BAGU, "八股", model, auth);
+    }
+
+    @GetMapping("/algo")
+    public String algo(Model model, Authentication auth) {
+        return listing(ContentKind.ALGO, "算法", model, auth);
+    }
+
+    @GetMapping("/bagu/{slug}")
+    public String baguItem(@PathVariable String slug, Model model, Authentication auth) {
+        return detail(ContentKind.BAGU, slug, model, auth);
+    }
+
+    @GetMapping("/algo/{slug}")
+    public String algoItem(@PathVariable String slug, Model model, Authentication auth) {
+        return detail(ContentKind.ALGO, slug, model, auth);
     }
 
     @GetMapping("/notes/{slug}")
@@ -58,9 +73,17 @@ public class PublicController {
 
     @GetMapping("/projects")
     public String projects(Model model, Authentication auth) {
-        List<ContentItem> list = load(model, ContentKind.PROJECT, auth);
-        model.addAttribute("items", list);
-        model.addAttribute("kind", ContentKind.PROJECT);
+        return listing(ContentKind.PROJECT, "项目", model, auth);
+    }
+
+    private String listing(ContentKind kind, String pageTitle, Model model, Authentication auth) {
+        model.addAttribute("items", load(model, kind, auth));
+        model.addAttribute("kind", kind);
+        model.addAttribute("activeId", null);
+        model.addAttribute("blank", true);
+        model.addAttribute("pageTitle", pageTitle);
+        model.addAttribute("basePath", basePath(kind));
+        model.addAttribute("tabActive", kind.name().toLowerCase(java.util.Locale.ROOT));
         return "list";
     }
 
@@ -76,15 +99,31 @@ public class PublicController {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
 
         List<ContentItem> siblings = load(model, kind, auth);
-        if (kind == ContentKind.NOTE) {
+        if (kind != ContentKind.PROJECT) {
             model.addAttribute("crumbs", tree.breadcrumb(siblings, item));
             model.addAttribute("activeId", item.getId());
         }
+        model.addAttribute("basePath", basePath(kind));
+        model.addAttribute("tabActive", kind.name().toLowerCase(java.util.Locale.ROOT));
 
         model.addAttribute("item", item);
         model.addAttribute("html", markdown.toHtml(item.getBody()));
         model.addAttribute("toc", markdown.toc(item.getBody()));
         return "detail";
+    }
+
+    /** 各 kind 的详情/树链接前缀，模板里用它拼 URL。 */
+    private static String basePath(ContentKind kind) {
+        switch (kind) {
+            case BAGU:
+                return "/bagu";
+            case ALGO:
+                return "/algo";
+            case PROJECT:
+                return "/projects";
+            default:
+                return "/notes";
+        }
     }
 
     /**

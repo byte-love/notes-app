@@ -14,7 +14,7 @@
             } catch (e) {}
         })();
     </script>
-    <link rel="stylesheet" th:href="@{/css/app.css}">
+    <link rel="stylesheet" th:href="@{/css/app.css(v=8)}">
 </head>
 <body>
 
@@ -23,7 +23,12 @@
         <a class="brand" th:href="@{/}">byte-love</a>
         <nav class="tabs" aria-label="站点分区">
             <a class="tab" th:href="${tabProjectsHref}">项目</a>
-            <a class="tab is-active" th:href="@{/notes}" aria-current="page">笔记</a>
+            <a class="tab" th:href="@{/notes}"
+               th:classappend="${tabActive == null or tabActive == 'note'} ? 'is-active'">笔记</a>
+            <a class="tab" th:href="@{/bagu}"
+               th:classappend="${tabActive == 'bagu'} ? 'is-active'">八股</a>
+            <a class="tab" th:href="@{/algo}"
+               th:classappend="${tabActive == 'algo'} ? 'is-active'">算法</a>
         </nav>
         <div class="header-tools">
             <a sec:authorize="hasRole('OWNER')" th:href="@{/admin}">后台</a>

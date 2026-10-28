@@ -4,8 +4,8 @@
 <body>
 <header th:replace="~{fragments/layout :: nav}"></header>
 
-<div class="with-tree" th:classappend="${item.kind.name() == 'NOTE'} ? 'has-tree' : ''">
-    <aside class="tree-pane" th:if="${item.kind.name() == 'NOTE' and tree != null}">
+<div class="with-tree" th:classappend="${item.kind.name() != 'PROJECT'} ? 'has-tree' : ''">
+    <aside class="tree-pane" th:if="${item.kind.name() != 'PROJECT' and tree != null}">
         <p class="tree-hint" th:if="${lockedCount > 0}">
             登录后可查看其余 <span th:text="${lockedCount}">0</span> 篇
         </p>
@@ -16,7 +16,7 @@
         <article class="doc">
             <nav class="crumbs" th:if="${crumbs != null and #lists.size(crumbs) > 1}">
                 <a th:each="c, s : ${crumbs}"
-                   th:href="@{/notes/{s}(s=${c.slug})}"
+                   th:href="${basePath + '/' + c.slug}"
                    th:text="${c.title}"
                    th:classappend="${s.last} ? 'here'"></a>
             </nav>

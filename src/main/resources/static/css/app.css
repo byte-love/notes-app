@@ -536,6 +536,8 @@ button:hover,
     list-style: none;
     margin: 0;
     padding: 0;
+    /* 列表按阅读宽度收窄，分隔线不再横贯整个内容区 */
+    max-width: min(720px, 88%);
 }
 
 .item-list li {
@@ -863,10 +865,10 @@ button:hover,
 /* ---------- tree ---------- */
 .with-tree {
     display: grid;
-    grid-template-columns: 236px minmax(0, 1fr);
+    /* 右侧列表按阅读宽度收口，两列整体居中，左右留白保持相等 */
+    grid-template-columns: 236px minmax(0, 720px);
+    justify-content: center;
     gap: 2.4rem;
-    max-width: 1240px;
-    margin: 0 auto;
     padding: 2rem 1.5rem 0;
     align-items: start;
 }
