@@ -12,7 +12,7 @@
         <ul th:replace="~{fragments/tree :: nodes(${tree})}"></ul>
     </aside>
 
-    <main class="doc-wrap">
+    <main class="doc-wrap" th:classappend="${#lists.isEmpty(toc)} ? 'no-toc'">
         <article class="doc">
             <nav class="crumbs" th:if="${crumbs != null and #lists.size(crumbs) > 1}">
                 <a th:each="c, s : ${crumbs}"
@@ -25,6 +25,11 @@
                 <h1 th:text="${item.title}">标题</h1>
                 <p class="doc-meta">
                     <time th:text="${#temporals.format(item.updatedAt, 'yyyy-MM-dd')}">2026-01-01</time>
+                    <form sec:authorize="hasRole('OWNER')" th:action="@{/star/{s}(s=${item.slug})}"
+                          method="post" class="inline">
+                        <button type="submit" class="star-btn" th:classappend="${item.starred} ? 'on'"
+                                th:text="${item.starred} ? '★ 已在备忘录' : '☆ 加入备忘录'">☆ 加入备忘录</button>
+                    </form>
                 </p>
             </header>
 

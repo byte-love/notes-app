@@ -686,6 +686,43 @@ button:hover,
     padding-left: 1.7rem;
 }
 
+/* 备忘录按钮 */
+.star-btn {
+    font: inherit;
+    font-size: 0.78rem;
+    padding: 0.15rem 0.6rem;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: none;
+    color: var(--fg-3);
+    cursor: pointer;
+    line-height: 1.5;
+}
+
+.star-btn:hover {
+    color: var(--fg);
+    border-color: var(--fg-3);
+}
+
+.star-btn.on {
+    color: var(--accent);
+    border-color: var(--accent);
+}
+
+/* 树里标记过的条目 */
+.tree-star {
+    color: var(--accent);
+    margin-right: 0.32rem;
+    font-size: 0.78em;
+}
+
+.memo-group {
+    margin: 2rem 0 0.6rem;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--fg-2);
+}
+
 .doc-pager {
     margin: 3.5rem 0 2rem;
     display: flex;
@@ -721,7 +758,7 @@ button:hover,
 /* ---------- markdown typography ---------- */
 .markdown {
     font-size: 16px;
-    line-height: 1.72;
+    line-height: 1.8;
 }
 
 .markdown h1,
@@ -760,7 +797,7 @@ button:hover,
 }
 
 .markdown p {
-    margin: 0 0 1rem;
+    margin: 0 0 1.15rem;
 }
 
 .markdown ul,
@@ -846,10 +883,16 @@ button:hover,
 }
 
 .markdown blockquote {
-    margin: 0 0 1rem;
-    padding: 0.1rem 1rem;
-    border-left: 3px solid var(--line);
+    margin: 0 0 1.2rem;
+    padding: 0.8rem 1.1rem;
+    border-left: 3px solid var(--accent);
+    border-radius: 0 8px 8px 0;
+    background: var(--bg-2);
     color: var(--fg-2);
+}
+
+.markdown blockquote p:last-child {
+    margin-bottom: 0;
 }
 
 .markdown table {
@@ -1069,6 +1112,15 @@ button:hover,
 
 .with-tree .doc {
     max-width: 68ch;
+}
+
+/* 没有目录（正文没有 ## 标题）时，200px 的目录列不该继续占位 */
+.with-tree .doc-wrap.no-toc {
+    grid-template-columns: minmax(0, 1fr);
+}
+
+.with-tree .doc-wrap.no-toc .doc {
+    max-width: 82ch;
 }
 
 .crumbs {

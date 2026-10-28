@@ -50,6 +50,10 @@ public class ContentItem {
     @Column(name = "sort_order", nullable = false)
     private int sortOrder = 0;
 
+    /** 备忘录：背了几次还是记不住的条目。 */
+    @Column(nullable = false)
+    private boolean starred = false;
+
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
@@ -147,6 +151,14 @@ public class ContentItem {
 
     public void setSortOrder(int sortOrder) {
         this.sortOrder = sortOrder;
+    }
+
+    public boolean isStarred() {
+        return starred;
+    }
+
+    public void setStarred(boolean starred) {
+        this.starred = starred;
     }
 
     public Instant getCreatedAt() {

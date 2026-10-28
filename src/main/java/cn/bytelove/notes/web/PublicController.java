@@ -15,11 +15,14 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 @Controller
@@ -128,6 +131,31 @@ public class PublicController {
         return "detail";
     }
 
+    /** 备忘录：加入 / 移出。只有 owner 能标记。 */
+    @PostMapping("/star/{slug}")
+    public String toggleStar(@PathVariable String slug) {
+        ContentItem item = items.findBySlug(slug)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+        item.setStarred(!item.isStarred());
+        items.save(item);
+        return "redirect:" + contextPath() + basePath(item.getKind()) + "/" + item.getSlug();
+    }
+
+    /** 备忘录列表：把标记过的条目按类型分组列出来。 */
+    @GetMapping("/memo")
+    public String memo(Model model) {
+        List<ContentItem> starred = items.findByStarredTrueOrderByKindAscSortOrderAsc();
+        Map<String, List<ContentItem>> grouped = new LinkedHashMap<>();
+        for (ContentItem item : starred) {
+            grouped.computeIfAbsent(kindLabel(item.getKind()), k -> new ArrayList<>()).add(item);
+        }
+        model.addAttribute("grouped", grouped);
+        model.addAttribute("total", starred.size());
+        model.addAttribute("basePathOf", (java.util.function.Function<ContentKind, String>) PublicController::basePath);
+        model.addAttribute("tabActive", "memo");
+        return "memo";
+    }
+
     /**
      * 应用挂在 /app 下（server.servlet.context-path），模板里的链接是字符串拼的，
      * 不像 @{} 那样自动补前缀，所以要显式带上。
@@ -138,6 +166,19 @@ public class PublicController {
             return servletAttrs.getRequest().getContextPath();
         }
         return "";
+    }
+
+    private static String kindLabel(ContentKind kind) {
+        switch (kind) {
+            case BAGU:
+                return "八股";
+            case ALGO:
+                return "算法";
+            case PROJECT:
+                return "项目";
+            default:
+                return "笔记";
+        }
     }
 
     /** 各 kind 的详情/树链接前缀，模板里用它拼 URL。 */

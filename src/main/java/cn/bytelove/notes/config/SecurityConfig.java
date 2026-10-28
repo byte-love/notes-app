@@ -25,7 +25,7 @@ public class SecurityConfig {
                         .requestMatchers("/", "/notes", "/notes/**", "/projects", "/projects/**",
                                 "/bagu", "/bagu/**", "/algo", "/algo/**",
                                 "/login", "/api/**", "/css/**", "/media/**", "/favicon.ico", "/error").permitAll()
-                        .requestMatchers("/admin/**").hasRole("OWNER")
+                        .requestMatchers("/admin/**", "/star/**", "/memo").hasRole("OWNER")
                         .anyRequest().authenticated()
                 )
                 .formLogin(login -> login

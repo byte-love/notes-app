@@ -16,6 +16,9 @@ public interface ContentItemRepository extends JpaRepository<ContentItem, Long> 
 
     List<ContentItem> findByKindOrderByUpdatedAtDesc(ContentKind kind);
 
+    /** 备忘录：按类型和题号顺序列出所有被标记的条目。 */
+    List<ContentItem> findByStarredTrueOrderByKindAscSortOrderAsc();
+
     Optional<ContentItem> findBySlug(String slug);
 
     boolean existsBySlug(String slug);
