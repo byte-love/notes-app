@@ -1051,7 +1051,8 @@ button:hover,
     font-weight: 600;
     font-size: 0.86rem;
     color: var(--fg);
-    padding: 0.34rem 0.5rem;
+    /* 左侧留出箭头的位，否则 padding 简写会把 .tree-group 的 padding-left 覆盖掉，箭头压到文字上 */
+    padding: 0.34rem 0.5rem 0.34rem 0.95rem;
 }
 
 /* 没有嵌套子目录时（项目区那种两层结构），靠字号和间距撑出层次 */

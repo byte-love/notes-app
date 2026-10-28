@@ -146,8 +146,14 @@ public class PublicController {
     public String memo(Model model) {
         List<ContentItem> starred = items.findByStarredTrueOrderByKindAscSortOrderAsc();
         Map<String, List<ContentItem>> grouped = new LinkedHashMap<>();
-        for (ContentItem item : starred) {
-            grouped.computeIfAbsent(kindLabel(item.getKind()), k -> new ArrayList<>()).add(item);
+        // 固定顺序：笔记 -> 八股 -> 算法 -> 项目，避免按枚举名字母序排成「算法/八股/笔记/项目」
+        for (ContentKind k : new ContentKind[]{ContentKind.NOTE, ContentKind.BAGU,
+                ContentKind.ALGO, ContentKind.PROJECT}) {
+            for (ContentItem item : starred) {
+                if (item.getKind() == k) {
+                    grouped.computeIfAbsent(kindLabel(k), key -> new ArrayList<>()).add(item);
+                }
+            }
         }
         model.addAttribute("grouped", grouped);
         model.addAttribute("total", starred.size());

@@ -23,14 +23,14 @@
 
             <header class="doc-head">
                 <h1 th:text="${item.title}">标题</h1>
-                <p class="doc-meta">
+                <div class="doc-meta">
                     <time th:text="${#temporals.format(item.updatedAt, 'yyyy-MM-dd')}">2026-01-01</time>
                     <form sec:authorize="isAuthenticated()" th:action="@{/star/{s}(s=${item.slug})}"
                           method="post" class="inline">
                         <button type="submit" class="star-btn" th:classappend="${item.starred} ? 'on'"
                                 th:text="${item.starred} ? '★ 已在备忘录' : '☆ 加入备忘录'">☆ 加入备忘录</button>
                     </form>
-                </p>
+                </div>
             </header>
 
             <div class="markdown" th:utext="${html}"></div>
