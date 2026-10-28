@@ -13,6 +13,7 @@
 
 - **登录与会话**：Spring Security 表单登录，服务端 Session（HttpOnly + SameSite=Lax），全局 CSRF 防护，密码 BCrypt 存储，登录失败有次数限制与临时锁定。
 - **三级可见性**：`PUBLIC` 匿名可读 / `MEMBER` 需登录 / `PRIVATE` 仅 OWNER。权限判断集中在 `VisibilityService`，列表、详情、接口共用同一套规则，不存在「列表藏了但直连 URL 能看」的漏洞。
+- **看不到的条目不消失**：游客仍会在目录树和列表里看到 `MEMBER` 条目，但只是「压暗 + 锁」的占位（点进去走登录页），并提示「登录后可查看其余 N 篇」；`PRIVATE`（公司内容）连标题都不出现。`VisibilityService.lockedTo()` 只返回 `MEMBER`，就是这个边界。
 - **树状目录**：`content_item` 表用 `parent_id` 自引用 + `sort_order` 排序，一次查询装配整棵树，不递归查库。
 - **Markdown 渲染**：在 AST 阶段把匹配到的术语文本节点替换成自定义节点，输出成带 `data-tip` 的 `<span>`，术语注解由服务端生成，不依赖前端脚本；跳过标题和代码块，同一个词每篇只标第一次出现。
 - **管理后台**：OWNER 可新建 / 编辑内容、改可见性、调整父子关系。
