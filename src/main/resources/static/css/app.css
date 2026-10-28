@@ -59,6 +59,29 @@ html {
     background: var(--bg);
     color: var(--fg);
     -webkit-text-size-adjust: 100%;
+    scrollbar-width: thin;
+    scrollbar-color: var(--line) transparent;
+}
+
+/* 滚动条跟随主题，默认的亮色轨道在深色背景下太刺眼 */
+::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+}
+
+::-webkit-scrollbar-track,
+::-webkit-scrollbar-corner {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--line);
+    border-radius: 999px;
+    border: 2px solid var(--bg);
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--fg-3);
 }
 
 body {
@@ -926,33 +949,41 @@ button:hover,
 }
 
 .tree > li {
-    margin-top: 0.3rem;
+    margin-top: 0.9rem;
 }
 
 .tree > li:first-child {
     margin-top: 0;
 }
 
-/* 顶层重，越深越轻 */
+/* 顶层当小标题：和上一组拉开间距，字号收紧、字重加重 */
 .tree > li > a,
 .tree > li > .locked {
     color: var(--fg);
     font-weight: 600;
-    font-size: 0.9rem;
+    font-size: 0.86rem;
+    letter-spacing: 0.01em;
+    padding: 0.34rem 0.5rem;
 }
 
+/* 二级是正文层级：正常字重，比分类低一档亮度 */
 .tree ul > li > a,
 .tree ul > li > .locked {
     font-weight: 400;
+    font-size: 0.84rem;
+    color: var(--fg-2);
+    padding: 0.24rem 0.5rem;
 }
 
 .tree ul ul a,
 .tree ul ul .locked {
     color: var(--fg-3);
-    font-size: 0.82rem;
+    font-size: 0.8rem;
+    padding: 0.2rem 0.5rem;
 }
 
-.tree a:hover {
+.tree a:hover,
+.tree .locked:hover {
     color: var(--fg);
     background: var(--bg-2);
     text-decoration: none;
@@ -973,10 +1004,10 @@ button:hover,
 .tree .locked::before,
 .item-title.locked::before {
     content: "🔒";
-    margin-right: 0.34rem;
-    font-size: 0.72em;
+    margin-right: 0.32rem;
+    font-size: 0.66em;
     filter: grayscale(1);
-    opacity: 0.7;
+    opacity: 0.45;
 }
 
 .tree-hint {

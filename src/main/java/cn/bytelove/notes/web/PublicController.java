@@ -8,6 +8,8 @@ import cn.bytelove.notes.service.MarkdownRenderer;
 import cn.bytelove.notes.service.NoteTreeService;
 import cn.bytelove.notes.service.VisibilityService;
 import org.springframework.http.HttpStatus;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -77,12 +79,26 @@ public class PublicController {
     }
 
     private String listing(ContentKind kind, String pageTitle, Model model, Authentication auth) {
-        model.addAttribute("items", load(model, kind, auth));
+        List<ContentItem> all = load(model, kind, auth);
+        // 目录节点只出现在左侧树里，不混进右侧正文列表
+        Set<Long> parentIds = new LinkedHashSet<>();
+        for (ContentItem i : all) {
+            if (i.getParentId() != null) {
+                parentIds.add(i.getParentId());
+            }
+        }
+        List<ContentItem> leaves = new ArrayList<>();
+        for (ContentItem i : all) {
+            if (!parentIds.contains(i.getId())) {
+                leaves.add(i);
+            }
+        }
+        model.addAttribute("items", leaves);
         model.addAttribute("kind", kind);
         model.addAttribute("activeId", null);
         model.addAttribute("blank", true);
         model.addAttribute("pageTitle", pageTitle);
-        model.addAttribute("basePath", basePath(kind));
+        model.addAttribute("basePath", contextPath() + basePath(kind));
         model.addAttribute("tabActive", kind.name().toLowerCase(java.util.Locale.ROOT));
         return "list";
     }
@@ -103,13 +119,25 @@ public class PublicController {
             model.addAttribute("crumbs", tree.breadcrumb(siblings, item));
             model.addAttribute("activeId", item.getId());
         }
-        model.addAttribute("basePath", basePath(kind));
+        model.addAttribute("basePath", contextPath() + basePath(kind));
         model.addAttribute("tabActive", kind.name().toLowerCase(java.util.Locale.ROOT));
 
         model.addAttribute("item", item);
         model.addAttribute("html", markdown.toHtml(item.getBody()));
         model.addAttribute("toc", markdown.toc(item.getBody()));
         return "detail";
+    }
+
+    /**
+     * 应用挂在 /app 下（server.servlet.context-path），模板里的链接是字符串拼的，
+     * 不像 @{} 那样自动补前缀，所以要显式带上。
+     */
+    private static String contextPath() {
+        var attrs = RequestContextHolder.getRequestAttributes();
+        if (attrs instanceof ServletRequestAttributes servletAttrs) {
+            return servletAttrs.getRequest().getContextPath();
+        }
+        return "";
     }
 
     /** 各 kind 的详情/树链接前缀，模板里用它拼 URL。 */
