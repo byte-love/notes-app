@@ -2663,6 +2663,42 @@ html[data-theme='dark'] .cl-latest {
     padding-left: max(1.5rem, calc((100% - 82ch) / 2 - var(--tree-w, 300px) - 2rem));
 }
 
+/* ---- 列表页（左目录 + 右条目，没有正文那一栏）----
+   左边缘跟正文列对齐，条目列放宽到 1000：这样右边不至于空一大片，
+   从列表点进正文时左边缘和树栏也不会跳。 */
+@media (min-width: 821px) {
+    .with-tree:not(.has-tree):not(.no-tree) {
+        padding-left: max(1.5rem, calc((100% - 68ch) / 2 - var(--tree-w, 300px) - 2rem));
+    }
+}
+
+.with-tree .item-list {
+    max-width: min(1000px, 92%);
+}
+
+/* 行宽到 1000 之后日期留在左下角会显得散，挪到标题那一行的右端 */
+@media (min-width: 900px) {
+    .with-tree .item-list li {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        column-gap: 1.2rem;
+        align-items: baseline;
+    }
+
+    .with-tree .item-main {
+        grid-column: 1;
+    }
+
+    .with-tree .item-date {
+        grid-column: 2;
+        grid-row: 1;
+    }
+
+    .with-tree .item-summary {
+        grid-column: 1 / -1;
+    }
+}
+
 /* 树节点名字长就换到第二行，不再挤成一行 */
 .tree .tree-item,
 .tree a:not(.locked),
