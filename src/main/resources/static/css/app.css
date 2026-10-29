@@ -301,17 +301,6 @@ code {
     font-weight: 600;
 }
 
-.badge {
-    display: inline-block;
-    margin-left: 0.45rem;
-    padding: 0.05rem 0.4rem;
-    font-size: 0.72rem;
-    border-radius: 999px;
-    border: 1px solid var(--line);
-    color: var(--fg-2);
-    vertical-align: middle;
-}
-
 .meta {
     color: var(--fg-2);
     font-size: 0.85rem;
@@ -551,25 +540,43 @@ button:hover,
 .admin-table {
     width: 100%;
     border-collapse: collapse;
-    font-size: 0.9rem;
-}
-
-.admin-table th,
-.admin-table td {
-    border-bottom: 1px solid var(--line);
-    padding: 0.5rem 0.6rem;
-    text-align: left;
-    white-space: nowrap;
+    font-size: 0.92rem;
 }
 
 .admin-table th {
-    color: var(--fg-2);
-    font-weight: 600;
+    padding: 0 0.7rem 0.7rem;
+    text-align: left;
+    font-size: 0.76rem;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+    color: var(--fg-3);
+    border-bottom: 1px solid var(--line);
+    white-space: nowrap;
+}
+
+.admin-table td {
+    padding: 0.85rem 0.7rem;
+    text-align: left;
+    vertical-align: middle;
+    line-height: 1.5;
+    border-bottom: 1px solid var(--line);
+    white-space: nowrap;
+}
+
+.admin-table tbody tr:hover td {
+    background: var(--bg-2);
+}
+
+.admin-table td.cell-id {
+    font-size: 0.84rem;
+    color: var(--fg-3);
+    font-variant-numeric: tabular-nums;
 }
 
 .admin-table td.cell-title {
     white-space: normal;
     min-width: 12rem;
+    font-weight: 500;
 }
 
 .admin-table code {
@@ -578,13 +585,35 @@ button:hover,
     overflow: hidden;
     text-overflow: ellipsis;
     vertical-align: bottom;
+    font-size: 0.82rem;
+    color: var(--fg-2);
+}
+
+.badge {
+    display: inline-block;
+    padding: 0.08rem 0.55rem;
+    border-radius: 999px;
+    font-size: 0.76rem;
+    line-height: 1.7;
+    color: var(--fg-2);
+    background: var(--bg-2);
+    border: 1px solid var(--line);
 }
 
 .admin-table .actions {
     display: flex;
-    gap: 0.7rem;
+    gap: 0.9rem;
     align-items: center;
     white-space: nowrap;
+    font-size: 0.85rem;
+}
+
+.admin-table .actions a {
+    color: var(--fg-2);
+}
+
+.admin-table tbody tr:hover .actions a {
+    color: var(--accent);
 }
 
 /* ---------- list page ---------- */
