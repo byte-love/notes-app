@@ -1027,10 +1027,11 @@ button:hover,
 /* ---------- tree ---------- */
 .with-tree {
     display: grid;
-    /* 右侧列表按阅读宽度收口，两列整体居中，左右留白保持相等 */
-    grid-template-columns: 236px minmax(0, 720px);
-    justify-content: center;
-    gap: 2.4rem;
+    /* 树栏宽度固定，右侧吃剩余宽度。不做整体居中：
+       否则加宽树栏时整块会重新居中，看起来就是「树没动、正文往左挪」 */
+    grid-template-columns: 300px minmax(0, 1fr);
+    justify-content: stretch;
+    gap: 2rem;
     padding: 2rem 1.5rem 0;
     align-items: start;
 }
@@ -2557,4 +2558,110 @@ html[data-theme='dark'] .cl-latest {
     align-items: center;
     justify-content: center;
     gap: 0.6rem;
+}
+
+/* ---- 正文标题上的书签按钮 ---- */
+
+.markdown h2,
+.markdown h3 {
+    scroll-margin-top: 80px;
+}
+
+/* 书签按钮平时就浅浅地露出来（手机上没法悬停），鼠标移上去才变实 */
+.head-bookmark {
+    display: inline-block;
+    width: 9px;
+    height: 13px;
+    margin-left: 0.55rem;
+    padding: 0;
+    vertical-align: 0.08em;
+    background: transparent;
+    border: 1px solid var(--fg-3);
+    border-radius: 2px;
+    cursor: pointer;
+    opacity: 0.28;
+    transition: opacity 0.12s ease, background 0.12s ease, border-color 0.12s ease;
+}
+
+.markdown h2:hover .head-bookmark,
+.markdown h3:hover .head-bookmark,
+.head-bookmark:focus-visible {
+    opacity: 0.75;
+}
+
+.head-bookmark:hover {
+    opacity: 1;
+    border-color: var(--accent);
+}
+
+.head-bookmark.on {
+    opacity: 1;
+    background: var(--accent);
+    border-color: var(--accent);
+}
+
+/* ---- 拖拽调整左右两栏宽度 ---- */
+
+.with-tree {
+    position: relative;
+}
+
+.splitter {
+    position: absolute;
+    top: 1.5rem;
+    bottom: 0;
+    width: 11px;
+    margin-left: -6px;
+    cursor: col-resize;
+    z-index: 6;
+    touch-action: none;
+}
+
+.splitter::before {
+    content: "";
+    position: absolute;
+    left: 5px;
+    top: 0;
+    bottom: 0;
+    width: 1px;
+    background: transparent;
+    transition: background 0.12s ease;
+}
+
+.splitter:hover::before,
+.splitter.dragging::before {
+    background: var(--fg-3);
+}
+
+/* 详情页：正文列吃剩余宽度，不再卡在 720px，这样拖左栏才真的能改变正文宽度 */
+.with-tree.has-tree {
+    grid-template-columns: var(--tree-w, 300px) minmax(0, 1fr);
+    justify-content: stretch;
+}
+
+.with-tree.has-tree.no-tree {
+    grid-template-columns: minmax(0, 1fr);
+}
+
+/* 正文按阅读宽度（68ch）在整屏居中：左边距 = (整宽 - 阅读宽)/2 - 树宽 - 间距，
+   这样树栏和正文一起右移，正文左右留白相等。窄屏放不下时回落到 1.5rem，
+   和原来一样靠左。 */
+.with-tree.has-tree:has(.tree-pane) {
+    padding-left: max(1.5rem, calc((100% - 68ch) / 2 - var(--tree-w, 300px) - 2rem));
+}
+
+/* 没有右侧目录时正文上限是 82ch，居中基准跟着换 */
+.with-tree.has-tree:has(.tree-pane):has(.doc-wrap.no-toc) {
+    padding-left: max(1.5rem, calc((100% - 82ch) / 2 - var(--tree-w, 300px) - 2rem));
+}
+
+/* 树节点名字长就换到第二行，不再挤成一行 */
+.tree .tree-item,
+.tree a:not(.locked),
+.tree-group {
+    white-space: normal;
+    overflow-wrap: anywhere;
+    line-height: 1.45;
+    display: block;
+    padding: 0.28rem 0.4rem 0.28rem 0.95rem;
 }

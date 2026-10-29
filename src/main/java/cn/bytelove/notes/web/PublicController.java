@@ -19,6 +19,7 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 import org.springframework.web.server.ResponseStatusException;
@@ -157,8 +158,10 @@ public class PublicController {
         if (viewer.isSelf(item)) {
             positions.remember(viewer.userId(), kind, item.getId());
         }
-        model.addAttribute("bookmarked", bookmarks.isBookmarked(viewer.userId(), item.getId()));
+        model.addAttribute("bookmarked", bookmarks.anchorsOf(viewer.userId(), item.getId()).contains(""));
         model.addAttribute("bookmarkIds", bookmarks.ids(viewer.userId()));
+        model.addAttribute("bookmarkAnchors", bookmarks.anchorsOf(viewer.userId(), item.getId()));
+        model.addAttribute("bookmarkAnchorCsv", String.join(",", bookmarks.anchorsOf(viewer.userId(), item.getId())));
 
         // 项目走单独的模板：它渲染的是作品集卡片那套结构化字段，没有目录树
         if (kind == ContentKind.PROJECT) {
@@ -194,13 +197,40 @@ public class PublicController {
         return "detail";
     }
 
-    /** 手动书签：自己插的旗，想标几处标几处。 */
+    /** 手动书签：自己插的旗，想标几处标几处；anchor 为空是整篇，非空是某个标题块。 */
     @PostMapping("/bookmark/{slug}")
-    public String toggleBookmark(@PathVariable String slug, Authentication auth) {
+    public String toggleBookmark(@PathVariable String slug,
+                                 @RequestParam(required = false) String anchor,
+                                 Authentication auth) {
         Viewer viewer = viewers.current(auth);
         ContentItem item = resolveAnyKind(slug, viewer);
-        bookmarks.toggle(viewer.userId(), item.getId());
-        return "redirect:" + basePath(item.getKind()) + "/" + item.getSlug();
+        bookmarks.toggle(viewer.userId(), item.getId(), anchor);
+        String target = basePath(item.getKind()) + "/" + item.getSlug();
+        if (anchor != null && !anchor.isBlank()) {
+            target = target + "#" + anchor;
+        }
+        return "redirect:" + target;
+    }
+
+    /** 我的书签：列出所有标过的位置，直接跳到正文里的那一块。 */
+    @GetMapping("/bookmarks")
+    public String bookmarks(Model model, Authentication auth) {
+        Viewer viewer = viewers.current(auth);
+        List<ContentItem> all = new ArrayList<>();
+        List<String> anchors = new ArrayList<>();
+        for (BookmarkService.Spot spot : bookmarks.spots(viewer.userId())) {
+            ContentItem item = items.findById(spot.itemId()).orElse(null);
+            if (item == null || !visibility.canRead(item, viewer)) {
+                continue;
+            }
+            all.add(item);
+            anchors.add(spot.anchor());
+        }
+        model.addAttribute("items", all);
+        model.addAttribute("anchors", anchors);
+        model.addAttribute("basePathOf", (java.util.function.Function<ContentKind, String>) PublicController::basePath);
+        model.addAttribute("tabActive", "memo");
+        return "bookmarks";
     }
 
     /** 收藏夹：加入 / 移出。标记落在用户自己名下。 */

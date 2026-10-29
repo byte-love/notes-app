@@ -48,6 +48,13 @@ public class SecurityConfig {
                         })
                         .permitAll()
                 )
+                // 会话存在内存里，重启进程就会掉登录，所以再加一层 remember-me：
+                // 登录一次 30 天内重启也不用重新登，点「退出」才清掉
+                .rememberMe(remember -> remember
+                        .key("byte-love-notes-remember-me")
+                        .tokenValiditySeconds(30 * 24 * 3600)
+                        .alwaysRemember(true)
+                )
                 .logout(logout -> logout
                         .logoutSuccessHandler((request, response, authentication) ->
                                 response.sendRedirect(request.getContextPath() + "/notes"))

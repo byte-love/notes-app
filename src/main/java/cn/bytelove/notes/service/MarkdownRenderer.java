@@ -18,6 +18,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -101,10 +102,10 @@ public class MarkdownRenderer {
         Node document = parser.parse(stripFrontMatter(markdown));
         wrapGlossary(document);
 
-        AtomicInteger counter = new AtomicInteger();
+        Map<Heading, String> ids = assignHeadingIds(document);
         AttributeProvider headingIds = (node, tagName, attributes) -> {
-            if (node instanceof Heading) {
-                attributes.put("id", "h" + counter.incrementAndGet());
+            if (node instanceof Heading heading && ids.containsKey(heading)) {
+                attributes.put("id", ids.get(heading));
             }
             if ("img".equals(tagName)) {
                 attributes.put("loading", "lazy");
@@ -126,21 +127,58 @@ public class MarkdownRenderer {
             return items;
         }
         Node document = parser.parse(stripFrontMatter(markdown));
-        AtomicInteger counter = new AtomicInteger();
-        collect(document, counter, items);
+        Map<Heading, String> ids = assignHeadingIds(document);
+        collect(document, ids, items);
         return items;
     }
 
-    private void collect(Node node, AtomicInteger counter, List<TocItem> out) {
+    /**
+     * 标题 id 按标题文字生成（中文原样保留），重复的追加序号。
+     * 以前用的是 h1/h2/h3 这种序位号，中间插一个标题就会把后面全部顶走，
+     * 书签会静默指到别的段落上。
+     */
+    private Map<Heading, String> assignHeadingIds(Node document) {
+        Map<Heading, String> ids = new LinkedHashMap<>();
+        Map<String, Integer> used = new LinkedHashMap<>();
+        walkHeadings(document, heading -> {
+            String base = slugOf(textOf(heading));
+            int n = used.merge(base, 1, Integer::sum);
+            ids.put(heading, n == 1 ? base : base + "-" + n);
+        });
+        return ids;
+    }
+
+    private void walkHeadings(Node node, java.util.function.Consumer<Heading> sink) {
         for (Node child = node.getFirstChild(); child != null; child = child.getNext()) {
             if (child instanceof Heading heading) {
-                int index = counter.incrementAndGet();
+                sink.accept(heading);
+            }
+            walkHeadings(child, sink);
+        }
+    }
+
+    /** 去掉空白和标点，保留中英文数字；空的就给个兜底名。 */
+    static String slugOf(String text) {
+        String s = text == null ? "" : text.trim().toLowerCase(java.util.Locale.ROOT);
+        // 只留中英文和数字，其余（空格、中英文标点、括号）全部折成一个连字符
+        s = s.replaceAll("[^\\p{IsHan}a-z0-9]+", "-");
+        s = s.replaceAll("^-+|-+$", "");
+        if (s.isEmpty()) {
+            return "section";
+        }
+        return s.length() > 50 ? s.substring(0, 50).replaceAll("-$", "") : s;
+    }
+
+    private void collect(Node node, Map<Heading, String> ids, List<TocItem> out) {
+        for (Node child = node.getFirstChild(); child != null; child = child.getNext()) {
+            if (child instanceof Heading heading) {
                 int level = heading.getLevel();
                 if (level == 2 || level == 3) {
-                    out.add(new TocItem(level, "h" + index, textOf(heading)));
+                    String id = ids.getOrDefault(heading, "section");
+                    out.add(new TocItem(level, id, textOf(heading)));
                 }
             }
-            collect(child, counter, out);
+            collect(child, ids, out);
         }
     }
 

@@ -41,7 +41,7 @@
                 </div>
             </header>
 
-            <div class="markdown" th:utext="${html}"></div>
+            <div class="markdown" th:utext="${html}" th:attr="data-slug=${item.slug},data-anchors=${bookmarkAnchorCsv}"></div>
         </article>
 
         <aside class="toc" th:if="${!#lists.isEmpty(toc)}">
@@ -163,5 +163,166 @@
 </script>
 
 <footer th:replace="~{fragments/layout :: foot}"></footer>
+
+<script>
+    // 每个正文标题右边挂一个书签按钮，点一下把位置记下来；下次从「书签」页直接跳回来
+    (() => {
+        const box = document.querySelector('.markdown[data-slug]');
+        if (!box) return;
+        const token = document.querySelector('meta[name="_csrf"]')?.content;
+        if (!token) return;
+
+        const slug = box.dataset.slug;
+        const mine = new Set((box.dataset.anchors || '').split(',').filter(Boolean));
+        const heads = [...box.querySelectorAll('h2[id], h3[id]')];
+        if (!heads.length) return;
+
+        heads.forEach((h) => {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'head-bookmark' + (mine.has(h.id) ? ' on' : '');
+            btn.title = mine.has(h.id) ? '已在此加书签' : '在这一块加书签';
+            btn.setAttribute('aria-label', btn.title);
+            btn.addEventListener('click', async (e) => {
+                e.preventDefault();
+                btn.disabled = true;
+                try {
+                    await fetch(`/app/bookmark/${encodeURIComponent(slug)}?anchor=${encodeURIComponent(h.id)}`, {
+                        method: 'POST',
+                        headers: { 'X-CSRF-TOKEN': token },
+                        credentials: 'same-origin',
+                    });
+                    btn.classList.toggle('on');
+                    btn.title = btn.classList.contains('on') ? '已在此加书签' : '在这一块加书签';
+                } catch (err) {
+                    /* 失败就不改状态 */
+                } finally {
+                    btn.disabled = false;
+                }
+            });
+            h.appendChild(btn);
+        });
+    })();
+</script>
+
+<script>
+    // 三栏联动：左栏用像素，中间和右边按比例分剩余宽度。
+    // 拖左栏 -> 左栏变宽，中间和右边一起变窄，两者比例不变；
+    // 拖右栏 -> 只改中间和右边的比例。宽度都记在 localStorage。
+    (() => {
+        const wrap = document.querySelector('.with-tree.has-tree');
+        if (!wrap) return;
+        const tree = wrap.querySelector('.tree-pane');
+        const docWrap = wrap.querySelector('.doc-wrap');
+        const toc = docWrap ? docWrap.querySelector('.toc') : null;
+        if (!tree || !docWrap) return;
+
+        const MIN_TREE = 140, MAX_TREE = 520;
+        const MIN_TOC_PCT = 8, MAX_TOC_PCT = 45;
+
+        const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
+        const read = (k, dflt) => {
+            try {
+                const v = parseFloat(localStorage.getItem(k));
+                return isNaN(v) ? dflt : v;
+            } catch (e) { return dflt; }
+        };
+        const save = (k, v) => {
+            try { localStorage.setItem(k, String(v)); } catch (e) {}
+        };
+
+        let treeW = read('layout:tree2', 300);
+        // tocPct：右边的目录占「剩余宽度」的百分比
+        let tocPct = toc ? read('layout:tocpct', 22) : 0;
+
+        const applyTree = () => {
+            const w = clamp(treeW, MIN_TREE, MAX_TREE);
+            // --tree-w 和列宽一起改：左边距按它算，正文才能一直待在屏幕正中
+            wrap.style.setProperty('--tree-w', w + 'px');
+            wrap.style.gridTemplateColumns = w + 'px minmax(0, 1fr)';
+        };
+        const applyToc = () => {
+            if (!toc) return;
+            const p = clamp(tocPct, MIN_TOC_PCT, MAX_TOC_PCT);
+            // 用 fr 分配，两边一起缩放，比例固定
+            docWrap.style.gridTemplateColumns = (100 - p) + 'fr ' + p + 'fr';
+        };
+
+        applyTree();
+        applyToc();
+
+        const makeSplitter = (host, onMove, onDone) => {
+            const bar = document.createElement('div');
+            bar.className = 'splitter';
+            host.appendChild(bar);
+
+            let lastX = 0;
+            const down = (e) => {
+                lastX = e.touches ? e.touches[0].clientX : e.clientX;
+                bar.classList.add('dragging');
+                const move = (ev) => {
+                    const x = ev.touches ? ev.touches[0].clientX : ev.clientX;
+                    onMove(x - lastX);
+                    lastX = x;
+                    if (ev.cancelable) ev.preventDefault();
+                };
+                const up = () => {
+                    bar.classList.remove('dragging');
+                    document.removeEventListener('mousemove', move);
+                    document.removeEventListener('mouseup', up);
+                    document.removeEventListener('touchmove', move);
+                    document.removeEventListener('touchend', up);
+                    onDone();
+                };
+                document.addEventListener('mousemove', move);
+                document.addEventListener('mouseup', up);
+                document.addEventListener('touchmove', move, { passive: false });
+                document.addEventListener('touchend', up);
+                e.preventDefault();
+            };
+            bar.addEventListener('mousedown', down);
+            bar.addEventListener('touchstart', down, { passive: false });
+            return bar;
+        };
+
+        // 左：树目录的右边缘
+        const leftBar = makeSplitter(wrap, (dx) => {
+            treeW = clamp(treeW + dx, MIN_TREE, MAX_TREE);
+            applyTree();
+        }, () => save('layout:tree2', Math.round(treeW)));
+
+        // 右：本页目录的左边缘（改的是中间和右边的宽度比例）
+        let rightBar = null;
+        if (toc) {
+            rightBar = makeSplitter(docWrap, (dx) => {
+                const total = docWrap.getBoundingClientRect().width || 1;
+                tocPct = clamp(tocPct - (dx / total) * 100, MIN_TOC_PCT, MAX_TOC_PCT);
+                applyToc();
+            }, () => save('layout:tocpct', Math.round(tocPct * 10) / 10));
+        }
+
+        const layout = () => {
+            const wr = wrap.getBoundingClientRect();
+            const tr = tree.getBoundingClientRect();
+            leftBar.style.left = (tr.right - wr.left) + 'px';
+
+            if (rightBar && toc) {
+                const dr = docWrap.getBoundingClientRect();
+                const rr = toc.getBoundingClientRect();
+                rightBar.style.left = (rr.left - dr.left) + 'px';
+            }
+        };
+
+        layout();
+        window.addEventListener('resize', layout);
+        // 拖动时也要让分隔条跟着走
+        const tick = () => { layout(); requestAnimationFrame(tick); };
+        wrap.addEventListener('mousemove', layout);
+        wrap.addEventListener('touchmove', layout, { passive: true });
+        document.addEventListener('mouseup', layout);
+        document.addEventListener('touchend', layout);
+    })();
+</script>
+
 </body>
 </html>
