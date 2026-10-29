@@ -62,7 +62,7 @@ html[data-theme='dark'] {
 html[data-theme='sepia'] {
     --fg: #3b3227;
     --fg-2: #6b5f4f;
-    --fg-3: #7a6f5c;
+    --fg-3: #6f6552;
     --bg: #f5efe2;
     --bg-2: #efe7d6;
     --line: #ddd2bd;
@@ -184,8 +184,8 @@ code {
 }
 
 .tab.is-active {
-    color: var(--fg);
-    background: var(--bg-2);
+    color: var(--accent);
+    background: var(--accent-soft);
     font-weight: 600;
 }
 
