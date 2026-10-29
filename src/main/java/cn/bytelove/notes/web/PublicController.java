@@ -131,14 +131,16 @@ public class PublicController {
         return "detail";
     }
 
-    /** 备忘录：加入 / 移出。只有 owner 能标记。 */
+    /** 备忘录：加入 / 移出。登录用户都能标记。 */
     @PostMapping("/star/{slug}")
     public String toggleStar(@PathVariable String slug) {
         ContentItem item = items.findBySlug(slug)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
         item.setStarred(!item.isStarred());
         items.save(item);
-        return "redirect:" + contextPath() + basePath(item.getKind()) + "/" + item.getSlug();
+        // 这里不能自己拼 contextPath：redirect: 的目标 Spring 会自动加上前缀，
+        // 手动再加一次会变成 /app/app/bagu/xxx 直接 404
+        return "redirect:" + basePath(item.getKind()) + "/" + item.getSlug();
     }
 
     /** 备忘录列表：把标记过的条目按类型分组列出来。 */
