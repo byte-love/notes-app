@@ -5,6 +5,8 @@
 <header th:replace="~{fragments/layout :: nav}"></header>
 
 <main class="wrap">
+    <a th:href="@{/admin}" class="back-link">返回</a>
+
     <h1 th:text="${editing} ? '编辑内容' : '新建内容'">新建内容</h1>
 
     <form th:action="${editing} ? @{/admin/{id}/edit(id=${itemId})} : @{/admin/new}"

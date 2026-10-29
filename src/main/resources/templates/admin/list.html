@@ -32,11 +32,13 @@
                 <td><span class="badge" th:text="${i.visibility.label}">公开</span></td>
                 <td th:text="${#temporals.format(i.updatedAt, 'yyyy-MM-dd HH:mm')}">2026-01-01 00:00</td>
                 <td class="actions">
-                    <a th:href="@{/admin/{id}/edit(id=${i.id})}">编辑</a>
-                    <form th:action="@{/admin/{id}/delete(id=${i.id})}" method="post" class="inline"
-                          onsubmit="return confirm('确认删除？');">
-                        <button type="submit" class="link-button danger">删除</button>
-                    </form>
+                    <div class="row-actions">
+                        <a th:href="@{/admin/{id}/edit(id=${i.id})}">编辑</a>
+                        <form th:action="@{/admin/{id}/delete(id=${i.id})}" method="post" class="inline"
+                              onsubmit="return confirm('确认删除？');">
+                            <button type="submit" class="link-button danger">删除</button>
+                        </form>
+                    </div>
                 </td>
             </tr>
             </tbody>

@@ -600,12 +600,21 @@ button:hover,
     border: 1px solid var(--line);
 }
 
-.admin-table .actions {
+/* 注意：flex 不能写在 td 上，否则单元格不再撑满行高，底边框会比同排其他格高一截 */
+.admin-table .row-actions {
     display: flex;
     gap: 0.9rem;
     align-items: center;
     white-space: nowrap;
     font-size: 0.85rem;
+}
+
+.admin-table .row-actions a {
+    color: var(--fg-2);
+}
+
+.admin-table tbody tr:hover .row-actions a {
+    color: var(--accent);
 }
 
 /* 更新时间和操作两列挨得太紧，单独给操作列多留一点 */
@@ -1483,7 +1492,6 @@ html[data-read-size='lg'] .markdown {
 }
 
 /* ---- 表单字段 ---- */
-
 .field {
     display: flex;
     flex-direction: column;
@@ -1798,4 +1806,31 @@ html[data-read-size='lg'] .markdown {
     margin-top: 0.4rem;
     color: var(--fg-3);
     font-size: 0.82rem;
+}
+
+/* 表单页左上角的返回入口 */
+.back-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin-bottom: 1rem;
+    padding: 0.34rem 0.8rem 0.34rem 0.65rem;
+    font-size: 0.85rem;
+    color: var(--fg-2);
+    background: transparent;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+}
+
+.back-link::before {
+    content: "\2190";
+    font-size: 1em;
+    line-height: 1;
+}
+
+.back-link:hover {
+    color: var(--fg);
+    background: var(--bg-2);
+    border-color: var(--fg-3);
+    text-decoration: none;
 }
