@@ -1660,3 +1660,136 @@ html[data-read-size='lg'] .markdown {
     border: 1px solid var(--line);
     border-radius: 6px;
 }
+
+/* ---- 项目详情 ---- */
+
+.project-wrap {
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 2rem 1.5rem 3rem;
+}
+
+.project-head h1 {
+    margin: 0.6rem 0;
+    font-size: 1.9rem;
+    letter-spacing: -0.01em;
+}
+
+.project-sub {
+    margin: 0 0 1.4rem;
+    color: var(--fg-2);
+    font-size: 1rem;
+    line-height: 1.7;
+}
+
+.project-facts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2rem;
+    margin-bottom: 1.2rem;
+}
+
+.project-facts > div {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    font-size: 0.9rem;
+}
+
+.fact-label {
+    font-size: 0.76rem;
+    color: var(--fg-3);
+}
+
+.stack {
+    list-style: none;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    padding: 0;
+    margin: 0 0 1.2rem;
+}
+
+.stack li {
+    font-size: 0.78rem;
+    padding: 0.15rem 0.6rem;
+    border-radius: 999px;
+    color: var(--fg-2);
+    background: var(--bg-2);
+    border: 1px solid var(--line);
+}
+
+.project section {
+    margin: 2.4rem 0;
+}
+
+.project h2 {
+    margin: 0 0 0.9rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    color: var(--fg-3);
+}
+
+.project-problem {
+    margin: 0;
+    line-height: 1.85;
+}
+
+.project-list {
+    margin: 0;
+    padding-left: 1.3rem;
+    line-height: 1.85;
+}
+
+.project-list li {
+    margin-bottom: 0.6rem;
+}
+
+.project-list small {
+    display: block;
+    margin-top: 0.15rem;
+    color: var(--fg-3);
+    font-size: 0.84rem;
+    line-height: 1.6;
+}
+
+.project-list.results {
+    list-style: none;
+    padding-left: 0;
+}
+
+.project-list.results li {
+    position: relative;
+    padding-left: 1.15rem;
+}
+
+.project-list.results li::before {
+    content: "\25B8";
+    position: absolute;
+    left: 0;
+    color: var(--accent);
+}
+
+.project-diagram {
+    width: 100%;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--bg-2);
+}
+
+.project-shot {
+    margin: 0 0 1rem;
+}
+
+.project-shot img {
+    width: 100%;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+}
+
+.project-shot figcaption {
+    margin-top: 0.4rem;
+    color: var(--fg-3);
+    font-size: 0.82rem;
+}

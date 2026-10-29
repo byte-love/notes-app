@@ -30,6 +30,10 @@ public class ProjectMetaService {
         return list.isEmpty() ? Optional.empty() : Optional.of(list.get(0));
     }
 
+    public Optional<ProjectView> view(Long itemId) {
+        return findDoc(itemId).flatMap(ProjectView::parse);
+    }
+
     public Map<Long, String> docs(Collection<Long> itemIds) {
         Map<Long, String> result = new HashMap<>();
         if (itemIds == null || itemIds.isEmpty()) {

@@ -5,6 +5,7 @@ import cn.bytelove.notes.domain.ContentKind;
 import cn.bytelove.notes.repo.ContentItemRepository;
 import cn.bytelove.notes.service.ContentStarService;
 import cn.bytelove.notes.service.MarkdownRenderer;
+import cn.bytelove.notes.service.ProjectMetaService;
 import cn.bytelove.notes.service.NoteTreeService;
 import cn.bytelove.notes.service.ViewerService;
 import cn.bytelove.notes.service.VisibilityService;
@@ -36,15 +37,18 @@ public class PublicController {
     private final VisibilityService visibility;
     private final ViewerService viewers;
     private final ContentStarService stars;
+    private final ProjectMetaService meta;
     private final MarkdownRenderer markdown;
     private final NoteTreeService tree;
 
     public PublicController(ContentItemRepository items, VisibilityService visibility, ViewerService viewers,
-                            ContentStarService stars, MarkdownRenderer markdown, NoteTreeService tree) {
+                            ContentStarService stars, ProjectMetaService meta,
+                            MarkdownRenderer markdown, NoteTreeService tree) {
         this.items = items;
         this.visibility = visibility;
         this.viewers = viewers;
         this.stars = stars;
+        this.meta = meta;
         this.markdown = markdown;
         this.tree = tree;
     }
@@ -130,6 +134,17 @@ public class PublicController {
     private String detail(ContentKind kind, String slug, Model model, Authentication auth) {
         Viewer viewer = viewers.current(auth);
         ContentItem item = resolve(kind, slug, viewer);
+
+        // 项目走单独的模板：它渲染的是作品集卡片那套结构化字段，没有目录树
+        if (kind == ContentKind.PROJECT) {
+            model.addAttribute("basePath", contextPath() + basePath(kind));
+            model.addAttribute("tabActive", "project");
+            model.addAttribute("item", item);
+            model.addAttribute("project", meta.view(item.getId()).orElse(null));
+            model.addAttribute("html", markdown.toHtml(item.getBody()));
+            model.addAttribute("starred", viewer.userId() != null && stars.isStarred(viewer.userId(), item.getId()));
+            return "project";
+        }
 
         Set<Long> lockedIds = new LinkedHashSet<>();
         // 侧栏树跟着这条内容的作者走：看别人的推荐内容时，列的是他自己的目录
