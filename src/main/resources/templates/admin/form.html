@@ -13,8 +13,10 @@
         <label>
             类型
             <select th:field="*{kind}">
-                <option th:each="k : ${kinds}" th:value="${k}" th:text="${k}">NOTE</option>
+                <option th:each="k : ${kinds}" th:value="${k}" th:title="${k.hint}"
+                        th:text="${k.label}">笔记</option>
             </select>
+            <span class="field-note">笔记 / 八股 / 算法 是三个内容分区，项目是作品条目</span>
         </label>
 
         <label>
@@ -37,7 +39,8 @@
         <label>
             可见性
             <select th:field="*{visibility}">
-                <option th:each="v : ${visibilities}" th:value="${v}" th:text="${v}">PUBLIC</option>
+                <option th:each="v : ${visibilities}" th:value="${v}"
+                        th:text="|${v.label}（${v.hint}）|">公开（谁都能看）</option>
             </select>
         </label>
 
@@ -46,7 +49,7 @@
             <select th:field="*{parentId}">
                 <option th:value="null">（无）</option>
                 <option th:each="p : ${parents}" th:value="${p.id}"
-                        th:text="${p.kind.name() + ' · ' + p.title}">父节点</option>
+                        th:text="|${p.kind.label} · ${p.title}|">父节点</option>
             </select>
             <span class="error" th:if="${#fields.hasErrors('parentId')}" th:errors="*{parentId}"></span>
         </label>
@@ -57,7 +60,7 @@
         </label>
 
         <label>
-            项目结构化字段（JSON，只在类型选 PROJECT 时生效）
+            项目结构化字段（JSON，只在类型选「项目」时生效）
             <textarea th:field="*{projectDoc}" rows="14" spellcheck="false"
                       placeholder='{"title":{"zh":"…","en":"…"},"stack":["Spring Boot"],"action":{"zh":["…"],"en":["…"]}}'></textarea>
             <span class="error" th:if="${#fields.hasErrors('projectDoc')}" th:errors="*{projectDoc}"></span>

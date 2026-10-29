@@ -1243,7 +1243,6 @@ button:hover,
 }
 
 /* ---- 个人主页 ---- */
-
 /* 顶栏里的账号入口：做成一个可点的块，不然和旁边的纯文字链接分不出来 */
 .header-tools a.user-entry {
     display: inline-flex;
@@ -1419,4 +1418,11 @@ html[data-read-size='md'] .markdown {
 
 html[data-read-size='lg'] .markdown {
     font-size: 18px;
+}
+
+/* 表单字段下面的一句说明 */
+.field-note {
+    color: var(--fg-3);
+    font-size: 0.8rem;
+    line-height: 1.5;
 }

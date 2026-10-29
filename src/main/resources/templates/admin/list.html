@@ -25,10 +25,10 @@
         <tbody>
         <tr th:each="i : ${items}">
             <td th:text="${i.id}">1</td>
-            <td th:text="${i.kind}">NOTE</td>
+            <td th:text="${i.kind.label}">笔记</td>
             <td><code th:text="${i.slug}">slug</code></td>
             <td th:text="${i.title}">标题</td>
-            <td th:text="${i.visibility}">PUBLIC</td>
+            <td th:text="${i.visibility.label}">公开</td>
             <td th:text="${#temporals.format(i.updatedAt, 'yyyy-MM-dd HH:mm')}">2026-01-01 00:00</td>
             <td class="actions">
                 <a th:href="@{/admin/{id}/edit(id=${i.id})}">编辑</a>
