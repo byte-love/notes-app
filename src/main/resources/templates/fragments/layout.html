@@ -26,7 +26,6 @@
 
 <header th:fragment="nav" class="site-header">
     <div class="header-inner">
-        <a class="brand" th:href="@{/}">byte-love</a>
         <nav class="tabs" aria-label="站点分区">
             <a class="tab" th:href="@{/projects}"
                th:classappend="${tabActive == 'project'} ? 'is-active'">项目</a>
