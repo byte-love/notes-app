@@ -2258,3 +2258,172 @@ html[data-read-size='lg'] .markdown {
 .feed-log .feed-text {
     white-space: pre-wrap;
 }
+
+/* ---- 更新日志 ---- */
+
+.cl-list {
+    margin-top: 1.2rem;
+}
+
+.cl-release {
+    display: grid;
+    grid-template-columns: 8.5rem minmax(0, 1fr);
+    gap: 1.6rem;
+    padding: 1.4rem 0;
+    border-top: 1px solid var(--line);
+}
+
+.cl-release:first-child {
+    border-top: none;
+    padding-top: 0;
+}
+
+/* 左边一列固定放日期和版本，右边内容独立成块 */
+.cl-side {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    font-size: 0.82rem;
+    color: var(--fg-3);
+    font-variant-numeric: tabular-nums;
+}
+
+.cl-version {
+    display: inline-block;
+    align-self: flex-start;
+    padding: 0.05rem 0.45rem;
+    border-radius: 999px;
+    border: 1px solid var(--line);
+    font-size: 0.74rem;
+}
+
+.cl-body h2 {
+    margin: 0 0 0.8rem;
+    font-size: 1.05rem;
+    font-weight: 600;
+}
+
+.cl-entries {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.cl-entries li {
+    display: flex;
+    align-items: baseline;
+    gap: 0.55rem;
+    padding: 0.3rem 0;
+    font-size: 0.9rem;
+    line-height: 1.7;
+}
+
+.cl-text {
+    min-width: 0;
+}
+
+/* 分类标签：四种颜色区分，但都是低饱和，不刺眼 */
+.cl-tag {
+    flex: none;
+    padding: 0.02rem 0.45rem;
+    border-radius: 999px;
+    font-size: 0.72rem;
+    line-height: 1.8;
+    border: 1px solid transparent;
+}
+
+li[data-cat='ADDED'] .cl-tag,
+.cl-tag[data-cat='ADDED'] {
+    color: #1a7f37;
+    background: rgba(26, 127, 55, 0.12);
+}
+
+li[data-cat='CHANGED'] .cl-tag,
+.cl-tag[data-cat='CHANGED'] {
+    color: #0969da;
+    background: rgba(9, 105, 218, 0.12);
+}
+
+li[data-cat='FIXED'] .cl-tag,
+.cl-tag[data-cat='FIXED'] {
+    color: #9a6700;
+    background: rgba(154, 103, 0, 0.14);
+}
+
+li[data-cat='REMOVED'] .cl-tag,
+.cl-tag[data-cat='REMOVED'] {
+    color: #cf222e;
+    background: rgba(207, 34, 46, 0.12);
+}
+
+html[data-theme='dark'] li[data-cat='ADDED'] .cl-tag,
+html[data-theme='dark'] .cl-tag[data-cat='ADDED'] {
+    color: #3fb950;
+    background: rgba(63, 185, 80, 0.15);
+}
+
+html[data-theme='dark'] li[data-cat='CHANGED'] .cl-tag,
+html[data-theme='dark'] .cl-tag[data-cat='CHANGED'] {
+    color: #58a6ff;
+    background: rgba(88, 166, 255, 0.15);
+}
+
+html[data-theme='dark'] li[data-cat='FIXED'] .cl-tag,
+html[data-theme='dark'] .cl-tag[data-cat='FIXED'] {
+    color: #d29922;
+    background: rgba(210, 153, 34, 0.15);
+}
+
+html[data-theme='dark'] li[data-cat='REMOVED'] .cl-tag,
+html[data-theme='dark'] .cl-tag[data-cat='REMOVED'] {
+    color: #f85149;
+    background: rgba(248, 81, 73, 0.15);
+}
+
+/* 管理页 */
+.cl-admin-head {
+    margin: 2.6rem 0 1rem;
+    font-size: 0.95rem;
+    color: var(--fg-2);
+}
+
+.cl-admin {
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 0.9rem 1rem;
+    margin-bottom: 0.8rem;
+}
+
+.cl-admin-head-row {
+    display: flex;
+    align-items: baseline;
+    gap: 0.8rem;
+    flex-wrap: wrap;
+    margin-bottom: 0.5rem;
+}
+
+.cl-admin-meta {
+    display: flex;
+    gap: 0.6rem;
+    font-size: 0.78rem;
+    color: var(--fg-3);
+}
+
+.cl-admin-entries {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.cl-admin-entries li {
+    display: flex;
+    align-items: baseline;
+    gap: 0.5rem;
+    padding: 0.25rem 0;
+    font-size: 0.86rem;
+    border-top: 1px solid var(--line);
+}
+
+.cl-admin-entries li:first-child {
+    border-top: none;
+}

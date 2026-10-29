@@ -16,6 +16,13 @@
 
     <div class="filters">
         <div class="seg">
+            <a th:href="@{/updates}" class="on">内容动态</a>
+            <a th:href="@{/changelog}">系统日志</a>
+        </div>
+    </div>
+
+    <div class="filters">
+        <div class="seg">
             <a th:href="@{/updates}" th:classappend="${filterKind == null} ? 'on'">全部</a>
             <a th:href="@{/updates(kind='NOTE')}" th:classappend="${filterKind == 'NOTE'} ? 'on'">笔记</a>
             <a th:href="@{/updates(kind='BAGU')}" th:classappend="${filterKind == 'BAGU'} ? 'on'">八股</a>

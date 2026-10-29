@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="zh-CN">
+<head th:replace="~{fragments/layout :: head('更新日志 · byte-love')}"></head>
+<body>
+<header th:replace="~{fragments/layout :: nav}"></header>
+
+<main class="wrap">
+    <div class="section-head">
+        <h1>更新日志</h1>
+        <a sec:authorize="hasRole('ADMIN')" th:href="@{/admin/changelog}" class="btn-small">管理</a>
+    </div>
+
+    <div class="filters">
+        <div class="seg">
+            <a th:href="@{/updates}">内容动态</a>
+            <a th:href="@{/changelog}" class="on">系统日志</a>
+        </div>
+    </div>
+
+    <div class="cl-list">
+        <section class="cl-release" th:each="r : ${releases}">
+            <div class="cl-side">
+                <time th:text="${#temporals.format(r.releasedOn(), 'yyyy.MM.dd')}">2026.10.29</time>
+                <span class="cl-version" th:if="${r.version() != null}" th:text="${'v' + r.version()}">v1.0</span>
+            </div>
+
+            <div class="cl-body">
+                <h2 th:text="${r.title()}">这次更新叫什么</h2>
+                <ul class="cl-entries">
+                    <li th:each="e : ${r.entries()}" th:attr="data-cat=${e.category()}">
+                        <span class="cl-tag" th:text="${e.label()}">新增</span>
+                        <span class="cl-text" th:text="${e.content()}">条目内容</span>
+                    </li>
+                </ul>
+            </div>
+        </section>
+    </div>
+
+    <p class="empty" th:if="${#lists.isEmpty(releases)}">还没有更新记录</p>
+</main>
+
+<footer th:replace="~{fragments/layout :: foot}"></footer>
+</body>
+</html>
