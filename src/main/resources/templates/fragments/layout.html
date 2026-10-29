@@ -20,7 +20,7 @@
             } catch (e) {}
         })();
     </script>
-    <link rel="stylesheet" th:href="@{/css/app.css(v=16)}">
+    <link rel="stylesheet" th:href="@{/css/app.css(v=17)}">
 </head>
 <body>
 
@@ -52,6 +52,58 @@
 </header>
 
 <th:block th:fragment="foot">
+<script>
+    // 表单里行末那个问号：点一下在旁边弹出说明
+    (() => {
+        const triggers = document.querySelectorAll('.help[data-help]');
+        if (!triggers.length) return;
+
+        const tip = document.createElement('div');
+        tip.className = 'gl-tip';
+        document.body.appendChild(tip);
+
+        let current = null;
+
+        const hide = () => {
+            current = null;
+            tip.classList.remove('on');
+        };
+
+        const show = (el) => {
+            current = el;
+            tip.textContent = el.getAttribute('data-help');
+            tip.style.left = '0px';
+            tip.style.top = '0px';
+            tip.classList.add('on');
+
+            const r = el.getBoundingClientRect();
+            const tw = tip.offsetWidth;
+            const th = tip.offsetHeight;
+            let left = r.left + r.width / 2 - tw / 2;
+            left = Math.max(12, Math.min(left, window.innerWidth - tw - 12));
+            let top = r.bottom + 8;
+            if (top + th > window.innerHeight - 12) top = r.top - th - 8;
+            tip.style.left = Math.round(left) + 'px';
+            tip.style.top = Math.round(Math.max(12, top)) + 'px';
+        };
+
+        document.addEventListener('click', (e) => {
+            const el = e.target.closest('.help[data-help]');
+            if (el) {
+                e.preventDefault();
+                e.stopPropagation();
+                if (current === el) hide();
+                else show(el);
+                return;
+            }
+            hide();
+        });
+
+        window.addEventListener('scroll', hide, { passive: true });
+        window.addEventListener('resize', hide);
+    })();
+</script>
+
 <script>
     (() => {
         const btn = document.querySelector('.theme-toggle');

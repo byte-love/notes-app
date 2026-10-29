@@ -5,76 +5,107 @@
 <header th:replace="~{fragments/layout :: nav}"></header>
 
 <main class="wrap">
-    <h1 th:text="${editing} ? '编辑内容' : '新建内容'">新建</h1>
+    <h1 th:text="${editing} ? '编辑内容' : '新建内容'">新建内容</h1>
 
     <form th:action="${editing} ? @{/admin/{id}/edit(id=${itemId})} : @{/admin/new}"
           th:object="${form}" method="post" class="stack">
 
-        <label>
-            类型
+        <div class="field">
+            <div class="field-label">
+                <span>类型</span>
+                <span class="help" role="button" tabindex="0"
+                      data-help="笔记是学习记录和踩坑总结；八股是面试题和答案；算法是题解和思路；项目是自己做过的作品，会出现在作品集里">?</span>
+            </div>
             <select th:field="*{kind}">
-                <option th:each="k : ${kinds}" th:value="${k}" th:title="${k.hint}"
-                        th:text="${k.label}">笔记</option>
+                <option th:each="k : ${kinds}" th:value="${k}" th:text="${k.label}">笔记</option>
             </select>
-            <span class="field-note">笔记 / 八股 / 算法 是三个内容分区，项目是作品条目</span>
-        </label>
+        </div>
 
-        <label>
-            Slug（URL 里用，小写字母数字连字符）
+        <div class="field">
+            <div class="field-label">
+                <span>页面地址</span>
+                <span class="help" role="button" tabindex="0"
+                      data-help="这条内容网址里的最后一段，只能用英文小写字母、数字和连字符，例如 session-vs-token。建好之后尽量别再改，改了别人收藏的链接会失效。">?</span>
+            </div>
             <input type="text" th:field="*{slug}" placeholder="session-vs-token">
             <span class="error" th:if="${#fields.hasErrors('slug')}" th:errors="*{slug}"></span>
-        </label>
+        </div>
 
-        <label>
-            标题
+        <div class="field">
+            <div class="field-label">
+                <span>标题</span>
+            </div>
             <input type="text" th:field="*{title}">
             <span class="error" th:if="${#fields.hasErrors('title')}" th:errors="*{title}"></span>
-        </label>
+        </div>
 
-        <label>
-            摘要
+        <div class="field">
+            <div class="field-label">
+                <span>摘要</span>
+                <span class="help" role="button" tabindex="0"
+                      data-help="列表和卡片上显示的一句话简介。不填就只显示标题，不影响正文。">?</span>
+            </div>
             <input type="text" th:field="*{summary}">
-        </label>
+        </div>
 
-        <label>
-            可见性
+        <div class="field">
+            <div class="field-label">
+                <span>可见性</span>
+                <span class="help" role="button" tabindex="0"
+                      data-help="任何用户可见：没登录的访客也能看；登录用户可见：没登录只能看标题，登录后才能看正文；仅自己：只有你能看，别人连标题都不会出现。">?</span>
+            </div>
             <select th:field="*{visibility}">
-                <option th:each="v : ${visibilities}" th:value="${v}"
-                        th:text="|${v.label}（${v.hint}）|">公开（谁都能看）</option>
+                <option th:each="v : ${visibilities}" th:value="${v}" th:text="${v.label}">任何用户可见</option>
             </select>
-        </label>
+        </div>
 
-        <label>
-            父节点（留空 = 顶层）
+        <div class="field">
+            <div class="field-label">
+                <span>上级目录</span>
+                <span class="help" role="button" tabindex="0"
+                      data-help="把这条内容挂到某个分类下面，留空就是放在顶层。可选的全是你自己的内容，别人的分类不会出现在这里。">?</span>
+            </div>
             <select th:field="*{parentId}">
                 <option th:value="null">（无）</option>
                 <option th:each="p : ${parents}" th:value="${p.id}"
-                        th:text="|${p.kind.label} · ${p.title}|">父节点</option>
+                        th:text="|${p.kind.label} · ${p.title}|">分类</option>
             </select>
             <span class="error" th:if="${#fields.hasErrors('parentId')}" th:errors="*{parentId}"></span>
-        </label>
+        </div>
 
-        <label>
-            同级排序（小的在前）
+        <div class="field">
+            <div class="field-label">
+                <span>同级排序</span>
+                <span class="help" role="button" tabindex="0"
+                      data-help="数字越小越靠前。同一个上级目录下的条目按这个数字排，留 0 就排在前面。">?</span>
+            </div>
             <input type="number" th:field="*{sortOrder}" min="0">
-        </label>
+        </div>
 
-        <label>
-            项目结构化字段（JSON，只在类型选「项目」时生效）
+        <div class="field">
+            <div class="field-label">
+                <span>作品集卡片信息</span>
+                <span class="help" role="button" tabindex="0"
+                      data-help="只有类型选「项目」时才需要填。作品集首页那张卡片上的角色、周期、技术栈、问题、做了什么、结果都放在这里，格式是 JSON。留空也行，填错了保存时会提示。">?</span>
+            </div>
             <textarea th:field="*{projectDoc}" rows="14" spellcheck="false"
                       placeholder='{"title":{"zh":"…","en":"…"},"stack":["Spring Boot"],"action":{"zh":["…"],"en":["…"]}}'></textarea>
             <span class="error" th:if="${#fields.hasErrors('projectDoc')}" th:errors="*{projectDoc}"></span>
-        </label>
+        </div>
 
-        <label>
-            正文（Markdown）
+        <div class="field">
+            <div class="field-label">
+                <span>正文</span>
+                <span class="help" role="button" tabindex="0"
+                      data-help="支持 Markdown：# 一级标题、- 列表、**粗体**、[链接](url)、| 表格 |、``` 代码块 ```。">?</span>
+            </div>
             <textarea th:field="*{body}" rows="24" spellcheck="false"></textarea>
             <span class="error" th:if="${#fields.hasErrors('body')}" th:errors="*{body}"></span>
-        </label>
+        </div>
 
-        <div class="actions">
-            <button type="submit">保存</button>
-            <a th:href="@{/admin}">取消</a>
+        <div class="form-actions">
+            <button type="submit" class="btn-primary">保存</button>
+            <a th:href="@{/admin}" class="btn-ghost">取消</a>
         </div>
     </form>
 </main>
