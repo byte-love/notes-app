@@ -20,6 +20,7 @@ import java.util.regex.Pattern;
 public class ChangelogService {
 
     private static final Pattern CHIP = Pattern.compile("\\[([^\\]]{1,20})]");
+    private static final Pattern BOLD = Pattern.compile("\\*\\*([^*]{1,200})\\*\\*");
 
     private final JdbcTemplate jdbc;
 
@@ -130,7 +131,8 @@ public class ChangelogService {
                 .replace("<", "&lt;")
                 .replace(">", "&gt;")
                 .replace("\"", "&quot;");
-        Matcher m = CHIP.matcher(escaped);
+        String bolded = BOLD.matcher(escaped).replaceAll("<b>$1</b>");
+        Matcher m = CHIP.matcher(bolded);
         StringBuilder sb = new StringBuilder();
         while (m.find()) {
             m.appendReplacement(sb, Matcher.quoteReplacement(
