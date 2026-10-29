@@ -41,11 +41,24 @@ cd notes-app && git checkout dev
 git add -A && git commit -m "feat: 描述你改了什么"
 git push origin dev
 
-# 上测试环境
+# 上测试环境：先把包投到共享目录（不需要 root）
+tar czf notes-src-dev.tar.gz --exclude=notes-app/target --exclude=notes-app/.git notes-app
+scp notes-src-dev.tar.gz dev@47.104.210.93:/srv/deploy/
+
 ssh dev@47.104.210.93
 sudo /opt/deploy/app.sh dev      # 改后端/模板/CSS
-sudo /opt/deploy/site.sh dev     # 改作品集（Astro 静态站）时用
+# 改作品集：把 dist.tar.gz 传成 /srv/deploy/dist-dev.tar.gz，再 sudo /opt/deploy/site.sh dev
 ```
+
+**包必须放在脚本自己会去找的位置。** 测试环境的 `app.sh dev` 固定读
+`/srv/deploy/notes-src-dev.tar.gz`，`site.sh dev` 读 `/srv/deploy/dist-dev.tar.gz`，
+这个目录 `dev` 组可写。
+
+`sudo` 白名单是**精确匹配**的：`sudo /opt/deploy/app.sh dev` 能过，
+在后面多加一个参数（比如自己指定源码包路径 `... dev /tmp/x.tar.gz`）就不匹配了，
+会提示 `sudo: a password is required`。
+
+正式环境仍只读 `/root/` 下的包，**发正式由站长操作**。
 
 部署脚本会自动：解压源码 → Maven 编译 → 备份旧 jar（`.bak`）→ 停服 → 换包 → 启动 → 等健康检查 → 报告状态码。编译失败会直接退出，**不会把服务搞停**。
 
