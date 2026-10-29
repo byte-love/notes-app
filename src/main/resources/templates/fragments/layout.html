@@ -20,7 +20,7 @@
             } catch (e) {}
         })();
     </script>
-    <link rel="stylesheet" th:href="@{/css/app.css(v=14)}">
+    <link rel="stylesheet" th:href="@{/css/app.css(v=15)}">
 </head>
 <body>
 
@@ -38,8 +38,12 @@
         </nav>
         <div class="header-tools">
             <a sec:authorize="isAuthenticated()" th:href="@{/admin}">管理</a>
-            <a sec:authorize="isAuthenticated()" th:href="@{/me}" class="user-entry"
-               th:text="${#authentication.name}">用户名</a>
+            <a sec:authorize="isAuthenticated()" th:if="${navUser != null}"
+               th:href="@{/me}" class="user-entry" th:title="${navUser.name()}">
+                <span class="user-dot" th:style="|--h:${navUser.hue()}|"
+                      th:text="${navUser.initial()}">U</span>
+                <span class="user-name" th:text="${navUser.name()}">用户名</span>
+            </a>
             <a sec:authorize="!isAuthenticated()" th:if="${registerEnabled}" th:href="@{/register}">注册</a>
             <a sec:authorize="!isAuthenticated()" th:href="@{/login}">登录</a>
             <button class="theme-toggle" type="button" aria-label="切换深浅色">☀</button>

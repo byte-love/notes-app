@@ -1246,14 +1246,38 @@ button:hover,
 
 /* 顶栏里的账号入口：做成一个可点的块，不然和旁边的纯文字链接分不出来 */
 .header-tools a.user-entry {
-    padding: 4px 9px;
-    border-radius: 6px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 9px 3px 3px;
+    border-radius: 999px;
     color: var(--fg);
 }
 
 .header-tools a.user-entry:hover {
     background: var(--bg-2);
     text-decoration: none;
+}
+
+.user-dot {
+    width: 24px;
+    height: 24px;
+    flex: none;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: #fff;
+    background: hsl(var(--h, 210) 42% 46%);
+}
+
+/* 名字太长就截断，完整名字在 title 里 */
+.user-name {
+    max-width: 7ch;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .me-head {
