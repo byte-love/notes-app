@@ -544,7 +544,7 @@ button:hover,
 }
 
 .admin-table th {
-    padding: 0 0.7rem 0.7rem;
+    padding: 0 0.85rem 0.7rem;
     text-align: left;
     font-size: 0.76rem;
     font-weight: 500;
@@ -555,7 +555,7 @@ button:hover,
 }
 
 .admin-table td {
-    padding: 0.85rem 0.7rem;
+    padding: 0.85rem 0.85rem;
     text-align: left;
     vertical-align: middle;
     line-height: 1.5;
@@ -606,6 +606,12 @@ button:hover,
     align-items: center;
     white-space: nowrap;
     font-size: 0.85rem;
+}
+
+/* 更新时间和操作两列挨得太紧，单独给操作列多留一点 */
+.admin-table th.actions,
+.admin-table td.actions {
+    padding-left: 1.5rem;
 }
 
 .admin-table .actions a {
