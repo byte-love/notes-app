@@ -2643,6 +2643,14 @@ html[data-theme='dark'] .cl-latest {
     grid-template-columns: minmax(0, 1fr);
 }
 
+/* 窄屏单列堆叠。必须写在上一条之后：权重相同，靠顺序压住 var(--tree-w) */
+@media (max-width: 820px) {
+    .with-tree.has-tree {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 0;
+    }
+}
+
 /* 正文按阅读宽度（68ch）在整屏居中：左边距 = (整宽 - 阅读宽)/2 - 树宽 - 间距，
    这样树栏和正文一起右移，正文左右留白相等。窄屏放不下时回落到 1.5rem，
    和原来一样靠左。 */
