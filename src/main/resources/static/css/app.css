@@ -543,6 +543,11 @@ button:hover,
     margin-top: 0;
 }
 
+/* 表格窄了会挤成一列一个字，所以整体不换行，只有标题允许折行 */
+.table-scroll {
+    overflow-x: auto;
+}
+
 .admin-table {
     width: 100%;
     border-collapse: collapse;
@@ -554,6 +559,7 @@ button:hover,
     border-bottom: 1px solid var(--line);
     padding: 0.5rem 0.6rem;
     text-align: left;
+    white-space: nowrap;
 }
 
 .admin-table th {
@@ -561,10 +567,24 @@ button:hover,
     font-weight: 600;
 }
 
+.admin-table td.cell-title {
+    white-space: normal;
+    min-width: 12rem;
+}
+
+.admin-table code {
+    display: inline-block;
+    max-width: 15rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    vertical-align: bottom;
+}
+
 .admin-table .actions {
     display: flex;
     gap: 0.7rem;
     align-items: center;
+    white-space: nowrap;
 }
 
 /* ---------- list page ---------- */
