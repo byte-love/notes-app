@@ -1503,3 +1503,111 @@ html[data-read-size='lg'] .markdown {
     color: var(--fg);
     text-decoration: none;
 }
+
+/* ---- 自制下拉 ---- */
+
+.select {
+    position: relative;
+}
+
+.select-btn {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    font: inherit;
+    font-size: 0.92rem;
+    color: var(--fg);
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 0.52rem 0.75rem;
+    cursor: pointer;
+    text-align: left;
+}
+
+.select-btn:hover {
+    border-color: var(--fg-3);
+}
+
+.select.open .select-btn {
+    border-color: var(--accent);
+}
+
+.select-text {
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.select-caret {
+    width: 7px;
+    height: 7px;
+    flex: none;
+    border-right: 1.5px solid var(--fg-3);
+    border-bottom: 1.5px solid var(--fg-3);
+    transform: translateY(-2px) rotate(45deg);
+    transition: transform 0.12s ease;
+}
+
+.select.open .select-caret {
+    transform: translateY(1px) rotate(-135deg);
+}
+
+.select-panel {
+    position: absolute;
+    z-index: 30;
+    left: 0;
+    right: 0;
+    top: calc(100% + 4px);
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.16);
+    padding: 4px;
+    max-height: 260px;
+    overflow-y: auto;
+}
+
+.select-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.select-list li {
+    padding: 0.42rem 0.6rem;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.select-list li:hover {
+    background: var(--bg-2);
+}
+
+.select-list li.on {
+    background: var(--bg-2);
+    color: var(--accent);
+    font-weight: 500;
+}
+
+.select-list li.hide {
+    display: none;
+}
+
+.select-filter {
+    width: 100%;
+    margin-bottom: 4px;
+    font: inherit;
+    font-size: 0.85rem;
+    padding: 0.34rem 0.5rem;
+    color: var(--fg);
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+}

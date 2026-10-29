@@ -16,9 +16,19 @@
                 <span class="help" role="button" tabindex="0"
                       data-help="笔记是学习记录和踩坑总结；八股是面试题和答案；算法是题解和思路；项目是自己做过的作品，会出现在作品集里">?</span>
             </div>
-            <select th:field="*{kind}">
-                <option th:each="k : ${kinds}" th:value="${k}" th:text="${k.label}">笔记</option>
-            </select>
+            <div class="select">
+                <button type="button" class="select-btn">
+                    <span class="select-text" th:text="${form.kind != null ? form.kind.label : '笔记'}">笔记</span>
+                    <span class="select-caret" aria-hidden="true"></span>
+                </button>
+                <div class="select-panel" hidden>
+                    <ul class="select-list">
+                        <li th:each="k : ${kinds}" th:attr="data-value=${k.name()}"
+                            th:text="${k.label}">笔记</li>
+                    </ul>
+                </div>
+                <input type="hidden" th:field="*{kind}">
+            </div>
         </div>
 
         <div class="field">
@@ -54,9 +64,19 @@
                 <span class="help" role="button" tabindex="0"
                       data-help="任何用户可见：没登录的访客也能看；登录用户可见：没登录只能看标题，登录后才能看正文；仅自己：只有你能看，别人连标题都不会出现。">?</span>
             </div>
-            <select th:field="*{visibility}">
-                <option th:each="v : ${visibilities}" th:value="${v}" th:text="${v.label}">任何用户可见</option>
-            </select>
+            <div class="select">
+                <button type="button" class="select-btn">
+                    <span class="select-text" th:text="${form.visibility != null ? form.visibility.label : '登录用户可见'}">登录用户可见</span>
+                    <span class="select-caret" aria-hidden="true"></span>
+                </button>
+                <div class="select-panel" hidden>
+                    <ul class="select-list">
+                        <li th:each="v : ${visibilities}" th:attr="data-value=${v.name()}"
+                            th:text="${v.label}">任何用户可见</li>
+                    </ul>
+                </div>
+                <input type="hidden" th:field="*{visibility}">
+            </div>
         </div>
 
         <div class="field">
@@ -65,11 +85,21 @@
                 <span class="help" role="button" tabindex="0"
                       data-help="把这条内容挂到某个分类下面，留空就是放在顶层。可选的全是你自己的内容，别人的分类不会出现在这里。">?</span>
             </div>
-            <select th:field="*{parentId}">
-                <option th:value="null">（无）</option>
-                <option th:each="p : ${parents}" th:value="${p.id}"
-                        th:text="|${p.kind.label} · ${p.title}|">分类</option>
-            </select>
+            <div class="select" data-filter="true">
+                <button type="button" class="select-btn">
+                    <span class="select-text">（无）</span>
+                    <span class="select-caret" aria-hidden="true"></span>
+                </button>
+                <div class="select-panel" hidden>
+                    <input type="text" class="select-filter" placeholder="输入关键字筛选">
+                    <ul class="select-list">
+                        <li data-value="" data-label="（无）">（无）</li>
+                        <li th:each="p : ${parents}" th:attr="data-value=${p.id},data-label=|${p.kind.label} · ${p.title}|"
+                            th:text="|${p.kind.label} · ${p.title}|">分类</li>
+                    </ul>
+                </div>
+                <input type="hidden" th:field="*{parentId}">
+            </div>
             <span class="error" th:if="${#fields.hasErrors('parentId')}" th:errors="*{parentId}"></span>
         </div>
 

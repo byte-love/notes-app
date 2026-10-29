@@ -20,7 +20,7 @@
             } catch (e) {}
         })();
     </script>
-    <link rel="stylesheet" th:href="@{/css/app.css(v=17)}">
+    <link rel="stylesheet" th:href="@{/css/app.css(v=18)}">
 </head>
 <body>
 
@@ -52,6 +52,84 @@
 </header>
 
 <th:block th:fragment="foot">
+<script>
+    // 自制下拉：原生 select 的弹层是系统画的，改不动样式，所以自己实现一个
+    (() => {
+        const selects = [...document.querySelectorAll('.select')];
+        if (!selects.length) return;
+
+        const closeAll = () => {
+            selects.forEach((s) => {
+                s.classList.remove('open');
+                s.querySelector('.select-panel').hidden = true;
+            });
+        };
+
+        selects.forEach((sel) => {
+            const btn = sel.querySelector('.select-btn');
+            const panel = sel.querySelector('.select-panel');
+            const text = sel.querySelector('.select-text');
+            const input = sel.querySelector('input[type="hidden"]');
+            const filter = sel.querySelector('.select-filter');
+            const items = [...sel.querySelectorAll('.select-list li')];
+
+            const mark = (value) => {
+                items.forEach((li) => li.classList.toggle('on', li.dataset.value === value));
+            };
+
+            const apply = (value) => {
+                const li = items.find((x) => x.dataset.value === value);
+                if (!li) return;
+                input.value = li.dataset.value;
+                text.textContent = li.dataset.label || li.textContent.trim();
+                mark(li.dataset.value);
+            };
+
+            apply(input.value);
+
+            btn.addEventListener('click', () => {
+                const wasOpen = sel.classList.contains('open');
+                closeAll();
+                if (wasOpen) return;
+                sel.classList.add('open');
+                panel.hidden = false;
+                if (filter) {
+                    filter.value = '';
+                    items.forEach((li) => li.classList.remove('hide'));
+                    filter.focus();
+                }
+                const on = items.find((li) => li.classList.contains('on'));
+                if (on) on.scrollIntoView({ block: 'nearest' });
+            });
+
+            items.forEach((li) => {
+                li.addEventListener('click', () => {
+                    apply(li.dataset.value);
+                    closeAll();
+                });
+            });
+
+            if (filter) {
+                filter.addEventListener('input', () => {
+                    const q = filter.value.trim().toLowerCase();
+                    items.forEach((li) => {
+                        const name = (li.dataset.label || li.textContent).toLowerCase();
+                        li.classList.toggle('hide', q !== '' && !name.includes(q));
+                    });
+                });
+            }
+        });
+
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.select')) closeAll();
+        });
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') closeAll();
+        });
+    })();
+</script>
+
 <script>
     // 表单里行末那个问号：点一下在旁边弹出说明
     (() => {
