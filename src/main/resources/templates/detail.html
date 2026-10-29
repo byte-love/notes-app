@@ -12,9 +12,9 @@
         <ul th:replace="~{fragments/tree :: nodes(${tree})}"></ul>
     </aside>
 
-    <main class="doc-wrap" th:classappend="${#lists.isEmpty(toc)} ? 'no-toc'">
+    <main class="doc-wrap" th:classappend="${#lists.isEmpty(toc) and #lists.isEmpty(rail)} ? 'no-toc'">
         <article class="doc">
-            <a class="back-link" th:href="${basePath}" onclick="if (history.length > 1) { history.back(); return false; }">返回</a>
+            <a th:replace="~{fragments/layout :: back(${basePath})}"></a>
 
             <nav class="crumbs" th:if="${crumbs != null and #lists.size(crumbs) > 1}">
                 <a th:each="c, s : ${crumbs}"
@@ -41,7 +41,8 @@
                 </div>
             </header>
 
-            <div class="markdown" th:utext="${html}" th:attr="data-slug=${item.slug},data-anchors=${bookmarkAnchorCsv}"></div>
+            <div class="markdown" th:utext="${html}"
+                 th:attr="data-slug=${item.slug},data-anchors=${bookmarkAnchorCsv},data-resume=${resumeProgress}"></div>
         </article>
 
         <aside class="toc" th:if="${!#lists.isEmpty(toc)}">
@@ -51,293 +52,21 @@
                 </li>
             </ul>
         </aside>
+
+        <!-- 没有目录时右栏放同分类的其他条目，免得右侧整块空着 -->
+        <aside class="toc toc-rail" th:if="${#lists.isEmpty(toc) and !#lists.isEmpty(rail)}">
+            <ul>
+                <li th:each="r : ${rail}">
+                    <a th:href="${basePath + '/' + r.slug}" th:text="${r.title}"></a>
+                </li>
+            </ul>
+        </aside>
     </main>
 </div>
 
-<script>
-    (() => {
-        const links = [...document.querySelectorAll('.toc a')];
-        if (!links.length) return;
-        const byId = new Map(links.map((a) => [a.getAttribute('href').slice(1), a]));
-        const targets = [...byId.keys()].map((id) => document.getElementById(id)).filter(Boolean);
-        if (!targets.length) return;
-
-        const OFFSET = 96;
-        let active = null;
-
-        const setActive = (a) => {
-            if (!a || a === active) return;
-            if (active) active.classList.remove('on');
-            active = a;
-            active.classList.add('on');
-        };
-
-        const update = () => {
-            if (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 4) {
-                setActive(byId.get(targets[targets.length - 1].id));
-                return;
-            }
-            let current = targets[0];
-            for (const t of targets) {
-                if (t.getBoundingClientRect().top <= OFFSET) current = t;
-                else break;
-            }
-            setActive(byId.get(current.id));
-        };
-
-        let ticking = false;
-        const onScroll = () => {
-            if (ticking) return;
-            ticking = true;
-            requestAnimationFrame(() => {
-                ticking = false;
-                update();
-            });
-        };
-
-        window.addEventListener('scroll', onScroll, { passive: true });
-        window.addEventListener('resize', onScroll);
-        update();
-    })();
-</script>
-
-<script>
-    (() => {
-        const marks = document.querySelectorAll('.markdown [data-tip]');
-        if (!marks.length) return;
-
-        const tip = document.createElement('div');
-        tip.className = 'gl-tip';
-        document.body.appendChild(tip);
-
-        let current = null;
-
-        const show = (el) => {
-            current = el;
-            tip.textContent = el.getAttribute('data-tip');
-            tip.style.left = '0px';
-            tip.style.top = '0px';
-            tip.classList.add('on');
-
-            const r = el.getBoundingClientRect();
-            const tw = tip.offsetWidth;
-            const th = tip.offsetHeight;
-            let left = r.left + r.width / 2 - tw / 2;
-            left = Math.max(12, Math.min(left, window.innerWidth - tw - 12));
-            let top = r.bottom + 8;
-            if (top + th > window.innerHeight - 12) top = r.top - th - 8;
-            tip.style.left = Math.round(left) + 'px';
-            tip.style.top = Math.round(Math.max(12, top)) + 'px';
-        };
-
-        const hide = () => {
-            current = null;
-            tip.classList.remove('on');
-        };
-
-        const pick = (target) => (target.closest ? target.closest('.markdown [data-tip]') : null);
-
-        document.addEventListener('mouseover', (e) => {
-            const el = pick(e.target);
-            if (el) {
-                if (el !== current) show(el);
-            } else if (current) {
-                hide();
-            }
-        });
-
-        document.addEventListener('mouseout', (e) => {
-            const el = pick(e.target);
-            if (el && el === current && !el.contains(e.relatedTarget)) hide();
-        });
-
-        document.addEventListener('click', (e) => {
-            const el = pick(e.target);
-            if (el) show(el);
-            else hide();
-        });
-
-        window.addEventListener('scroll', hide, { passive: true });
-        window.addEventListener('resize', hide);
-    })();
-</script>
+    <script th:src="@{/js/detail.js(v=2)}"></script>
 
 <footer th:replace="~{fragments/layout :: foot}"></footer>
-
-<script>
-    // 每个正文标题右边挂一个书签按钮，点一下把位置记下来；下次从「书签」页直接跳回来
-    (() => {
-        const box = document.querySelector('.markdown[data-slug]');
-        if (!box) return;
-        const token = document.querySelector('meta[name="_csrf"]')?.content;
-        if (!token) return;
-
-        const slug = box.dataset.slug;
-        const mine = new Set((box.dataset.anchors || '').split(',').filter(Boolean));
-        const heads = [...box.querySelectorAll('h2[id], h3[id]')];
-        if (!heads.length) return;
-
-        heads.forEach((h) => {
-            const btn = document.createElement('button');
-            btn.type = 'button';
-            btn.className = 'head-bookmark' + (mine.has(h.id) ? ' on' : '');
-            btn.title = mine.has(h.id) ? '已在此加书签' : '在这一块加书签';
-            btn.setAttribute('aria-label', btn.title);
-            btn.addEventListener('click', async (e) => {
-                e.preventDefault();
-                btn.disabled = true;
-                try {
-                    await fetch(`/app/bookmark/${encodeURIComponent(slug)}?anchor=${encodeURIComponent(h.id)}`, {
-                        method: 'POST',
-                        headers: { 'X-CSRF-TOKEN': token },
-                        credentials: 'same-origin',
-                    });
-                    btn.classList.toggle('on');
-                    btn.title = btn.classList.contains('on') ? '已在此加书签' : '在这一块加书签';
-                } catch (err) {
-                    /* 失败就不改状态 */
-                } finally {
-                    btn.disabled = false;
-                }
-            });
-            h.appendChild(btn);
-        });
-    })();
-</script>
-
-<script>
-    // 三栏联动：左栏用像素，中间和右边按比例分剩余宽度。
-    // 拖左栏 -> 左栏变宽，中间和右边一起变窄，两者比例不变；
-    // 拖右栏 -> 只改中间和右边的比例。宽度都记在 localStorage。
-    (() => {
-        const wrap = document.querySelector('.with-tree.has-tree');
-        if (!wrap) return;
-        const tree = wrap.querySelector('.tree-pane');
-        const docWrap = wrap.querySelector('.doc-wrap');
-        const toc = docWrap ? docWrap.querySelector('.toc') : null;
-        if (!tree || !docWrap) return;
-
-        const MIN_TREE = 140, MAX_TREE = 520;
-        const MIN_TOC_PCT = 8, MAX_TOC_PCT = 45;
-
-        const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
-        const read = (k, dflt) => {
-            try {
-                const v = parseFloat(localStorage.getItem(k));
-                return isNaN(v) ? dflt : v;
-            } catch (e) { return dflt; }
-        };
-        const save = (k, v) => {
-            try { localStorage.setItem(k, String(v)); } catch (e) {}
-        };
-
-        let treeW = read('layout:tree2', 300);
-        // tocPct：右边的目录占「剩余宽度」的百分比
-        let tocPct = toc ? read('layout:tocpct', 22) : 0;
-
-        // <=820 是单列堆叠、<=1100 没有右侧目录，这两种宽度下列宽交给 CSS 媒体查询；
-        // 内联样式一旦盖上去，手机上正文会被挤成 0 宽
-        const mqStack = window.matchMedia('(max-width: 820px)');
-        const mqNoToc = window.matchMedia('(max-width: 1100px)');
-        const stacked = () => mqStack.matches;
-        const tocHidden = () => stacked() || mqNoToc.matches;
-
-        const applyTree = () => {
-            const w = clamp(treeW, MIN_TREE, MAX_TREE);
-            // --tree-w 和列宽一起改：左边距按它算，正文才能一直待在屏幕正中
-            wrap.style.setProperty('--tree-w', w + 'px');
-            wrap.style.gridTemplateColumns = stacked() ? '' : w + 'px minmax(0, 1fr)';
-        };
-        const applyToc = () => {
-            if (!toc) return;
-            const p = clamp(tocPct, MIN_TOC_PCT, MAX_TOC_PCT);
-            // 用 fr 分配，两边一起缩放，比例固定
-            docWrap.style.gridTemplateColumns = tocHidden() ? '' : (100 - p) + 'fr ' + p + 'fr';
-        };
-
-        applyTree();
-        applyToc();
-
-        const makeSplitter = (host, onMove, onDone) => {
-            const bar = document.createElement('div');
-            bar.className = 'splitter';
-            host.appendChild(bar);
-
-            let lastX = 0;
-            const down = (e) => {
-                lastX = e.touches ? e.touches[0].clientX : e.clientX;
-                bar.classList.add('dragging');
-                const move = (ev) => {
-                    const x = ev.touches ? ev.touches[0].clientX : ev.clientX;
-                    onMove(x - lastX);
-                    lastX = x;
-                    if (ev.cancelable) ev.preventDefault();
-                };
-                const up = () => {
-                    bar.classList.remove('dragging');
-                    document.removeEventListener('mousemove', move);
-                    document.removeEventListener('mouseup', up);
-                    document.removeEventListener('touchmove', move);
-                    document.removeEventListener('touchend', up);
-                    onDone();
-                };
-                document.addEventListener('mousemove', move);
-                document.addEventListener('mouseup', up);
-                document.addEventListener('touchmove', move, { passive: false });
-                document.addEventListener('touchend', up);
-                e.preventDefault();
-            };
-            bar.addEventListener('mousedown', down);
-            bar.addEventListener('touchstart', down, { passive: false });
-            return bar;
-        };
-
-        // 左：树目录的右边缘
-        const leftBar = makeSplitter(wrap, (dx) => {
-            treeW = clamp(treeW + dx, MIN_TREE, MAX_TREE);
-            applyTree();
-        }, () => save('layout:tree2', Math.round(treeW)));
-
-        // 右：本页目录的左边缘（改的是中间和右边的宽度比例）
-        let rightBar = null;
-        if (toc) {
-            rightBar = makeSplitter(docWrap, (dx) => {
-                const total = docWrap.getBoundingClientRect().width || 1;
-                tocPct = clamp(tocPct - (dx / total) * 100, MIN_TOC_PCT, MAX_TOC_PCT);
-                applyToc();
-            }, () => save('layout:tocpct', Math.round(tocPct * 10) / 10));
-        }
-
-        const layout = () => {
-            const wr = wrap.getBoundingClientRect();
-            const tr = tree.getBoundingClientRect();
-            leftBar.style.left = (tr.right - wr.left) + 'px';
-            // 单列堆叠时段落中间没有可拖的分界，藏掉
-            leftBar.style.display = stacked() ? 'none' : '';
-
-            if (rightBar && toc) {
-                const dr = docWrap.getBoundingClientRect();
-                const rr = toc.getBoundingClientRect();
-                rightBar.style.left = (rr.left - dr.left) + 'px';
-                rightBar.style.display = tocHidden() ? 'none' : '';
-            }
-        };
-
-        // 跨过断点时才需要重算列宽，普通 resize 只挪分隔条
-        const relayout = () => { applyTree(); applyToc(); layout(); };
-        mqStack.addEventListener('change', relayout);
-        mqNoToc.addEventListener('change', relayout);
-
-        layout();
-        window.addEventListener('resize', layout);
-        // 拖动时也要让分隔条跟着走
-        const tick = () => { layout(); requestAnimationFrame(tick); };
-        wrap.addEventListener('mousemove', layout);
-        wrap.addEventListener('touchmove', layout, { passive: true });
-        document.addEventListener('mouseup', layout);
-        document.addEventListener('touchend', layout);
-    })();
-</script>
 
 </body>
 </html>

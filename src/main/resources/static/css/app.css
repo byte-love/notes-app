@@ -1,13 +1,15 @@
 :root {
-    --fg: #1a1a1a;
-    --fg-2: #5b6470;
-    --fg-3: #8b949e;
-    --bg: #ffffff;
-    --bg-2: #f7f8fa;
-    --line: #e3e6ea;
-    --accent: #1f6feb;
-    --danger: #cf222e;
-    --tree-guide: #dfe4ea;
+    --fg: #1c1b18;
+    --fg-2: #57534b;
+    --fg-3: #726d63;
+    --bg: #fbfaf7;
+    --bg-2: #f4f2ec;
+    --line: #e5e1d8;
+    --accent: #1f6f66;
+    --accent-soft: #edf3f1;
+    --accent-2: #8a5a20;
+    --danger: #b3261e;
+    --tree-guide: #dfdacf;
     --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
     --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
         "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
@@ -15,51 +17,59 @@
 
 @media (prefers-color-scheme: dark) {
     :root {
-        --fg: #e6edf3;
-        --fg-2: #9aa4b2;
-        --fg-3: #6e7681;
-        --bg: #0d1117;
-        --bg-2: #151b23;
-        --line: #232b36;
-        --accent: #58a6ff;
-        --danger: #f85149;
-        --tree-guide: #2e3a4a;
+        --fg: #e7e5df;
+        --fg-2: #a5a29a;
+        --fg-3: #8c8980;
+        --bg: #131413;
+        --bg-2: #1b1d1c;
+        --line: #2a2e2c;
+        --accent: #6fd3c3;
+        --accent-soft: #1c2725;
+        --accent-2: #d8a25e;
+        --danger: #f07c74;
+        --tree-guide: #2b302e;
     }
 }
 
 html[data-theme='light'] {
-    --fg: #1a1a1a;
-    --fg-2: #5b6470;
-    --fg-3: #8b949e;
-    --bg: #ffffff;
-    --bg-2: #f7f8fa;
-    --line: #e3e6ea;
-    --accent: #1f6feb;
-    --danger: #cf222e;
-    --tree-guide: #dfe4ea;
+    --fg: #1c1b18;
+    --fg-2: #57534b;
+    --fg-3: #726d63;
+    --bg: #fbfaf7;
+    --bg-2: #f4f2ec;
+    --line: #e5e1d8;
+    --accent: #1f6f66;
+    --accent-soft: #edf3f1;
+    --accent-2: #8a5a20;
+    --danger: #b3261e;
+    --tree-guide: #dfdacf;
 }
 
 html[data-theme='dark'] {
-    --fg: #e6edf3;
-    --fg-2: #9aa4b2;
-    --fg-3: #6e7681;
-    --bg: #0d1117;
-    --bg-2: #151b23;
-    --line: #232b36;
-    --accent: #58a6ff;
-    --danger: #f85149;
-    --tree-guide: #2e3a4a;
+    --fg: #e7e5df;
+    --fg-2: #a5a29a;
+    --fg-3: #8c8980;
+    --bg: #131413;
+    --bg-2: #1b1d1c;
+    --line: #2a2e2c;
+    --accent: #6fd3c3;
+    --accent-soft: #1c2725;
+    --accent-2: #d8a25e;
+    --danger: #f07c74;
+    --tree-guide: #2b302e;
 }
 
 html[data-theme='sepia'] {
     --fg: #3b3227;
     --fg-2: #6b5f4f;
-    --fg-3: #968a76;
+    --fg-3: #6f6552;
     --bg: #f5efe2;
     --bg-2: #efe7d6;
     --line: #ddd2bd;
-    --accent: #a0522d;
-    --danger: #b03030;
+    --accent: #7d3f22;
+    --accent-soft: #ece2cd;
+    --accent-2: #8a5a20;
+    --danger: #a82f2f;
     --tree-guide: #d8ccb6;
 }
 
@@ -94,6 +104,10 @@ html {
 
 ::-webkit-scrollbar-thumb:hover {
     background: var(--fg-3);
+}
+
+::selection {
+    background: var(--accent-soft);
 }
 
 body {
@@ -170,8 +184,8 @@ code {
 }
 
 .tab.is-active {
-    color: var(--fg);
-    background: var(--bg-2);
+    color: var(--accent);
+    background: var(--accent-soft);
     font-weight: 600;
 }
 
@@ -983,7 +997,7 @@ button:hover,
     padding: 0.8rem 1.1rem;
     border-left: 3px solid var(--accent);
     border-radius: 0 8px 8px 0;
-    background: var(--bg-2);
+    background: var(--accent-soft);
     color: var(--fg-2);
 }
 
@@ -2675,15 +2689,15 @@ html[data-theme='dark'] .cl-latest {
 .with-tree .item-list {
     max-width: min(1000px, 92%);
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    gap: 0.9rem;
+    grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+    gap: 0.8rem;
 }
 
 /* 每条一块卡片，不再用横线分隔 */
 .with-tree .item-list li {
     border: 1px solid var(--line);
     border-radius: 10px;
-    padding: 0.95rem 1.1rem;
+    padding: 0.8rem 0.85rem;
     background: var(--bg-2);
 }
 
@@ -2691,16 +2705,62 @@ html[data-theme='dark'] .cl-latest {
     border-color: var(--fg-3);
 }
 
+/* 卡片窄，写不下的地方截断加省略号，高度才齐 */
+.with-tree .item-title {
+    font-size: 1rem;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.with-tree .item-summary {
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+/* 右栏没有目录时列同分类条目：长列表要能自己滚，不然撑出屏幕 */
+.toc-rail {
+    max-height: calc(100vh - 110px);
+    overflow-y: auto;
+}
+
+/* 列表底部那个「取下一批」的锚点，留一点高度好让观察器够得到 */
+.list-more {
+    height: 8px;
+}
+
 /* 卡片按分类分小节 */
 .item-group + .item-group {
     margin-top: 1.8rem;
+}
+
+/* 行内操作按钮统一放右列、纵向对齐，不要跟着标题乱跑 */
+.memo-list li {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    column-gap: 1.2rem;
+    align-items: start;
+}
+
+.memo-list .item-main,
+.memo-list .item-summary {
+    grid-column: 1;
+}
+
+.memo-list .item-action {
+    grid-column: 2;
+    grid-row: 1;
+    justify-self: end;
 }
 
 .item-group-title {
     margin: 0 0 0.8rem;
     font-size: 0.92rem;
     font-weight: 600;
-    color: var(--fg-2);
+    color: var(--accent-2);
     letter-spacing: 0.01em;
 }
 

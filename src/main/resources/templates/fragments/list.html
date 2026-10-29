@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+
+<!-- 一个分类小节 + 卡片；列表页和「加载更多」的分片请求共用这一段 -->
+<th:block th:fragment="groupSections(groups, basePath, nextFrom)">
+    <section class="item-group" th:each="g : ${groups}">
+        <h2 class="item-group-title" th:if="${g.title() != null}" th:text="${g.title()}">分类</h2>
+
+        <ul class="item-list">
+            <li th:each="i : ${g.items()}">
+                <div class="item-main">
+                    <a th:unless="${lockedIds.contains(i.id)}" class="item-title"
+                       th:href="${basePath + '/' + i.slug}" th:text="${i.title}">标题</a>
+                    <a th:if="${lockedIds.contains(i.id)}" class="item-title locked"
+                       th:href="@{/login}" title="需要登录后查看">
+                        <span th:text="${i.title}"></span>
+                    </a>
+                </div>
+                <p class="item-summary" th:if="${i.summary != null and !lockedIds.contains(i.id)}"
+                   th:text="${i.summary}">摘要</p>
+                <time class="item-date" th:unless="${lockedIds.contains(i.id)}"
+                      th:text="${#temporals.format(i.updatedAt, 'yyyy-MM-dd')}">2026-01-01</time>
+            </li>
+        </ul>
+    </section>
+
+    <!-- 滚到这里就去取下一批；取完没有下一批了就不再渲染这个点 -->
+    <div class="list-more" id="list-more" th:if="${nextFrom != null and nextFrom > 0}"
+         th:attr="data-base=${basePath},data-from=${nextFrom}"></div>
+</th:block>
+
+</body>
+</html>
