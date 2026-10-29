@@ -2674,29 +2674,21 @@ html[data-theme='dark'] .cl-latest {
 
 .with-tree .item-list {
     max-width: min(1000px, 92%);
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 0.9rem;
 }
 
-/* 行宽到 1000 之后日期留在左下角会显得散，挪到标题那一行的右端 */
-@media (min-width: 900px) {
-    .with-tree .item-list li {
-        display: grid;
-        grid-template-columns: minmax(0, 1fr) auto;
-        column-gap: 1.2rem;
-        align-items: baseline;
-    }
+/* 每条一块卡片，不再用横线分隔 */
+.with-tree .item-list li {
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 0.95rem 1.1rem;
+    background: var(--bg-2);
+}
 
-    .with-tree .item-main {
-        grid-column: 1;
-    }
-
-    .with-tree .item-date {
-        grid-column: 2;
-        grid-row: 1;
-    }
-
-    .with-tree .item-summary {
-        grid-column: 1 / -1;
-    }
+.with-tree .item-list li:hover {
+    border-color: var(--fg-3);
 }
 
 /* 树节点名字长就换到第二行，不再挤成一行 */
