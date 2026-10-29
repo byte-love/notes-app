@@ -251,7 +251,7 @@ public class PublicController {
         }
         model.addAttribute("items", all);
         model.addAttribute("anchors", anchors);
-        model.addAttribute("basePathOf", (java.util.function.Function<ContentKind, String>) PublicController::basePath);
+        model.addAttribute("basePathOf", basePathOf());
         model.addAttribute("tabActive", "memo");
         return "bookmarks";
     }
@@ -291,9 +291,15 @@ public class PublicController {
         }
         model.addAttribute("grouped", grouped);
         model.addAttribute("total", starred.size());
-        model.addAttribute("basePathOf", (java.util.function.Function<ContentKind, String>) PublicController::basePath);
+        model.addAttribute("basePathOf", basePathOf());
         model.addAttribute("tabActive", "memo");
         return "memo";
+    }
+
+    /** 模板里的链接前缀：必须带 contextPath（/app），否则点开就是 nginx 的 404。 */
+    private java.util.function.Function<ContentKind, String> basePathOf() {
+        String ctx = contextPath();
+        return kind -> ctx + basePath(kind);
     }
 
     /** 一个分类下的卡片；整页没有分类时就是一组，标题为空、不显示小标题。 */
