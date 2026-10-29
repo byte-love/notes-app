@@ -5,7 +5,7 @@
 <header th:replace="~{fragments/layout :: nav}"></header>
 
 <main class="wrap">
-    <a th:href="@{/me}" class="back-link">返回</a>
+    <a th:replace="~{fragments/layout :: back(@{/me})}"></a>
 
     <div class="section-head">
         <h1>书签</h1>

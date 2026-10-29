@@ -14,7 +14,7 @@
 
     <main class="doc-wrap" th:classappend="${#lists.isEmpty(toc) and #lists.isEmpty(rail)} ? 'no-toc'">
         <article class="doc">
-            <a class="back-link" th:href="${basePath}" onclick="if (history.length > 1) { history.back(); return false; }">返回</a>
+            <a th:replace="~{fragments/layout :: back(${basePath})}"></a>
 
             <nav class="crumbs" th:if="${crumbs != null and #lists.size(crumbs) > 1}">
                 <a th:each="c, s : ${crumbs}"

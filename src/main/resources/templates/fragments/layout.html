@@ -25,6 +25,10 @@
 </head>
 <body>
 
+<!-- 返回：有浏览历史就回上一页，没有就按传进来的 href 走 -->
+<a th:fragment="back(href)" class="back-link" th:href="${href}"
+   onclick="if (history.length > 1) { history.back(); return false; }">返回</a>
+
 <header th:fragment="nav" class="site-header">
     <div class="header-inner">
         <nav class="tabs" aria-label="站点分区">
