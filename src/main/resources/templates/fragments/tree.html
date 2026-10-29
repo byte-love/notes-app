@@ -9,6 +9,8 @@
         <a th:unless="${n.hasChildren() or n.locked()}"
            th:href="${basePath + '/' + n.item.slug}"
            th:classappend="${activeId != null and activeId == n.item.id} ? 'on'"><span
+                class="tree-bookmark" th:if="${lastReadId != null and lastReadId == n.item.id}"
+                title="上次看到这里"></span><span
                 class="tree-star" th:if="${starIds != null and starIds.contains(n.item.id)}">★</span><span
                 th:text="${n.item.title}"></span></a>
         <a th:if="${not n.hasChildren() and n.locked()}" class="locked" th:href="@{/login}" title="需要登录后查看">

@@ -5,6 +5,7 @@ import cn.bytelove.notes.domain.ContentKind;
 import cn.bytelove.notes.repo.AppUserRepository;
 import cn.bytelove.notes.repo.ContentItemRepository;
 import cn.bytelove.notes.service.ContentStarService;
+import cn.bytelove.notes.service.TrashService;
 import cn.bytelove.notes.service.UserBadge;
 import cn.bytelove.notes.service.ViewerService;
 import cn.bytelove.notes.service.VisibilityService.Viewer;
@@ -22,13 +23,15 @@ public class MeController {
     private final ContentItemRepository items;
     private final ContentStarService stars;
     private final ViewerService viewers;
+    private final TrashService trash;
 
     public MeController(AppUserRepository users, ContentItemRepository items,
-                        ContentStarService stars, ViewerService viewers) {
+                        ContentStarService stars, ViewerService viewers, TrashService trash) {
         this.users = users;
         this.items = items;
         this.stars = stars;
         this.viewers = viewers;
+        this.trash = trash;
     }
 
     @GetMapping("/me")
@@ -48,6 +51,7 @@ public class MeController {
         model.addAttribute("algoCount", items.countByOwnerIdAndKind(viewer.userId(), ContentKind.ALGO));
         model.addAttribute("projectCount", items.countByOwnerIdAndKind(viewer.userId(), ContentKind.PROJECT));
         model.addAttribute("memoCount", stars.count(viewer.userId()));
+        model.addAttribute("trashCount", trash.list(viewer.userId()).size());
 
         model.addAttribute("tabActive", "me");
         return "me";

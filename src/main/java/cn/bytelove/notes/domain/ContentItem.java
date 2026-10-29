@@ -10,6 +10,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
+import org.hibernate.annotations.SQLRestriction;
 
 import java.time.Instant;
 
@@ -19,6 +20,7 @@ import java.time.Instant;
  */
 @Entity
 @Table(name = "content_item")
+@SQLRestriction("deleted_at is null")
 public class ContentItem {
 
     @Id
@@ -67,6 +69,10 @@ public class ContentItem {
 
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
+
+    /** 软删除时间：非空表示进了回收站，所有查询由 @SQLRestriction 自动过滤掉。 */
+    @Column(name = "deleted_at")
+    private Instant deletedAt;
 
     protected ContentItem() {
     }

@@ -10,7 +10,37 @@
         <a th:href="@{/admin/new}" class="btn-quiet">新建</a>
     </div>
 
-    <div class="table-scroll">
+    <div class="filters">
+        <div class="seg">
+            <a th:href="@{/admin(range=${filterRange},q=${filterQ})}"
+               th:classappend="${filterKind == null} ? 'on'">全部</a>
+            <a th:each="k : ${kinds}"
+               th:href="@{/admin(kind=${k},range=${filterRange},q=${filterQ})}"
+               th:classappend="${filterKind == k} ? 'on'" th:text="${k.label}">笔记</a>
+        </div>
+
+        <div class="seg">
+            <a th:href="@{/admin(kind=${filterKind},q=${filterQ})}"
+               th:classappend="${filterRange == null} ? 'on'">全部</a>
+            <a th:href="@{/admin(kind=${filterKind},range=7,q=${filterQ})}"
+               th:classappend="${filterRange == 7} ? 'on'">近 7 天</a>
+            <a th:href="@{/admin(kind=${filterKind},range=30,q=${filterQ})}"
+               th:classappend="${filterRange == 30} ? 'on'">近 30 天</a>
+        </div>
+
+        <form th:action="@{/admin}" method="get" class="filter-search">
+            <input type="search" name="q" th:value="${filterQ}" placeholder="搜索标题或 slug">
+            <input type="hidden" name="kind" th:if="${filterKind != null}" th:value="${filterKind}">
+            <input type="hidden" name="range" th:if="${filterRange != null}" th:value="${filterRange}">
+        </form>
+    </div>
+
+    <p class="filter-summary" th:if="${filterKind != null or filterRange != null or filterQ != null}">
+        筛出 <span th:text="${#lists.size(items)}">0</span> 条
+        <a th:href="@{/admin}" class="filter-clear">清除</a>
+    </p>
+
+    <div class="table-scroll" th:if="${!#lists.isEmpty(items)}">
         <table class="admin-table">
             <thead>
             <tr>
@@ -35,7 +65,7 @@
                     <div class="row-actions">
                         <a th:href="@{/admin/{id}/edit(id=${i.id})}">编辑</a>
                         <form th:action="@{/admin/{id}/delete(id=${i.id})}" method="post" class="inline"
-                              onsubmit="return confirm('确认删除？');">
+                              onsubmit="return confirm('确认删除？删掉的内容会在回收站保留 30 天。');">
                             <button type="submit" class="link-button danger">删除</button>
                         </form>
                     </div>
@@ -45,7 +75,10 @@
         </table>
     </div>
 
-    <p class="empty" th:if="${#lists.isEmpty(items)}">还没有内容</p>
+    <p class="empty" th:if="${#lists.isEmpty(items)}">
+        <span th:if="${filterKind != null or filterRange != null or filterQ != null}">没有符合条件的内容</span>
+        <span th:unless="${filterKind != null or filterRange != null or filterQ != null}">还没有内容</span>
+    </p>
 </main>
 
 <footer th:replace="~{fragments/layout :: foot}"></footer>

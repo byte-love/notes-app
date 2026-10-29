@@ -6,6 +6,7 @@ import cn.bytelove.notes.repo.ContentItemRepository;
 import cn.bytelove.notes.service.ContentStarService;
 import cn.bytelove.notes.service.MarkdownRenderer;
 import cn.bytelove.notes.service.ProjectMetaService;
+import cn.bytelove.notes.service.ReadingPositionService;
 import cn.bytelove.notes.service.NoteTreeService;
 import cn.bytelove.notes.service.ViewerService;
 import cn.bytelove.notes.service.VisibilityService;
@@ -38,17 +39,19 @@ public class PublicController {
     private final ViewerService viewers;
     private final ContentStarService stars;
     private final ProjectMetaService meta;
+    private final ReadingPositionService positions;
     private final MarkdownRenderer markdown;
     private final NoteTreeService tree;
 
     public PublicController(ContentItemRepository items, VisibilityService visibility, ViewerService viewers,
-                            ContentStarService stars, ProjectMetaService meta,
+                            ContentStarService stars, ProjectMetaService meta, ReadingPositionService positions,
                             MarkdownRenderer markdown, NoteTreeService tree) {
         this.items = items;
         this.visibility = visibility;
         this.viewers = viewers;
         this.stars = stars;
         this.meta = meta;
+        this.positions = positions;
         this.markdown = markdown;
         this.tree = tree;
     }
@@ -117,9 +120,20 @@ public class PublicController {
             }
         }
 
+        Long lastReadId = positions.find(viewer.userId(), kind);
+        ContentItem lastRead = null;
+        for (ContentItem i : all) {
+            if (i.getId().equals(lastReadId)) {
+                lastRead = i;
+                break;
+            }
+        }
+
         model.addAttribute("items", leaves);
         model.addAttribute("tree", tree.build(all, lockedIds));
         model.addAttribute("starIds", stars.starredIds(viewer.userId()));
+        model.addAttribute("lastReadId", lastReadId);
+        model.addAttribute("lastRead", lastRead);
         model.addAttribute("lockedIds", lockedIds);
         model.addAttribute("lockedCount", lockedIds.size());
         model.addAttribute("kind", kind);
@@ -134,6 +148,11 @@ public class PublicController {
     private String detail(ContentKind kind, String slug, Model model, Authentication auth) {
         Viewer viewer = viewers.current(auth);
         ContentItem item = resolve(kind, slug, viewer);
+
+        // 只记自己内容的阅读位置：别人的推荐内容记下来也没法在自己列表里标出来
+        if (viewer.isSelf(item)) {
+            positions.remember(viewer.userId(), kind, item.getId());
+        }
 
         // 项目走单独的模板：它渲染的是作品集卡片那套结构化字段，没有目录树
         if (kind == ContentKind.PROJECT) {

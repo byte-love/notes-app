@@ -6,10 +6,14 @@ import cn.bytelove.notes.domain.Visibility;
 import cn.bytelove.notes.repo.ContentItemRepository;
 import cn.bytelove.notes.service.NoteTreeService;
 import cn.bytelove.notes.service.ProjectMetaService;
+import cn.bytelove.notes.service.TrashService;
 import cn.bytelove.notes.service.ViewerService;
 import cn.bytelove.notes.service.VisibilityService.Viewer;
 import cn.bytelove.notes.web.form.ContentForm;
+import jakarta.persistence.criteria.Predicate;
 import jakarta.validation.Valid;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
@@ -20,11 +24,15 @@ import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Locale;
 
 /**
  * 内容管理。登录就能进，但默认只看到、只能改自己的；
@@ -38,13 +46,15 @@ public class AdminController {
     private final NoteTreeService tree;
     private final ViewerService viewers;
     private final ProjectMetaService meta;
+    private final TrashService trash;
 
     public AdminController(ContentItemRepository items, NoteTreeService tree, ViewerService viewers,
-                           ProjectMetaService meta) {
+                           ProjectMetaService meta, TrashService trash) {
         this.items = items;
         this.tree = tree;
         this.viewers = viewers;
         this.meta = meta;
+        this.trash = trash;
     }
 
     @ModelAttribute("kinds")
@@ -64,15 +74,56 @@ public class AdminController {
     }
 
     @GetMapping
-    public String list(Model model, Authentication auth) {
+    public String list(@RequestParam(required = false) String kind,
+                       @RequestParam(required = false) Integer range,
+                       @RequestParam(required = false) String q,
+                       Model model, Authentication auth) {
         Viewer viewer = viewers.current(auth);
-        List<ContentItem> all = new ArrayList<>(viewer.admin()
-                ? items.findAll()
-                : items.findByOwnerIdOrderByKindAscSortOrderAsc(viewer.userId()));
-        all.sort(Comparator.comparingInt(ContentItem::getSortOrder)
-                .thenComparing(ContentItem::getTitle, Comparator.nullsLast(String::compareTo)));
-        model.addAttribute("items", all);
+
+        ContentKind filterKind = parseKind(kind);
+        Instant since = range == null ? null : Instant.now().minus(Duration.ofDays(range));
+        String like = (q == null || q.isBlank()) ? null : "%" + q.trim().toLowerCase(Locale.ROOT) + "%";
+
+        Long ownerId = viewer.admin() ? null : viewer.userId();
+        Specification<ContentItem> spec = (root, query, cb) -> {
+            List<Predicate> parts = new ArrayList<>();
+            if (ownerId != null) {
+                parts.add(cb.equal(root.get("ownerId"), ownerId));
+            }
+            if (filterKind != null) {
+                parts.add(cb.equal(root.get("kind"), filterKind));
+            }
+            if (since != null) {
+                parts.add(cb.greaterThanOrEqualTo(root.get("updatedAt"), since));
+            }
+            if (like != null) {
+                parts.add(cb.or(
+                        cb.like(cb.lower(root.get("title")), like),
+                        cb.like(cb.lower(root.get("slug")), like)));
+            }
+            // 条件为空时 cb.and() 返回恒真，等价于不过滤
+            return cb.and(parts.toArray(new Predicate[0]));
+        };
+
+        List<ContentItem> found = items.findAll(spec,
+                Sort.by(Sort.Order.asc("sortOrder"), Sort.Order.asc("title")));
+
+        model.addAttribute("items", found);
+        model.addAttribute("filterKind", filterKind);
+        model.addAttribute("filterRange", range);
+        model.addAttribute("filterQ", q == null ? null : q.trim());
         return "admin/list";
+    }
+
+    private static ContentKind parseKind(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return null;
+        }
+        try {
+            return ContentKind.valueOf(raw.trim().toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
     }
 
     @GetMapping("/new")
@@ -183,7 +234,8 @@ public class AdminController {
     @PostMapping("/{id}/delete")
     public String delete(@PathVariable Long id, Authentication auth) {
         ContentItem item = owned(id, viewers.current(auth));
-        items.deleteById(item.getId());
+        // 进回收站，不是真删；30 天后由 TrashService 定时清理
+        trash.softDelete(item.getId(), item.getOwnerId());
         return "redirect:/admin";
     }
 

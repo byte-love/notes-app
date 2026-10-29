@@ -28,7 +28,7 @@
                     <form sec:authorize="isAuthenticated()" th:action="@{/star/{s}(s=${item.slug})}"
                           method="post" class="inline">
                         <button type="submit" class="star-btn" th:classappend="${starred} ? 'on'"
-                                th:text="${starred} ? '★ 已在备忘录' : '☆ 加入备忘录'">☆ 加入备忘录</button>
+                                th:text="${starred} ? '★ 已收藏' : '☆ 收藏'">☆ 收藏</button>
                     </form>
                 </div>
             </header>

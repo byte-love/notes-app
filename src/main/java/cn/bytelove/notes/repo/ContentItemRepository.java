@@ -3,11 +3,13 @@ package cn.bytelove.notes.repo;
 import cn.bytelove.notes.domain.ContentItem;
 import cn.bytelove.notes.domain.ContentKind;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 
 import java.util.List;
 import java.util.Optional;
 
-public interface ContentItemRepository extends JpaRepository<ContentItem, Long> {
+public interface ContentItemRepository
+        extends JpaRepository<ContentItem, Long>, JpaSpecificationExecutor<ContentItem> {
 
     /** 某个用户自己的某一类内容。 */
     List<ContentItem> findByOwnerIdAndKindOrderByUpdatedAtDesc(Long ownerId, ContentKind kind);

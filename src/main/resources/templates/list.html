@@ -15,6 +15,10 @@
             <span class="count" th:text="${#lists.size(items)} + ' 篇'">0 篇</span>
         </div>
 
+        <p class="last-read" th:if="${lastRead != null}">
+            上次看到 · <a th:href="${basePath + '/' + lastRead.slug}" th:text="${lastRead.title}">标题</a>
+        </p>
+
         <p class="tree-hint" th:if="${lockedCount > 0}">
             登录后可查看其余 <span th:text="${lockedCount}">0</span> 篇
         </p>
