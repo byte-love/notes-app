@@ -52,6 +52,12 @@ public class AdminController {
         return ContentKind.values();
     }
 
+    /** 管理页不属于任何一个内容分区，不要让它顶亮「笔记」。 */
+    @ModelAttribute("tabActive")
+    public String tabActive() {
+        return "admin";
+    }
+
     @ModelAttribute("visibilities")
     public Visibility[] visibilities() {
         return Visibility.values();

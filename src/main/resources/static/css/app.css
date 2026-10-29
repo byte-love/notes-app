@@ -188,8 +188,7 @@ code {
 }
 
 .header-tools a:hover {
-    color: var(--fg);
-    text-decoration: none;
+    color: var(--fg);    text-decoration: none;
 }
 
 .theme-toggle {
@@ -1244,6 +1243,18 @@ button:hover,
 }
 
 /* ---- 个人主页 ---- */
+
+/* 顶栏里的账号入口：做成一个可点的块，不然和旁边的纯文字链接分不出来 */
+.header-tools a.user-entry {
+    padding: 4px 9px;
+    border-radius: 6px;
+    color: var(--fg);
+}
+
+.header-tools a.user-entry:hover {
+    background: var(--bg-2);
+    text-decoration: none;
+}
 
 .me-head {
     display: flex;

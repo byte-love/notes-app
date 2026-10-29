@@ -20,7 +20,7 @@
             } catch (e) {}
         })();
     </script>
-    <link rel="stylesheet" th:href="@{/css/app.css(v=13)}">
+    <link rel="stylesheet" th:href="@{/css/app.css(v=14)}">
 </head>
 <body>
 
@@ -30,7 +30,7 @@
             <a class="tab" th:href="@{/projects}"
                th:classappend="${tabActive == 'project'} ? 'is-active'">项目</a>
             <a class="tab" th:href="@{/notes}"
-               th:classappend="${tabActive == null or tabActive == 'note'} ? 'is-active'">笔记</a>
+               th:classappend="${tabActive == 'note'} ? 'is-active'">笔记</a>
             <a class="tab" th:href="@{/bagu}"
                th:classappend="${tabActive == 'bagu'} ? 'is-active'">八股</a>
             <a class="tab" th:href="@{/algo}"
@@ -38,7 +38,7 @@
         </nav>
         <div class="header-tools">
             <a sec:authorize="isAuthenticated()" th:href="@{/admin}">管理</a>
-            <a sec:authorize="isAuthenticated()" th:href="@{/me}"
+            <a sec:authorize="isAuthenticated()" th:href="@{/me}" class="user-entry"
                th:text="${#authentication.name}">用户名</a>
             <a sec:authorize="!isAuthenticated()" th:if="${registerEnabled}" th:href="@{/register}">注册</a>
             <a sec:authorize="!isAuthenticated()" th:href="@{/login}">登录</a>
