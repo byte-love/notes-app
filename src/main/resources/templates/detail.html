@@ -235,17 +235,24 @@
         // tocPct：右边的目录占「剩余宽度」的百分比
         let tocPct = toc ? read('layout:tocpct', 22) : 0;
 
+        // <=820 是单列堆叠、<=1100 没有右侧目录，这两种宽度下列宽交给 CSS 媒体查询；
+        // 内联样式一旦盖上去，手机上正文会被挤成 0 宽
+        const mqStack = window.matchMedia('(max-width: 820px)');
+        const mqNoToc = window.matchMedia('(max-width: 1100px)');
+        const stacked = () => mqStack.matches;
+        const tocHidden = () => stacked() || mqNoToc.matches;
+
         const applyTree = () => {
             const w = clamp(treeW, MIN_TREE, MAX_TREE);
             // --tree-w 和列宽一起改：左边距按它算，正文才能一直待在屏幕正中
             wrap.style.setProperty('--tree-w', w + 'px');
-            wrap.style.gridTemplateColumns = w + 'px minmax(0, 1fr)';
+            wrap.style.gridTemplateColumns = stacked() ? '' : w + 'px minmax(0, 1fr)';
         };
         const applyToc = () => {
             if (!toc) return;
             const p = clamp(tocPct, MIN_TOC_PCT, MAX_TOC_PCT);
             // 用 fr 分配，两边一起缩放，比例固定
-            docWrap.style.gridTemplateColumns = (100 - p) + 'fr ' + p + 'fr';
+            docWrap.style.gridTemplateColumns = tocHidden() ? '' : (100 - p) + 'fr ' + p + 'fr';
         };
 
         applyTree();
@@ -305,13 +312,21 @@
             const wr = wrap.getBoundingClientRect();
             const tr = tree.getBoundingClientRect();
             leftBar.style.left = (tr.right - wr.left) + 'px';
+            // 单列堆叠时段落中间没有可拖的分界，藏掉
+            leftBar.style.display = stacked() ? 'none' : '';
 
             if (rightBar && toc) {
                 const dr = docWrap.getBoundingClientRect();
                 const rr = toc.getBoundingClientRect();
                 rightBar.style.left = (rr.left - dr.left) + 'px';
+                rightBar.style.display = tocHidden() ? 'none' : '';
             }
         };
+
+        // 跨过断点时才需要重算列宽，普通 resize 只挪分隔条
+        const relayout = () => { applyTree(); applyToc(); layout(); };
+        mqStack.addEventListener('change', relayout);
+        mqNoToc.addEventListener('change', relayout);
 
         layout();
         window.addEventListener('resize', layout);
