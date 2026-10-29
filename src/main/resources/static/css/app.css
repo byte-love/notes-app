@@ -2689,7 +2689,7 @@ html[data-theme='dark'] .cl-latest {
 .with-tree .item-list {
     max-width: min(1000px, 92%);
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(238px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
     gap: 0.8rem;
 }
 
@@ -2697,12 +2697,28 @@ html[data-theme='dark'] .cl-latest {
 .with-tree .item-list li {
     border: 1px solid var(--line);
     border-radius: 10px;
-    padding: 0.9rem 1rem;
+    padding: 0.8rem 0.85rem;
     background: var(--bg-2);
 }
 
 .with-tree .item-list li:hover {
     border-color: var(--fg-3);
+}
+
+/* 卡片窄，写不下的地方截断加省略号，高度才齐 */
+.with-tree .item-title {
+    font-size: 1rem;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.with-tree .item-summary {
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
 }
 
 /* 右栏没有目录时列同分类条目：长列表要能自己滚，不然撑出屏幕 */
