@@ -236,7 +236,10 @@
         let tocPct = toc ? read('layout:tocpct', 22) : 0;
 
         const applyTree = () => {
-            wrap.style.gridTemplateColumns = clamp(treeW, MIN_TREE, MAX_TREE) + 'px minmax(0, 1fr)';
+            const w = clamp(treeW, MIN_TREE, MAX_TREE);
+            // --tree-w 和列宽一起改：左边距按它算，正文才能一直待在屏幕正中
+            wrap.style.setProperty('--tree-w', w + 'px');
+            wrap.style.gridTemplateColumns = w + 'px minmax(0, 1fr)';
         };
         const applyToc = () => {
             if (!toc) return;

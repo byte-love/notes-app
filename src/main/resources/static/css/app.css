@@ -2643,6 +2643,18 @@ html[data-theme='dark'] .cl-latest {
     grid-template-columns: minmax(0, 1fr);
 }
 
+/* 正文按阅读宽度（68ch）在整屏居中：左边距 = (整宽 - 阅读宽)/2 - 树宽 - 间距，
+   这样树栏和正文一起右移，正文左右留白相等。窄屏放不下时回落到 1.5rem，
+   和原来一样靠左。 */
+.with-tree.has-tree:has(.tree-pane) {
+    padding-left: max(1.5rem, calc((100% - 68ch) / 2 - var(--tree-w, 300px) - 2rem));
+}
+
+/* 没有右侧目录时正文上限是 82ch，居中基准跟着换 */
+.with-tree.has-tree:has(.tree-pane):has(.doc-wrap.no-toc) {
+    padding-left: max(1.5rem, calc((100% - 82ch) / 2 - var(--tree-w, 300px) - 2rem));
+}
+
 /* 树节点名字长就换到第二行，不再挤成一行 */
 .tree .tree-item,
 .tree a:not(.locked),
