@@ -134,6 +134,7 @@ public class PublicController {
         }
 
         model.addAttribute("items", leaves);
+        model.addAttribute("groups", groups(all, leaves));
         model.addAttribute("tree", tree.build(all, lockedIds));
         model.addAttribute("starIds", stars.starredIds(viewer.userId()));
         model.addAttribute("bookmarkIds", bookmarks.ids(viewer.userId()));
@@ -271,6 +272,36 @@ public class PublicController {
         model.addAttribute("basePathOf", (java.util.function.Function<ContentKind, String>) PublicController::basePath);
         model.addAttribute("tabActive", "memo");
         return "memo";
+    }
+
+    /** 一个分类下的卡片；整页没有分类时就是一组，标题为空、不显示小标题。 */
+    public record ItemGroup(String title, List<ContentItem> items) {
+    }
+
+    /** 按父节点把列表拆成小节，小节顺序跟左侧树一致（sortOrder + 标题）。 */
+    private List<ItemGroup> groups(List<ContentItem> all, List<ContentItem> leaves) {
+        Map<Long, ContentItem> byId = new LinkedHashMap<>();
+        for (ContentItem item : all) {
+            byId.put(item.getId(), item);
+        }
+
+        Map<Long, List<ContentItem>> buckets = new LinkedHashMap<>();
+        for (ContentItem leaf : leaves) {
+            Long pid = leaf.getParentId();
+            Long key = (pid != null && byId.containsKey(pid)) ? pid : 0L;
+            buckets.computeIfAbsent(key, k -> new ArrayList<>()).add(leaf);
+        }
+
+        List<ItemGroup> result = new ArrayList<>();
+        buckets.keySet().stream()
+                .filter(id -> id != 0L)
+                .sorted(Comparator.comparingInt((Long id) -> byId.get(id).getSortOrder())
+                        .thenComparing(id -> byId.get(id).getTitle(), Comparator.nullsLast(String::compareTo)))
+                .forEach(id -> result.add(new ItemGroup(byId.get(id).getTitle(), buckets.get(id))));
+        if (buckets.containsKey(0L)) {
+            result.add(new ItemGroup(null, buckets.get(0L)));
+        }
+        return result;
     }
 
     /**
