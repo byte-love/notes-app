@@ -276,11 +276,18 @@ public class PublicController {
                 return mine.get();
             }
         }
-        return items.findBySlugAndRecommendedTrueOrderByIdAsc(slug).stream()
+        List<ContentItem> candidates = items.findBySlugAndRecommendedTrueOrderByIdAsc(slug).stream()
                 .filter(i -> i.getKind() == kind)
+                .toList();
+        Optional<ContentItem> readable = candidates.stream()
                 .filter(i -> visibility.canRead(i, viewer))
-                .findFirst()
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+                .findFirst();
+        if (readable.isPresent()) {
+            return readable.get();
+        }
+        // 内容存在、只是没登录看不了：引导去登录，而不是丢一个 404
+        boolean existsButLocked = candidates.stream().anyMatch(i -> visibility.isLocked(i, viewer));
+        throw new ResponseStatusException(existsButLocked ? HttpStatus.FORBIDDEN : HttpStatus.NOT_FOUND);
     }
 
     /** 同上，但不管类型（/star/{slug} 的路径里没有 kind）。 */

@@ -2518,3 +2518,43 @@ html[data-theme='dark'] .cl-latest {
 .cl-admin-sub li:first-child {
     border-top: none;
 }
+
+/* ---- 错误页 ---- */
+
+.err-box {
+    max-width: 30rem;
+    margin: 4rem auto;
+    padding: 2rem 1.8rem;
+    text-align: center;
+    background: var(--bg-2);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+}
+
+.err-code {
+    font-size: 2.6rem;
+    font-weight: 700;
+    line-height: 1;
+    letter-spacing: -0.02em;
+    color: var(--fg-3);
+    font-variant-numeric: tabular-nums;
+}
+
+.err-box h1 {
+    margin: 0.9rem 0 0.5rem;
+    font-size: 1.2rem;
+}
+
+.err-text {
+    margin: 0 0 1.6rem;
+    font-size: 0.9rem;
+    line-height: 1.75;
+    color: var(--fg-2);
+}
+
+.err-actions {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.6rem;
+}
