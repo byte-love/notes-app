@@ -7,17 +7,18 @@ PARENT_SLUG="${6:-}"; SORT="${7:-0}"; KIND="${8:-NOTE}"
 BASE=http://127.0.0.1:8080/app
 JAR=/tmp/import.jar
 PSQL() { docker exec notes-pg psql -U notes -d notes -Atc "$1"; }
+OWNER_ID="(select min(id) from app_user where role='ADMIN')"
 
 rm -f "$JAR"
 
 PARENT_ID=""
 if [ -n "$PARENT_SLUG" ]; then
-  PARENT_ID=$(PSQL "select id from content_item where slug='$PARENT_SLUG'")
+  PARENT_ID=$(PSQL "select id from content_item where slug='$PARENT_SLUG' and owner_id=$OWNER_ID limit 1")
   if [ -z "$PARENT_ID" ]; then echo "  parent slug not found: $PARENT_SLUG"; exit 1; fi
   echo "  parent: $PARENT_SLUG (id=$PARENT_ID)"
 fi
 
-EXISTING_ID=$(PSQL "select id from content_item where slug='$SLUG'")
+EXISTING_ID=$(PSQL "select id from content_item where slug='$SLUG' and owner_id=$OWNER_ID limit 1")
 
 T=$(curl -s -c "$JAR" "$BASE/login" | grep -o 'name="_csrf" value="[^"]*"' | sed 's/.*value="//; s/"//' | head -1)
 OP=$(grep '^OWNER_PASSWORD=' /opt/apps/notes-app/app.env | cut -d= -f2-)

@@ -100,6 +100,17 @@ sudo /opt/deploy/sync-db.sh    # 正式库整库覆盖到测试库
 
 `restore-db.sh` 和 `sync-db.sh` 都会先停服、导入、再启动，中间大约 40 秒服务不可用，别在别人正在看的时候跑。
 
+## 多用户与权限
+
+从 V5 开始，每个用户有自己的项目/笔记/八股/算法空间。
+
+- `content_item.owner_id` 指向创建者；`slug` 只在本人范围内唯一（`uq_content_owner_slug`）
+- `recommended = true` 的内容才会出现在「推荐」里、对别人可见；管理员新建的内容自动是 `true`
+- `visibility` 只在「别人看推荐内容」时起作用：`PUBLIC` 谁都能看、`MEMBER` 要登录、`PRIVATE` 只有本人
+- 备忘录是 `content_star(user_id, item_id)`，不是内容上的一个布尔值——标记属于「谁标的」
+- `/admin` 现在登录就能进，默认只看到自己的；管理员额外能看到全部
+- 注册开关：`/opt/apps/notes-app-test/app.env` 里的 `REGISTER_ENABLED=false` 关掉（关掉后 `/register` 直接 404），同 IP 每小时最多注册 3 个
+
 ## 约定
 
 - **不要直接往 `main` 推**，`main` 只接 `dev` 的合并
@@ -121,4 +132,19 @@ grep 命中就退出，`tee` 收到 SIGPIPE，整个管道退出码变成 141，
 **CSS 里 `padding` 简写会覆盖同一条规则的 `padding-left`**：给树的分组按钮加
 `padding: 0.34rem 0.5rem` 之后，之前单独写的 `padding-left: 0.95rem` 被冲掉，折叠箭头直接压在文字上。
 改的时候要么写全四个值，要么把 `padding-left` 放在简写之后。
+
+**PowerShell 写文件会带 BOM，javac 编译不过**：`Set-Content -Encoding UTF8` 在 Windows PowerShell 下
+会写 `EF BB BF` 开头，编译报 `class, interface, enum, or record expected`（位置指向第一个 import，
+很容易误以为是括号问题）。改 Java 源码要么用编辑器，要么写完后去掉 BOM。
+
+**`grant all` 不等于能改表**：测试库的表是从正式库 dump 恢复的，属主是 `notes`，而 `notes-app-dev`
+用 `notes_dev` 连。`grant all` 只给 DML 权限，`ALTER TABLE`（Flyway 迁移）要的是**属主**，
+报错 `must be owner of table content_item`。`restore-db.sh` / `sync-db.sh` 现在恢复完会调用
+`/opt/deploy/test-owner.sql` 把表和序列的属主转给 `notes_dev`。
+不能用 `REASSIGN OWNED`：`notes` 同时是数据库属主，会报「被数据库系统要求的对象不能转」。
+
+**健康检查别用 nginx 的状态码**：应用没起来时 nginx 返回 502，而 502 不等于「连接失败」，
+脚本里 `[ "$code" != "000" ]` 会立刻误判为已就绪。要么直连 `127.0.0.1:8082` 等 200，
+要么显式排除 502/504。重启一次大概要 30 秒。
+
 

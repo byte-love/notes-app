@@ -32,10 +32,11 @@
         </nav>
         <div class="header-tools">
             <a sec:authorize="isAuthenticated()" th:href="@{/memo}">备忘录</a>
-            <a sec:authorize="hasRole('ADMIN')" th:href="@{/admin}">后台</a>
+            <a sec:authorize="isAuthenticated()" th:href="@{/admin}">管理</a>
             <form sec:authorize="isAuthenticated()" th:action="@{/logout}" method="post" class="inline">
                 <button type="submit" class="link-button">退出</button>
             </form>
+            <a sec:authorize="!isAuthenticated()" th:if="${registerEnabled}" th:href="@{/register}">注册</a>
             <a sec:authorize="!isAuthenticated()" th:href="@{/login}">登录</a>
             <button class="theme-toggle" type="button" aria-label="切换深浅色">☀</button>
         </div>

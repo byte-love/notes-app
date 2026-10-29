@@ -5,9 +5,12 @@ import cn.bytelove.notes.domain.ContentKind;
 import cn.bytelove.notes.domain.Visibility;
 import cn.bytelove.notes.repo.ContentItemRepository;
 import cn.bytelove.notes.service.NoteTreeService;
+import cn.bytelove.notes.service.ViewerService;
+import cn.bytelove.notes.service.VisibilityService.Viewer;
 import cn.bytelove.notes.web.form.ContentForm;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
@@ -22,16 +25,22 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 
+/**
+ * 内容管理。登录就能进，但默认只看到、只能改自己的；
+ * 管理员额外能看到所有人的内容。
+ */
 @Controller
 @RequestMapping("/admin")
 public class AdminController {
 
     private final ContentItemRepository items;
     private final NoteTreeService tree;
+    private final ViewerService viewers;
 
-    public AdminController(ContentItemRepository items, NoteTreeService tree) {
+    public AdminController(ContentItemRepository items, NoteTreeService tree, ViewerService viewers) {
         this.items = items;
         this.tree = tree;
+        this.viewers = viewers;
     }
 
     @ModelAttribute("kinds")
@@ -45,8 +54,11 @@ public class AdminController {
     }
 
     @GetMapping
-    public String list(Model model) {
-        List<ContentItem> all = new ArrayList<>(items.findAll());
+    public String list(Model model, Authentication auth) {
+        Viewer viewer = viewers.current(auth);
+        List<ContentItem> all = new ArrayList<>(viewer.admin()
+                ? items.findAll()
+                : items.findByOwnerIdOrderByKindAscSortOrderAsc(viewer.userId()));
         all.sort(Comparator.comparingInt(ContentItem::getSortOrder)
                 .thenComparing(ContentItem::getTitle, Comparator.nullsLast(String::compareTo)));
         model.addAttribute("items", all);
@@ -54,35 +66,39 @@ public class AdminController {
     }
 
     @GetMapping("/new")
-    public String createForm(Model model) {
+    public String createForm(Model model, Authentication auth) {
         model.addAttribute("form", new ContentForm());
         model.addAttribute("editing", false);
-        model.addAttribute("parents", parentOptions(null));
+        model.addAttribute("parents", parentOptions(null, viewers.current(auth).userId()));
         return "admin/form";
     }
 
     @PostMapping("/new")
-    public String create(@Valid @ModelAttribute("form") ContentForm form, BindingResult binding, Model model) {
-        if (items.existsBySlug(form.getSlug())) {
+    public String create(@Valid @ModelAttribute("form") ContentForm form, BindingResult binding,
+                         Model model, Authentication auth) {
+        Viewer viewer = viewers.current(auth);
+        if (items.existsByOwnerIdAndSlug(viewer.userId(), form.getSlug())) {
             binding.rejectValue("slug", "duplicate", "slug 已存在");
         }
         if (binding.hasErrors()) {
             model.addAttribute("editing", false);
-            model.addAttribute("parents", parentOptions(null));
+            model.addAttribute("parents", parentOptions(null, viewer.userId()));
             return "admin/form";
         }
-        ContentItem item = new ContentItem(form.getKind(), form.getSlug(), form.getTitle(),
+        ContentItem item = new ContentItem(viewer.userId(), form.getKind(), form.getSlug(), form.getTitle(),
                 form.getSummary(), form.getBody(), form.getVisibility());
         item.setParentId(form.getParentId());
         item.setSortOrder(form.getSortOrder() == null ? 0 : form.getSortOrder());
+        // 管理员的公开内容就是站点的推荐栏；普通用户的内容先只留给自己
+        item.setRecommended(viewer.admin());
         items.save(item);
         return "redirect:/admin";
     }
 
     @GetMapping("/{id}/edit")
-    public String editForm(@PathVariable Long id, Model model) {
-        ContentItem item = items.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+    public String editForm(@PathVariable Long id, Model model, Authentication auth) {
+        Viewer viewer = viewers.current(auth);
+        ContentItem item = owned(id, viewer);
         ContentForm form = new ContentForm();
         form.setKind(item.getKind());
         form.setSlug(item.getSlug());
@@ -95,30 +111,31 @@ public class AdminController {
         model.addAttribute("form", form);
         model.addAttribute("itemId", id);
         model.addAttribute("editing", true);
-        model.addAttribute("parents", parentOptions(id));
+        model.addAttribute("parents", parentOptions(id, item.getOwnerId()));
         return "admin/form";
     }
 
     @PostMapping("/{id}/edit")
     public String edit(@PathVariable Long id, @Valid @ModelAttribute("form") ContentForm form,
-                       BindingResult binding, Model model) {
-        ContentItem item = items.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+                       BindingResult binding, Model model, Authentication auth) {
+        Viewer viewer = viewers.current(auth);
+        ContentItem item = owned(id, viewer);
 
-        if (!item.getSlug().equals(form.getSlug()) && items.existsBySlug(form.getSlug())) {
+        if (!item.getSlug().equals(form.getSlug())
+                && items.existsByOwnerIdAndSlug(item.getOwnerId(), form.getSlug())) {
             binding.rejectValue("slug", "duplicate", "slug 已存在");
         }
         if (form.getParentId() != null) {
             if (form.getParentId().equals(id)) {
                 binding.rejectValue("parentId", "self", "不能把自己设为父节点");
-            } else if (tree.descendantIds(items.findAll(), id).contains(form.getParentId())) {
+            } else if (tree.descendantIds(allFor(item.getOwnerId()), id).contains(form.getParentId())) {
                 binding.rejectValue("parentId", "cycle", "不能把子孙节点设为父节点");
             }
         }
         if (binding.hasErrors()) {
             model.addAttribute("editing", true);
             model.addAttribute("itemId", id);
-            model.addAttribute("parents", parentOptions(id));
+            model.addAttribute("parents", parentOptions(id, item.getOwnerId()));
             return "admin/form";
         }
 
@@ -135,14 +152,36 @@ public class AdminController {
     }
 
     @PostMapping("/{id}/delete")
-    public String delete(@PathVariable Long id) {
-        items.deleteById(id);
+    public String delete(@PathVariable Long id, Authentication auth) {
+        ContentItem item = owned(id, viewers.current(auth));
+        items.deleteById(item.getId());
         return "redirect:/admin";
     }
 
-    /** 可以作为父节点的候选：同类型、排除自己和自己的所有子孙。 */
-    private List<ContentItem> parentOptions(Long selfId) {
-        List<ContentItem> all = new ArrayList<>(items.findAll());
+    /** 只能碰自己的；管理员不受限。 */
+    private ContentItem owned(Long id, Viewer viewer) {
+        ContentItem item = items.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+        if (!viewer.admin() && !viewer.isSelf(item)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND);
+        }
+        return item;
+    }
+
+    private List<ContentItem> allFor(Long ownerId) {
+        List<ContentItem> all = new ArrayList<>();
+        if (ownerId == null) {
+            return all;
+        }
+        for (ContentKind kind : ContentKind.values()) {
+            all.addAll(items.findByOwnerIdAndKindOrderBySortOrderAsc(ownerId, kind));
+        }
+        return all;
+    }
+
+    /** 可以作为父节点的候选：同一个人的内容，排除自己和自己的所有子孙。 */
+    private List<ContentItem> parentOptions(Long selfId, Long ownerId) {
+        List<ContentItem> all = allFor(ownerId);
         if (selfId != null) {
             List<Long> blocked = tree.descendantIds(all, selfId);
             all.removeIf(i -> i.getId().equals(selfId) || blocked.contains(i.getId()));

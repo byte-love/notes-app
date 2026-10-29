@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="zh-CN">
+<head th:replace="~{fragments/layout :: head('注册 · byte-love')}"></head>
+<body class="login-body">
+<header th:replace="~{fragments/layout :: nav}"></header>
+
+<main class="login-main">
+    <div class="login-card">
+        <h1>注册</h1>
+
+        <form th:action="@{/register}" method="post" class="stack">
+            <label>
+                用户名
+                <input type="text" name="username" th:value="${username}"
+                       autocomplete="username" required autofocus>
+            </label>
+            <label>
+                密码
+                <input type="password" name="password" autocomplete="new-password" required>
+            </label>
+            <label>
+                确认密码
+                <input type="password" name="confirm" autocomplete="new-password" required>
+            </label>
+            <p class="error" th:if="${error}" th:text="${error}">错误</p>
+            <button type="submit">注册</button>
+        </form>
+    </div>
+</main>
+
+<footer th:replace="~{fragments/layout :: foot}"></footer>
+</body>
+</html>

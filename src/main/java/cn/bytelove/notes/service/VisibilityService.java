@@ -1,77 +1,49 @@
 package cn.bytelove.notes.service;
 
-import cn.bytelove.notes.domain.Role;
+import cn.bytelove.notes.domain.ContentItem;
 import cn.bytelove.notes.domain.Visibility;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.GrantedAuthority;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
-import java.util.List;
-
+/**
+ * 可读性判定。三档可见性只在「别人看推荐内容」时起作用：
+ * 自己的内容永远可读，别人的内容先过 recommended 这道门，再看 visibility。
+ */
 @Service
 public class VisibilityService {
 
-    public boolean isOwner(Authentication auth) {
-        return hasRole(auth, "ROLE_OWNER");
+    /** 谁在看。userId 为空表示游客。 */
+    public record Viewer(Long userId, boolean admin, boolean authenticated) {
+        public static Viewer anonymous() {
+            return new Viewer(null, false, false);
+        }
+
+        public boolean isSelf(ContentItem item) {
+            return userId != null && userId.equals(item.getOwnerId());
+        }
     }
 
-    public boolean isAuthenticated(Authentication auth) {
-        return auth != null && auth.isAuthenticated()
-                && !"anonymousUser".equals(String.valueOf(auth.getPrincipal()));
-    }
-
-    public boolean canView(Visibility visibility, Authentication auth) {
-        if (visibility == null) {
+    public boolean canRead(ContentItem item, Viewer viewer) {
+        if (viewer.isSelf(item)) {
+            return true;
+        }
+        if (viewer.admin()) {
+            return true;
+        }
+        if (!item.isRecommended()) {
             return false;
         }
-        return switch (visibility) {
+        return switch (item.getVisibility()) {
             case PUBLIC -> true;
-            case MEMBER -> isAuthenticated(auth);
-            case PRIVATE -> isOwner(auth);
+            case MEMBER -> viewer.authenticated();
+            case PRIVATE -> false;
         };
     }
 
-    public List<Visibility> visibleTo(Authentication auth) {
-        List<Visibility> list = new ArrayList<>();
-        list.add(Visibility.PUBLIC);
-        if (isAuthenticated(auth)) {
-            list.add(Visibility.MEMBER);
-        }
-        if (isOwner(auth)) {
-            list.add(Visibility.PRIVATE);
-        }
-        return list;
-    }
-
-    /**
-     * 只占位、不给正文：游客能看到「有这些笔记，但要登录」。
-     * PRIVATE 不放进来——连标题都不该出现在公开页面上。
-     */
-    public List<Visibility> lockedTo(Authentication auth) {
-        List<Visibility> list = new ArrayList<>();
-        if (!isAuthenticated(auth)) {
-            list.add(Visibility.MEMBER);
-        }
-        return list;
-    }
-
-    public Role currentRole(Authentication auth) {
-        if (isOwner(auth)) {
-            return Role.ADMIN;
-        }
-        return isAuthenticated(auth) ? Role.USER : null;
-    }
-
-    private boolean hasRole(Authentication auth, String role) {
-        if (auth == null || !auth.isAuthenticated()) {
+    /** 只给标题不给正文：推荐栏里 MEMBER 的内容对游客。 */
+    public boolean isLocked(ContentItem item, Viewer viewer) {
+        if (viewer.authenticated() || viewer.isSelf(item)) {
             return false;
         }
-        for (GrantedAuthority a : auth.getAuthorities()) {
-            if (role.equals(a.getAuthority())) {
-                return true;
-            }
-        }
-        return false;
+        return item.isRecommended() && item.getVisibility() == Visibility.MEMBER;
     }
 }

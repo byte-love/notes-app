@@ -27,7 +27,7 @@ public class ApiController {
                 && !"anonymousUser".equals(String.valueOf(auth.getPrincipal()));
         boolean owner = authenticated && auth.getAuthorities().stream()
                 .map(GrantedAuthority::getAuthority)
-                .anyMatch("ROLE_OWNER"::equals);
+                .anyMatch("ROLE_ADMIN"::equals);
 
         body.put("authenticated", authenticated);
         body.put("owner", owner);

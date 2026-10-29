@@ -18,4 +18,9 @@ public class GlobalModelAdvice {
         String href = props.tabProjectsHref();
         return (href == null || href.isBlank()) ? "/" : href;
     }
+
+    @ModelAttribute("registerEnabled")
+    public boolean registerEnabled() {
+        return Boolean.TRUE.equals(props.registerEnabled());
+    }
 }
