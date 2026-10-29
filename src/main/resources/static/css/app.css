@@ -1965,10 +1965,22 @@ html[data-read-size='lg'] .markdown {
     clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 72%, 0 100%);
 }
 
-.tree-bookmark {
+/* 自动记的「上次看到」：一个圆点，别和手动书签的丝带混淆 */
+.tree-lastread {
     display: inline-block;
     width: 6px;
-    height: 10px;
+    height: 6px;
+    margin-right: 5px;
+    border-radius: 50%;
+    vertical-align: middle;
+    background: var(--fg-3);
+}
+
+/* 手动书签：丝带形状，颜色更实 */
+.tree-bookmark {
+    display: inline-block;
+    width: 7px;
+    height: 11px;
     margin-right: 5px;
     vertical-align: middle;
     background: var(--accent);

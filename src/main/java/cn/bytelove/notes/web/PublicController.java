@@ -3,6 +3,7 @@ package cn.bytelove.notes.web;
 import cn.bytelove.notes.domain.ContentItem;
 import cn.bytelove.notes.domain.ContentKind;
 import cn.bytelove.notes.repo.ContentItemRepository;
+import cn.bytelove.notes.service.BookmarkService;
 import cn.bytelove.notes.service.ContentStarService;
 import cn.bytelove.notes.service.MarkdownRenderer;
 import cn.bytelove.notes.service.ProjectMetaService;
@@ -40,11 +41,12 @@ public class PublicController {
     private final ContentStarService stars;
     private final ProjectMetaService meta;
     private final ReadingPositionService positions;
+    private final BookmarkService bookmarks;
     private final MarkdownRenderer markdown;
     private final NoteTreeService tree;
 
     public PublicController(ContentItemRepository items, VisibilityService visibility, ViewerService viewers,
-                            ContentStarService stars, ProjectMetaService meta, ReadingPositionService positions,
+                            ContentStarService stars, ProjectMetaService meta, ReadingPositionService positions, BookmarkService bookmarks,
                             MarkdownRenderer markdown, NoteTreeService tree) {
         this.items = items;
         this.visibility = visibility;
@@ -52,6 +54,7 @@ public class PublicController {
         this.stars = stars;
         this.meta = meta;
         this.positions = positions;
+        this.bookmarks = bookmarks;
         this.markdown = markdown;
         this.tree = tree;
     }
@@ -132,6 +135,7 @@ public class PublicController {
         model.addAttribute("items", leaves);
         model.addAttribute("tree", tree.build(all, lockedIds));
         model.addAttribute("starIds", stars.starredIds(viewer.userId()));
+        model.addAttribute("bookmarkIds", bookmarks.ids(viewer.userId()));
         model.addAttribute("lastReadId", lastReadId);
         model.addAttribute("lastRead", lastRead);
         model.addAttribute("lockedIds", lockedIds);
@@ -153,6 +157,8 @@ public class PublicController {
         if (viewer.isSelf(item)) {
             positions.remember(viewer.userId(), kind, item.getId());
         }
+        model.addAttribute("bookmarked", bookmarks.isBookmarked(viewer.userId(), item.getId()));
+        model.addAttribute("bookmarkIds", bookmarks.ids(viewer.userId()));
 
         // 项目走单独的模板：它渲染的是作品集卡片那套结构化字段，没有目录树
         if (kind == ContentKind.PROJECT) {
@@ -188,7 +194,16 @@ public class PublicController {
         return "detail";
     }
 
-    /** 备忘录：加入 / 移出。标记落在用户自己名下。 */
+    /** 手动书签：自己插的旗，想标几处标几处。 */
+    @PostMapping("/bookmark/{slug}")
+    public String toggleBookmark(@PathVariable String slug, Authentication auth) {
+        Viewer viewer = viewers.current(auth);
+        ContentItem item = resolveAnyKind(slug, viewer);
+        bookmarks.toggle(viewer.userId(), item.getId());
+        return "redirect:" + basePath(item.getKind()) + "/" + item.getSlug();
+    }
+
+    /** 收藏夹：加入 / 移出。标记落在用户自己名下。 */
     @PostMapping("/star/{slug}")
     public String toggleStar(@PathVariable String slug, Authentication auth) {
         Viewer viewer = viewers.current(auth);

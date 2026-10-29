@@ -7,14 +7,7 @@
 <main class="wrap">
     <div class="section-head">
         <h1>更新日志</h1>
-        <a sec:authorize="hasRole('ADMIN')" th:href="@{/admin/changelog}" class="btn-small">管理</a>
-    </div>
-
-    <div class="filters">
-        <div class="seg">
-            <a th:href="@{/updates}">内容动态</a>
-            <a th:href="@{/changelog}" class="on">系统日志</a>
-        </div>
+        <a sec:authorize="hasRole('ADMIN')" th:href="@{/admin/changelog}" class="btn-quiet">写一条</a>
     </div>
 
     <div class="cl-timeline">
