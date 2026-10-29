@@ -64,27 +64,35 @@ public class PublicController {
 
     @GetMapping("/")
     public String home(Model model, Authentication auth) {
-        return notes(model, auth);
+        return listing(ContentKind.NOTE, "笔记", model, auth, null, false);
     }
 
     @GetMapping("/notes")
-    public String notes(Model model, Authentication auth) {
-        return listing(ContentKind.NOTE, "笔记", model, auth);
+    public String notes(Model model, Authentication auth,
+                        @RequestParam(name = "from", required = false) Integer from,
+                        @RequestParam(name = "fragment", defaultValue = "false") boolean fragment) {
+        return listing(ContentKind.NOTE, "笔记", model, auth, from, fragment);
     }
 
     @GetMapping("/bagu")
-    public String bagu(Model model, Authentication auth) {
-        return listing(ContentKind.BAGU, "八股", model, auth);
+    public String bagu(Model model, Authentication auth,
+                       @RequestParam(name = "from", required = false) Integer from,
+                       @RequestParam(name = "fragment", defaultValue = "false") boolean fragment) {
+        return listing(ContentKind.BAGU, "八股", model, auth, from, fragment);
     }
 
     @GetMapping("/algo")
-    public String algo(Model model, Authentication auth) {
-        return listing(ContentKind.ALGO, "算法", model, auth);
+    public String algo(Model model, Authentication auth,
+                       @RequestParam(name = "from", required = false) Integer from,
+                       @RequestParam(name = "fragment", defaultValue = "false") boolean fragment) {
+        return listing(ContentKind.ALGO, "算法", model, auth, from, fragment);
     }
 
     @GetMapping("/projects")
-    public String projects(Model model, Authentication auth) {
-        return listing(ContentKind.PROJECT, "项目", model, auth);
+    public String projects(Model model, Authentication auth,
+                           @RequestParam(name = "from", required = false) Integer from,
+                           @RequestParam(name = "fragment", defaultValue = "false") boolean fragment) {
+        return listing(ContentKind.PROJECT, "项目", model, auth, from, fragment);
     }
 
     @GetMapping("/bagu/{slug}")
@@ -107,7 +115,8 @@ public class PublicController {
         return detail(ContentKind.PROJECT, slug, model, auth);
     }
 
-    private String listing(ContentKind kind, String pageTitle, Model model, Authentication auth) {
+    private String listing(ContentKind kind, String pageTitle, Model model, Authentication auth,
+                           Integer from, boolean fragment) {
         Viewer viewer = viewers.current(auth);
         Set<Long> lockedIds = new LinkedHashSet<>();
         List<ContentItem> all = filtered(poolForListing(kind, viewer), viewer, lockedIds);
@@ -126,6 +135,18 @@ public class PublicController {
             }
         }
 
+        // 分片：先给够 BATCH 条（按整组切，分类标题不会被劈开），剩下的滚到底再取
+        List<ItemGroup> grouped = groups(all, leaves);
+        int start = (from == null || from < 0) ? 0 : Math.min(from, grouped.size());
+        int end = start;
+        int count = 0;
+        while (end < grouped.size() && (count < BATCH_ITEMS || end == start)) {
+            count += grouped.get(end).items().size();
+            end++;
+        }
+        model.addAttribute("groups", grouped.subList(start, end));
+        model.addAttribute("nextFrom", end < grouped.size() ? end : -1);
+
         Long lastReadId = positions.find(viewer.userId(), kind);
         ContentItem lastRead = null;
         for (ContentItem i : all) {
@@ -136,7 +157,6 @@ public class PublicController {
         }
 
         model.addAttribute("items", leaves);
-        model.addAttribute("groups", groups(all, leaves));
         model.addAttribute("tree", tree.build(all, lockedIds));
         model.addAttribute("starIds", stars.starredIds(viewer.userId()));
         model.addAttribute("bookmarkIds", bookmarks.ids(viewer.userId()));
@@ -150,7 +170,8 @@ public class PublicController {
         model.addAttribute("pageTitle", pageTitle);
         model.addAttribute("basePath", contextPath() + basePath(kind));
         model.addAttribute("tabActive", kind.name().toLowerCase(java.util.Locale.ROOT));
-        return "list";
+        // 分片请求只回内容那一段，不套整页
+        return fragment ? "fragments/list :: groupSections" : "list";
     }
 
     private String detail(ContentKind kind, String slug, Model model, Authentication auth) {
@@ -325,6 +346,9 @@ public class PublicController {
     /** 一个分类下的卡片；整页没有分类时就是一组，标题为空、不显示小标题。 */
     public record ItemGroup(String title, List<ContentItem> items) {
     }
+
+    /** 列表页一次先给多少条，剩下的滚到底再取。 */
+    private static final int BATCH_ITEMS = 40;
 
     /** 按父节点把列表拆成小节，小节顺序跟左侧树一致（sortOrder + 标题）。 */
     private List<ItemGroup> groups(List<ContentItem> all, List<ContentItem> leaves) {

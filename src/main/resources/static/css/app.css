@@ -2727,6 +2727,11 @@ html[data-theme='dark'] .cl-latest {
     overflow-y: auto;
 }
 
+/* 列表底部那个「取下一批」的锚点，留一点高度好让观察器够得到 */
+.list-more {
+    height: 8px;
+}
+
 /* 卡片按分类分小节 */
 .item-group + .item-group {
     margin-top: 1.8rem;
