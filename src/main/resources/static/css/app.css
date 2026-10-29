@@ -1146,6 +1146,11 @@ button:hover,
     min-width: 0;
 }
 
+/* 没有内容时不显示左侧目录列，空态文案落在正文区 */
+.with-tree.no-tree {
+    grid-template-columns: minmax(0, 720px);
+}
+
 /* 有树时正文不再单独居中 */
 .with-tree .doc-wrap {
     max-width: none;
