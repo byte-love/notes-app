@@ -41,7 +41,8 @@
                 </div>
             </header>
 
-            <div class="markdown" th:utext="${html}" th:attr="data-slug=${item.slug},data-anchors=${bookmarkAnchorCsv}"></div>
+            <div class="markdown" th:utext="${html}"
+                 th:attr="data-slug=${item.slug},data-anchors=${bookmarkAnchorCsv},data-resume=${resumeProgress}"></div>
         </article>
 
         <aside class="toc" th:if="${!#lists.isEmpty(toc)}">
@@ -63,7 +64,7 @@
     </main>
 </div>
 
-    <script th:src="@{/js/detail.js(v=1)}"></script>
+    <script th:src="@{/js/detail.js(v=2)}"></script>
 
 <footer th:replace="~{fragments/layout :: foot}"></footer>
 

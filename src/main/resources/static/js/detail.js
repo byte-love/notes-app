@@ -274,3 +274,48 @@
         document.addEventListener('mouseup', layout);
         document.addEventListener('touchend', layout);
     })();
+
+// 阅读进度：离开页面时把「滚到全文的百分之几」记到服务端，
+// 下次打开同一条就滚回去（短于一屏的文章比例恒为 0，滚不滚都一样）
+(() => {
+    const box = document.querySelector('.markdown[data-slug]');
+    if (!box) return;
+    const slug = box.dataset.slug;
+    const token = document.querySelector('meta[name="_csrf"]')?.content;
+    if (!slug || !token) return;
+
+    const scrollable = () => document.documentElement.scrollHeight - window.innerHeight;
+    const ratio = () => {
+        const max = scrollable();
+        // 一屏能显示完就没有「进度」可言
+        return max > 40 ? Math.min(1, Math.max(0, window.scrollY / max)) : 0;
+    };
+
+    // 带 #锚点 进来时听锚点的，别抢
+    const saved = parseFloat(box.dataset.resume || '0');
+    if (saved > 0.02 && !location.hash) {
+        const back = () => window.scrollTo(0, Math.round(saved * scrollable()));
+        requestAnimationFrame(back);
+        // 图片/字体加载完高度会变，load 之后再校正一次
+        window.addEventListener('load', back);
+    }
+
+    let last = saved;
+    const save = () => {
+        const now = ratio();
+        if (Math.abs(now - last) < 0.01) return;
+        last = now;
+        const body = new URLSearchParams({ progress: now.toFixed(4), _csrf: token });
+        const url = `/app/position/${encodeURIComponent(slug)}`;
+        if (navigator.sendBeacon) {
+            navigator.sendBeacon(url, body);
+        } else {
+            fetch(url, { method: 'POST', body, keepalive: true, credentials: 'same-origin' });
+        }
+    };
+
+    document.addEventListener('visibilitychange', () => {
+        if (document.hidden) save();
+    });
+    window.addEventListener('pagehide', save);
+})();

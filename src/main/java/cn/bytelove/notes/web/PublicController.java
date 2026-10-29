@@ -20,6 +20,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 import org.springframework.web.server.ResponseStatusException;
@@ -160,6 +161,8 @@ public class PublicController {
         if (viewer.isSelf(item)) {
             positions.remember(viewer.userId(), kind, item.getId());
         }
+        // 上次滚到哪儿：下次打开同一条时前端按这个比例滚回去
+        model.addAttribute("resumeProgress", positions.progressOf(viewer.userId(), kind, item.getId()));
         model.addAttribute("bookmarked", bookmarks.anchorsOf(viewer.userId(), item.getId()).contains(""));
         model.addAttribute("bookmarkIds", bookmarks.ids(viewer.userId()));
         model.addAttribute("bookmarkAnchors", bookmarks.anchorsOf(viewer.userId(), item.getId()));
@@ -218,6 +221,23 @@ public class PublicController {
         same.sort(Comparator.comparingInt(ContentItem::getSortOrder)
                 .thenComparing(ContentItem::getTitle, Comparator.nullsLast(String::compareTo)));
         return same;
+    }
+
+    /** 滚动进度：离开页面时前端发一次，下次打开同一条按它滚回去。 */
+    @PostMapping("/position/{slug}")
+    @ResponseBody
+    public String savePosition(@PathVariable String slug,
+                               @RequestParam(defaultValue = "0") double progress,
+                               Authentication auth) {
+        Viewer viewer = viewers.current(auth);
+        if (viewer.userId() == null) {
+            return "";
+        }
+        ContentItem item = resolveAnyKind(slug, viewer);
+        if (viewer.isSelf(item)) {
+            positions.rememberProgress(viewer.userId(), item.getKind(), item.getId(), progress);
+        }
+        return "";
     }
 
     /** 手动书签：自己插的旗，想标几处标几处；anchor 为空是整篇，非空是某个标题块。 */
