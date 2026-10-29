@@ -1028,7 +1028,7 @@ button:hover,
 .with-tree {
     display: grid;
     /* 右侧列表按阅读宽度收口，两列整体居中，左右留白保持相等 */
-    grid-template-columns: 236px minmax(0, 720px);
+    grid-template-columns: 300px minmax(0, 720px);
     justify-content: center;
     gap: 2.4rem;
     padding: 2rem 1.5rem 0;
@@ -2634,10 +2634,21 @@ html[data-theme='dark'] .cl-latest {
 
 /* 详情页：正文列吃剩余宽度，不再卡在 720px，这样拖左栏才真的能改变正文宽度 */
 .with-tree.has-tree {
-    grid-template-columns: var(--tree-w, 236px) minmax(0, 1fr);
+    grid-template-columns: var(--tree-w, 300px) minmax(0, 1fr);
     justify-content: stretch;
 }
 
 .with-tree.has-tree.no-tree {
     grid-template-columns: minmax(0, 1fr);
+}
+
+/* 树节点名字长就换到第二行，不再挤成一行 */
+.tree .tree-item,
+.tree a:not(.locked),
+.tree-group {
+    white-space: normal;
+    overflow-wrap: anywhere;
+    line-height: 1.45;
+    display: block;
+    padding: 0.28rem 0.4rem 0.28rem 0.95rem;
 }
