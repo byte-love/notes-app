@@ -1974,3 +1974,90 @@ html[data-read-size='lg'] .markdown {
     background: var(--accent);
     clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 72%, 0 100%);
 }
+
+/* ---- 推荐栏 ---- */
+
+.explore-kind {
+    margin: 2rem 0 1rem;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--fg-2);
+}
+
+.tpl-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(238px, 1fr));
+    gap: 0.8rem;
+}
+
+.tpl-card {
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+    padding: 0.9rem 1rem;
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+}
+
+.tpl-card:hover {
+    border-color: var(--fg-3);
+}
+
+.tpl-title {
+    font-weight: 600;
+    color: var(--fg);
+}
+
+.tpl-title:hover {
+    text-decoration: none;
+    color: var(--accent);
+}
+
+.tpl-summary {
+    margin: 0;
+    font-size: 0.84rem;
+    line-height: 1.6;
+    color: var(--fg-2);
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.tpl-foot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin-top: auto;
+    padding-top: 0.4rem;
+}
+
+.tpl-count {
+    font-size: 0.78rem;
+    color: var(--fg-3);
+}
+
+/* 小号动作按钮，和 btn-new 同族但更轻 */
+.btn-small {
+    display: inline-block;
+    font: inherit;
+    font-size: 0.8rem;
+    text-decoration: none;
+    padding: 0.26rem 0.7rem;
+    color: var(--fg);
+    background: var(--bg-2);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    cursor: pointer;
+}
+
+.btn-small:hover {
+    border-color: var(--fg-3);
+    background: var(--bg);
+}
+
+.item-list li.is-root .item-title {
+    color: var(--fg-3);
+}

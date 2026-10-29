@@ -20,7 +20,7 @@
             } catch (e) {}
         })();
     </script>
-    <link rel="stylesheet" th:href="@{/css/app.css(v=26)}">
+    <link rel="stylesheet" th:href="@{/css/app.css(v=27)}">
 </head>
 <body>
 
@@ -35,6 +35,8 @@
                th:classappend="${tabActive == 'bagu'} ? 'is-active'">八股</a>
             <a class="tab" th:href="@{/algo}"
                th:classappend="${tabActive == 'algo'} ? 'is-active'">算法</a>
+            <a class="tab" th:href="@{/explore}"
+               th:classappend="${tabActive == 'explore'} ? 'is-active'">推荐</a>
         </nav>
         <div class="header-tools">
             <a sec:authorize="isAuthenticated()" th:href="@{/admin}">管理</a>
