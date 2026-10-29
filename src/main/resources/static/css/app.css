@@ -1844,8 +1844,14 @@ html[data-read-size='lg'] .markdown {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: 0.6rem;
+    gap: 1.4rem;
     margin-bottom: 1rem;
+}
+
+/* 两组筛选之间拉一道竖线：不加的话六个胶囊连成一条，分不清是哪一组 */
+.filters .seg + .seg {
+    padding-left: 1.4rem;
+    border-left: 1px solid var(--line);
 }
 
 .filter-search {
