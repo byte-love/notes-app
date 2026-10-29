@@ -231,7 +231,7 @@
         if (toc && isNaN(tocW)) tocW = toc.getBoundingClientRect().width;
 
         const applyTree = () => {
-            wrap.style.gridTemplateColumns = clamp(treeW, MIN_TREE, MAX_TREE) + 'px minmax(0, 720px)';
+            wrap.style.setProperty('--tree-w', clamp(treeW, MIN_TREE, MAX_TREE) + 'px');
         };
         const applyToc = () => {
             if (!toc) return;
@@ -254,6 +254,7 @@
                     const x = ev.touches ? ev.touches[0].clientX : ev.clientX;
                     onMove(x - startX);
                     startX = x;
+                    layout();
                     if (ev.cancelable) ev.preventDefault();
                 };
                 const up = () => {
@@ -280,7 +281,7 @@
         const leftBar = makeSplitter(wrap, (dx) => {
             treeW = clamp(treeW + dx, MIN_TREE, MAX_TREE);
             applyTree();
-        }, () => save('layout:tree', Math.round(treeW)));
+        }, () => save('layout:tree', Math.round(treeW)));   // layout() 在 makeSplitter 的 move 里已调
 
         // 右边：贴着本页目录的左边缘
         let rightBar = null;

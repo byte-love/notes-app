@@ -2631,3 +2631,13 @@ html[data-theme='dark'] .cl-latest {
 .splitter.dragging::before {
     background: var(--fg-3);
 }
+
+/* 详情页：正文列吃剩余宽度，不再卡在 720px，这样拖左栏才真的能改变正文宽度 */
+.with-tree.has-tree {
+    grid-template-columns: var(--tree-w, 236px) minmax(0, 1fr);
+    justify-content: stretch;
+}
+
+.with-tree.has-tree.no-tree {
+    grid-template-columns: minmax(0, 1fr);
+}
