@@ -140,8 +140,13 @@ public class PublicController {
         int start = (from == null || from < 0) ? 0 : Math.min(from, grouped.size());
         int end = start;
         int count = 0;
-        while (end < grouped.size() && (count < BATCH_ITEMS || end == start)) {
-            count += grouped.get(end).items().size();
+        while (end < grouped.size()) {
+            int size = grouped.get(end).items().size();
+            // 一组比一批还大时也只能整组给，但别再多塞下一组进来
+            if (end > start && (count >= BATCH_ITEMS || count + size > BATCH_ITEMS * 2)) {
+                break;
+            }
+            count += size;
             end++;
         }
         model.addAttribute("groups", grouped.subList(start, end));
