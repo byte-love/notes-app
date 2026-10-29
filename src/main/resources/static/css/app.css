@@ -2732,6 +2732,25 @@ html[data-theme='dark'] .cl-latest {
     margin-top: 1.8rem;
 }
 
+/* 行内操作按钮统一放右列、纵向对齐，不要跟着标题乱跑 */
+.memo-list li {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    column-gap: 1.2rem;
+    align-items: start;
+}
+
+.memo-list .item-main,
+.memo-list .item-summary {
+    grid-column: 1;
+}
+
+.memo-list .item-action {
+    grid-column: 2;
+    grid-row: 1;
+    justify-self: end;
+}
+
 .item-group-title {
     margin: 0 0 0.8rem;
     font-size: 0.92rem;
