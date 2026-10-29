@@ -1855,13 +1855,69 @@ html[data-read-size='lg'] .markdown {
 }
 
 .filter-search {
+    position: relative;
+    display: flex;
+    align-items: center;
     margin-left: auto;
 }
 
+.search-icon {
+    position: absolute;
+    left: 0.75rem;
+    width: 14px;
+    height: 14px;
+    color: var(--fg-3);
+    pointer-events: none;
+}
+
 .filter-search input[type="search"] {
-    width: 15rem;
+    width: 17rem;
     font-size: 0.86rem;
-    padding: 0.34rem 0.6rem;
+    padding: 0.46rem 0.95rem 0.46rem 2.1rem;
+    border-radius: 999px;
+    border: 1px solid var(--line);
+    background: var(--bg-2);
+    color: var(--fg);
+}
+
+.filter-search input[type="search"]::placeholder {
+    color: var(--fg-3);
+}
+
+.filter-search input[type="search"]:focus {
+    outline: none;
+    background: var(--bg);
+    border-color: var(--accent);
+}
+
+/* 新建按钮：和筛选胶囊、搜索框同一套圆角语言 */
+.btn-new {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.44rem 0.95rem 0.44rem 0.8rem;
+    font-size: 0.88rem;
+    font-weight: 500;
+    color: var(--fg);
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+}
+
+.btn-new .plus {
+    width: 13px;
+    height: 13px;
+    color: var(--fg-3);
+}
+
+.btn-new:hover {
+    background: var(--bg-2);
+    border-color: var(--fg-3);
+    text-decoration: none;
+}
+
+.btn-new:hover .plus {
+    color: var(--fg);
 }
 
 .filter-summary {

@@ -7,7 +7,12 @@
 <main class="wrap wide">
     <div class="section-head">
         <h1>管理</h1>
-        <a th:href="@{/admin/new}" class="btn-quiet">新建</a>
+        <a th:href="@{/admin/new}" class="btn-new">
+            <svg class="plus" viewBox="0 0 16 16" aria-hidden="true">
+                <path d="M8 3.5v9M3.5 8h9" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+            </svg>
+            新建
+        </a>
     </div>
 
     <div class="filters">
@@ -29,6 +34,10 @@
         </div>
 
         <form th:action="@{/admin}" method="get" class="filter-search">
+            <svg class="search-icon" viewBox="0 0 16 16" aria-hidden="true">
+                <circle cx="7" cy="7" r="4.3" fill="none" stroke="currentColor" stroke-width="1.5"/>
+                <path d="M10.4 10.4 14 14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+            </svg>
             <input type="search" name="q" th:value="${filterQ}" placeholder="搜索标题或 slug">
             <input type="hidden" name="kind" th:if="${filterKind != null}" th:value="${filterKind}">
             <input type="hidden" name="range" th:if="${filterRange != null}" th:value="${filterRange}">
