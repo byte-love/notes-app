@@ -17,23 +17,28 @@
         </div>
     </div>
 
-    <div class="cl-list">
-        <section class="cl-release" th:each="r : ${releases}">
-            <div class="cl-side">
-                <time th:text="${#temporals.format(r.releasedOn(), 'yyyy.MM.dd')}">2026.10.29</time>
-                <span class="cl-version" th:if="${r.version() != null}" th:text="${'v' + r.version()}">v1.0</span>
+    <div class="cl-timeline">
+        <article class="cl-item" th:each="r, st : ${releases}">
+            <div class="cl-rail">
+                <span class="cl-dot"></span>
+                <span class="cl-version" th:if="${r.version() != null}" th:text="${'v' + r.version()}">v4.1</span>
+                <time th:text="${#temporals.format(r.releasedOn(), 'yyyy-MM-dd')}">2026-10-29</time>
             </div>
 
-            <div class="cl-body">
-                <h2 th:text="${r.title()}">这次更新叫什么</h2>
-                <ul class="cl-entries">
-                    <li th:each="e : ${r.entries()}" th:attr="data-cat=${e.category()}">
-                        <span class="cl-tag" th:text="${e.label()}">新增</span>
-                        <span class="cl-text" th:text="${e.content()}">条目内容</span>
-                    </li>
-                </ul>
+            <div class="cl-card">
+                <header class="cl-card-head">
+                    <h2 th:text="${r.title()}">这次更新叫什么</h2>
+                    <span class="cl-latest" th:if="${st.first}">当前版本</span>
+                </header>
+
+                <section class="cl-section" th:each="s : ${r.sections()}">
+                    <h3 th:if="${s.name() != null}" th:text="${s.name()}">小节名</h3>
+                    <ul class="cl-points">
+                        <li th:each="i : ${s.items()}" th:utext="${i.html()}">要点</li>
+                    </ul>
+                </section>
             </div>
-        </section>
+        </article>
     </div>
 
     <p class="empty" th:if="${#lists.isEmpty(releases)}">还没有更新记录</p>

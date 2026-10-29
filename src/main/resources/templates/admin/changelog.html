@@ -15,31 +15,32 @@
     <form th:action="@{/admin/changelog/new}" method="post" class="stack">
         <div class="field">
             <div class="field-label"><span>日期</span></div>
-            <input type="date" name="releasedOn" th:value="${#temporals.format(#temporals.createToday(), 'yyyy-MM-dd')}">
+            <input type="date" name="releasedOn"
+                   th:value="${#temporals.format(#temporals.createToday(), 'yyyy-MM-dd')}">
         </div>
 
         <div class="field">
             <div class="field-label">
                 <span>版本号</span>
                 <span class="help" role="button" tabindex="0"
-                      data-help="可以不填。填了就显示成 v1.2.0 这样，方便对照代码里的 tag。">?</span>
+                      data-help="可以不填。填了就显示成 v1.2.0 这样，方便和代码里的 tag 对照。">?</span>
             </div>
-            <input type="text" name="version" placeholder="1.2.0">
+            <input type="text" name="version" placeholder="4.1">
         </div>
 
         <div class="field">
             <div class="field-label"><span>这次更新叫什么</span></div>
-            <input type="text" name="title" placeholder="多用户和推荐栏">
+            <input type="text" name="title" placeholder="论文删除 + 回收站">
         </div>
 
         <div class="field">
             <div class="field-label">
-                <span>条目</span>
+                <span>内容</span>
                 <span class="help" role="button" tabindex="0"
-                      data-help="一行一条。行首写分类：[新增] [优化] [修复] [移除]，不写前缀按「优化」算。">?</span>
+                      data-help="以 ## 开头的行是小节标题，以 - 开头（或者直接写）的行是一条要点。要点里用方括号括起来的部分会显示成小标签，比如 [删除]、[回收站]。">?</span>
             </div>
-            <textarea name="body" rows="10" spellcheck="false"
-                      placeholder="[新增] 支持注册登录，每个用户有自己的空间&#10;[优化] 管理列表行距放宽&#10;[修复] 备忘录切换后跳转到 /app/app/ 的 404"></textarea>
+            <textarea name="body" rows="14" spellcheck="false"
+                      th:attr="placeholder='## 论文列表支持删除&#10;- 每行操作列新增 [删除]，抓取到不符合要求的数据直接删掉&#10;- 勾选多篇后顶部出现 [批量删除]&#10;## 新增回收站&#10;- 论文列表右上角新增 [回收站]'"></textarea>
         </div>
 
         <div class="form-actions">
@@ -55,8 +56,8 @@
             <strong th:text="${r.title()}">标题</strong>
             <span class="cl-admin-meta">
                 <time th:text="${#temporals.format(r.releasedOn(), 'yyyy-MM-dd')}">2026-10-29</time>
-                <span th:if="${r.version() != null}" th:text="${'v' + r.version()}">v1.0</span>
-                <span th:text="${#lists.size(r.entries())} + ' 条'">1 条</span>
+                <span th:if="${r.version() != null}" th:text="${'v' + r.version()}">v4.1</span>
+                <span th:text="${r.count()} + ' 条'">1 条</span>
             </span>
             <form th:action="@{/admin/changelog/delete}" method="post" class="inline"
                   onsubmit="return confirm('删掉这一整组？');">
@@ -66,12 +67,17 @@
             </form>
         </div>
         <ul class="cl-admin-entries">
-            <li th:each="e : ${r.entries()}">
-                <span class="cl-tag" th:attr="data-cat=${e.category()}" th:text="${e.label()}">新增</span>
-                <span th:text="${e.content()}">条目</span>
-                <form th:action="@{/admin/changelog/entry/{id}/delete(id=${e.id()})}" method="post" class="inline">
-                    <button type="submit" class="link-button danger">删</button>
-                </form>
+            <li th:each="s : ${r.sections()}">
+                <span class="cl-admin-section" th:if="${s.name() != null}" th:text="${s.name()}">小节</span>
+                <ul class="cl-admin-sub">
+                    <li th:each="i : ${s.items()}">
+                        <span th:utext="${i.html()}">条目</span>
+                        <form th:action="@{/admin/changelog/entry/{id}/delete(id=${i.id()})}"
+                              method="post" class="inline">
+                            <button type="submit" class="link-button danger">删</button>
+                        </form>
+                    </li>
+                </ul>
             </li>
         </ul>
     </div>
