@@ -2663,6 +2663,47 @@ html[data-theme='dark'] .cl-latest {
     padding-left: max(1.5rem, calc((100% - 82ch) / 2 - var(--tree-w, 300px) - 2rem));
 }
 
+/* ---- 列表页（左目录 + 右条目，没有正文那一栏）----
+   左边缘跟正文列对齐，条目列放宽到 1000：这样右边不至于空一大片，
+   从列表点进正文时左边缘和树栏也不会跳。 */
+@media (min-width: 821px) {
+    .with-tree:not(.has-tree):not(.no-tree) {
+        padding-left: max(1.5rem, calc((100% - 68ch) / 2 - var(--tree-w, 300px) - 2rem));
+    }
+}
+
+.with-tree .item-list {
+    max-width: min(1000px, 92%);
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 0.9rem;
+}
+
+/* 每条一块卡片，不再用横线分隔 */
+.with-tree .item-list li {
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 0.95rem 1.1rem;
+    background: var(--bg-2);
+}
+
+.with-tree .item-list li:hover {
+    border-color: var(--fg-3);
+}
+
+/* 卡片按分类分小节 */
+.item-group + .item-group {
+    margin-top: 1.8rem;
+}
+
+.item-group-title {
+    margin: 0 0 0.8rem;
+    font-size: 0.92rem;
+    font-weight: 600;
+    color: var(--fg-2);
+    letter-spacing: 0.01em;
+}
+
 /* 树节点名字长就换到第二行，不再挤成一行 */
 .tree .tree-item,
 .tree a:not(.locked),
