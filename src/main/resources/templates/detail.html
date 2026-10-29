@@ -204,5 +204,109 @@
         });
     })();
 </script>
+
+<script>
+    // 左右两栏可以拖拽调宽（左：目录树，右：本页目录），宽度记在 localStorage
+    (() => {
+        const wrap = document.querySelector('.with-tree.has-tree');
+        if (!wrap) return;
+        const tree = wrap.querySelector('.tree-pane');
+        const docWrap = wrap.querySelector('.doc-wrap');
+        const toc = docWrap ? docWrap.querySelector('.toc') : null;
+
+        const MIN_TREE = 150, MAX_TREE = 420;
+        const MIN_TOC = 130, MAX_TOC = 380;
+
+        const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
+        const read = (k) => {
+            try { return parseInt(localStorage.getItem(k), 10); } catch (e) { return NaN; }
+        };
+        const save = (k, v) => {
+            try { localStorage.setItem(k, String(v)); } catch (e) {}
+        };
+
+        let treeW = read('layout:tree');
+        if (isNaN(treeW)) treeW = tree.getBoundingClientRect().width;
+        let tocW = toc ? read('layout:toc') : NaN;
+        if (toc && isNaN(tocW)) tocW = toc.getBoundingClientRect().width;
+
+        const applyTree = () => {
+            wrap.style.gridTemplateColumns = clamp(treeW, MIN_TREE, MAX_TREE) + 'px minmax(0, 720px)';
+        };
+        const applyToc = () => {
+            if (!toc) return;
+            docWrap.style.gridTemplateColumns = 'minmax(0, 1fr) ' + clamp(tocW, MIN_TOC, MAX_TOC) + 'px';
+        };
+
+        applyTree();
+        applyToc();
+
+        const makeSplitter = (host, onMove, onDone) => {
+            const bar = document.createElement('div');
+            bar.className = 'splitter';
+            host.appendChild(bar);
+
+            let startX = 0;
+            const down = (e) => {
+                startX = e.touches ? e.touches[0].clientX : e.clientX;
+                bar.classList.add('dragging');
+                const move = (ev) => {
+                    const x = ev.touches ? ev.touches[0].clientX : ev.clientX;
+                    onMove(x - startX);
+                    startX = x;
+                    if (ev.cancelable) ev.preventDefault();
+                };
+                const up = () => {
+                    bar.classList.remove('dragging');
+                    document.removeEventListener('mousemove', move);
+                    document.removeEventListener('mouseup', up);
+                    document.removeEventListener('touchmove', move);
+                    document.removeEventListener('touchend', up);
+                    onDone();
+                    layout();
+                };
+                document.addEventListener('mousemove', move);
+                document.addEventListener('mouseup', up);
+                document.addEventListener('touchmove', move, { passive: false });
+                document.addEventListener('touchend', up);
+                e.preventDefault();
+            };
+            bar.addEventListener('mousedown', down);
+            bar.addEventListener('touchstart', down, { passive: false });
+            return bar;
+        };
+
+        // 左边：贴着树目录的右边缘
+        const leftBar = makeSplitter(wrap, (dx) => {
+            treeW = clamp(treeW + dx, MIN_TREE, MAX_TREE);
+            applyTree();
+        }, () => save('layout:tree', Math.round(treeW)));
+
+        // 右边：贴着本页目录的左边缘
+        let rightBar = null;
+        if (toc) {
+            rightBar = makeSplitter(docWrap, (dx) => {
+                tocW = clamp(tocW - dx, MIN_TOC, MAX_TOC);
+                applyToc();
+            }, () => save('layout:toc', Math.round(tocW)));
+        }
+
+        // 把两条分隔条放到两栏的缝上
+        function layout() {
+            const wr = wrap.getBoundingClientRect();
+            const tr = tree.getBoundingClientRect();
+            leftBar.style.left = (tr.right - wr.left) + 'px';
+
+            if (rightBar && toc) {
+                const dr = docWrap.getBoundingClientRect();
+                const rr = toc.getBoundingClientRect();
+                rightBar.style.left = (rr.left - dr.left) + 'px';
+            }
+        }
+
+        layout();
+        window.addEventListener('resize', layout);
+    })();
+</script>
 </body>
 </html>

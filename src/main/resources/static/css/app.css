@@ -2566,33 +2566,68 @@ html[data-theme='dark'] .cl-latest {
     scroll-margin-top: 80px;
 }
 
+/* 书签按钮平时就浅浅地露出来（手机上没法悬停），鼠标移上去才变实 */
 .head-bookmark {
     display: inline-block;
-    width: 13px;
-    height: 18px;
-    margin-left: 0.5rem;
+    width: 9px;
+    height: 13px;
+    margin-left: 0.55rem;
     padding: 0;
-    vertical-align: middle;
+    vertical-align: 0.08em;
     background: transparent;
-    border: 1px solid var(--line);
-    border-radius: 3px;
+    border: 1px solid var(--fg-3);
+    border-radius: 2px;
     cursor: pointer;
-    opacity: 0;
-    transition: opacity 0.12s ease, border-color 0.12s ease;
+    opacity: 0.28;
+    transition: opacity 0.12s ease, background 0.12s ease, border-color 0.12s ease;
 }
 
 .markdown h2:hover .head-bookmark,
 .markdown h3:hover .head-bookmark,
-.head-bookmark.on,
 .head-bookmark:focus-visible {
-    opacity: 1;
+    opacity: 0.75;
 }
 
 .head-bookmark:hover {
-    border-color: var(--fg-3);
+    opacity: 1;
+    border-color: var(--accent);
 }
 
 .head-bookmark.on {
+    opacity: 1;
     background: var(--accent);
     border-color: var(--accent);
+}
+
+/* ---- 拖拽调整左右两栏宽度 ---- */
+
+.with-tree {
+    position: relative;
+}
+
+.splitter {
+    position: absolute;
+    top: 1.5rem;
+    bottom: 0;
+    width: 11px;
+    margin-left: -6px;
+    cursor: col-resize;
+    z-index: 6;
+    touch-action: none;
+}
+
+.splitter::before {
+    content: "";
+    position: absolute;
+    left: 5px;
+    top: 0;
+    bottom: 0;
+    width: 1px;
+    background: transparent;
+    transition: background 0.12s ease;
+}
+
+.splitter:hover::before,
+.splitter.dragging::before {
+    background: var(--fg-3);
 }
