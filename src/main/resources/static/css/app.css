@@ -1027,10 +1027,11 @@ button:hover,
 /* ---------- tree ---------- */
 .with-tree {
     display: grid;
-    /* 右侧列表按阅读宽度收口，两列整体居中，左右留白保持相等 */
-    grid-template-columns: 300px minmax(0, 720px);
-    justify-content: center;
-    gap: 2.4rem;
+    /* 树栏宽度固定，右侧吃剩余宽度。不做整体居中：
+       否则加宽树栏时整块会重新居中，看起来就是「树没动、正文往左挪」 */
+    grid-template-columns: 300px minmax(0, 1fr);
+    justify-content: stretch;
+    gap: 2rem;
     padding: 2rem 1.5rem 0;
     align-items: start;
 }

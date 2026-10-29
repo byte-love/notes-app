@@ -231,7 +231,7 @@
             try { localStorage.setItem(k, String(v)); } catch (e) {}
         };
 
-        let treeW = read('layout:tree2', tree.getBoundingClientRect().width || 300);
+        let treeW = read('layout:tree2', 300);
         // tocPct：右边的目录占「剩余宽度」的百分比
         let tocPct = toc ? read('layout:tocpct', 22) : 0;
 
