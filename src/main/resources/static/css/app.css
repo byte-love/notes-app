@@ -2061,3 +2061,91 @@ html[data-read-size='lg'] .markdown {
 .item-list li.is-root .item-title {
     color: var(--fg-3);
 }
+
+/* ---- 推荐：分组详情 ---- */
+
+.rec-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1.4rem;
+}
+
+.rec-head-main .badge {
+    margin: 0;
+}
+
+.rec-head h1 {
+    margin: 0.55rem 0 0.3rem;
+    font-size: 1.5rem;
+    letter-spacing: -0.01em;
+}
+
+.rec-count {
+    margin: 0;
+    font-size: 0.85rem;
+    color: var(--fg-3);
+}
+
+/* 列表做成一个整体容器，行与行之间用分隔线，右侧单独一列放按钮 */
+.rec-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.rec-list li {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1.5rem;
+    padding: 0.85rem 1.1rem;
+    border-bottom: 1px solid var(--line);
+}
+
+.rec-list li:last-child {
+    border-bottom: none;
+}
+
+.rec-list li:hover {
+    background: var(--bg-2);
+}
+
+.rec-list li.is-root {
+    background: var(--bg-2);
+}
+
+.rec-main {
+    min-width: 0;
+}
+
+.rec-title {
+    font-weight: 500;
+    color: var(--fg);
+}
+
+.rec-title:hover {
+    color: var(--accent);
+    text-decoration: none;
+}
+
+.rec-title.locked {
+    color: var(--fg-3);
+}
+
+.rec-summary {
+    margin: 0.28rem 0 0;
+    font-size: 0.84rem;
+    line-height: 1.6;
+    color: var(--fg-2);
+}
+
+/* 按钮列固定在右边，各行纵向对齐 */
+.rec-action {
+    flex: none;
+    margin: 0;
+}

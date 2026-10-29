@@ -7,28 +7,34 @@
 <main class="wrap wide">
     <a th:href="@{/explore}" class="back-link">返回</a>
 
-    <div class="section-head">
-        <h1 th:text="${root.title}">标题</h1>
-        <form sec:authorize="isAuthenticated()" th:action="@{/explore/copy/{id}(id=${root.id})}" method="post" class="inline">
-            <button type="submit" class="btn-small">全部加入</button>
+    <div class="rec-head">
+        <div class="rec-head-main">
+            <span class="badge" th:text="${kindLabel}">八股</span>
+            <h1 th:text="${root.title}">标题</h1>
+            <p class="rec-count" th:text="|共 ${#lists.size(items)} 条|">共 1 条</p>
+        </div>
+
+        <form sec:authorize="isAuthenticated()"
+              th:action="@{/explore/copy/{id}(id=${root.id})}" method="post" class="rec-action">
+            <button type="submit" class="btn-new">全部加入</button>
         </form>
+        <a sec:authorize="!isAuthenticated()" th:href="@{/login}" class="btn-new">全部加入</a>
     </div>
 
-    <p class="muted" th:text="|${kindLabel} · 共 ${#lists.size(items)} 条|">八股 · 共 31 条</p>
-
-    <ul class="item-list">
+    <ul class="rec-list">
         <li th:each="i : ${items}" th:classappend="${i.id == root.id} ? 'is-root' : ''">
-            <div class="item-main">
-                <a th:unless="${lockedIds != null and lockedIds.contains(i.id)}" class="item-title"
+            <div class="rec-main">
+                <a th:unless="${lockedIds != null and lockedIds.contains(i.id)}" class="rec-title"
                    th:href="${basePath + '/' + i.slug}" th:text="${i.title}">标题</a>
-                <a th:if="${lockedIds != null and lockedIds.contains(i.id)}" class="item-title locked"
-                   th:href="@{/login}" title="需要登录后查看" th:text="${i.title}">标题</a>
-                <form sec:authorize="isAuthenticated()"
-                      th:action="@{/explore/copy/{id}(id=${i.id})}" method="post" class="inline">
-                    <button type="submit" class="link-button">加入</button>
-                </form>
+                <span th:if="${lockedIds != null and lockedIds.contains(i.id)}"
+                      class="rec-title locked" th:text="${i.title}">标题</span>
+                <p class="rec-summary" th:if="${i.summary != null}" th:text="${i.summary}">摘要</p>
             </div>
-            <p class="item-summary" th:if="${i.summary != null}" th:text="${i.summary}">摘要</p>
+
+            <form sec:authorize="isAuthenticated()"
+                  th:action="@{/explore/copy/{id}(id=${i.id})}" method="post" class="rec-action">
+                <button type="submit" class="btn-small">加入</button>
+            </form>
         </li>
     </ul>
 </main>

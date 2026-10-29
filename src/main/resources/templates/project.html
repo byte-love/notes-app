@@ -5,6 +5,8 @@
 <header th:replace="~{fragments/layout :: nav}"></header>
 
 <main class="project-wrap">
+    <a class="back-link" th:href="${basePath}" onclick="if (history.length > 1) { history.back(); return false; }">返回</a>
+
     <nav class="crumbs">
         <a th:href="@{/projects}">项目</a>
         <span class="sep">/</span>
