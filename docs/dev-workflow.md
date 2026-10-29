@@ -129,9 +129,15 @@ sudo /opt/deploy/sync-db.sh    # 正式库整库覆盖到测试库
 - `content_item.owner_id` 指向创建者；`slug` 只在本人范围内唯一（`uq_content_owner_slug`）
 - `recommended = true` 的内容才会出现在「推荐」里、对别人可见；管理员新建的内容自动是 `true`
 - `visibility` 只在「别人看推荐内容」时起作用：`PUBLIC` 谁都能看、`MEMBER` 要登录、`PRIVATE` 只有本人
-- 备忘录是 `content_star(user_id, item_id)`，不是内容上的一个布尔值——标记属于「谁标的」
+- 收藏夹是 `content_star(user_id, item_id)`，不是内容上的一个布尔值——标记属于「谁标的」
+- 书签是 `content_bookmark(user_id, item_id, anchor)`：`anchor` 为空是整篇，非空是正文里某个标题
+  （标题 id 由标题文字生成，见 `MarkdownRenderer.slugOf`；以前用 h1/h2 序位号，插标题会错位）
+- 「上次看到」是 `reading_position(user_id, kind, item_id)`：每个分区只记一条，打开详情页自动写
 - `/admin` 现在登录就能进，默认只看到自己的；管理员额外能看到全部
+- 更新日志（`/changelog`）是手写的发版说明，存在 `changelog_entry`，只有管理员能写
+- 缩略图和更新日志里没有「内容动态」那个页面了（2026-10-29 去掉）
 - 注册开关：`/opt/apps/notes-app-test/app.env` 里的 `REGISTER_ENABLED=false` 关掉（关掉后 `/register` 直接 404），同 IP 每小时最多注册 3 个
+- 会话超时 24h，另有 remember-me 30 天：**重启进程不会把用户踢下线**（会话本身在内存里，重启会清空，靠 cookie 自动恢复）
 
 ## 约定
 
