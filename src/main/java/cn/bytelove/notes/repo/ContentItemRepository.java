@@ -29,4 +29,6 @@ public interface ContentItemRepository extends JpaRepository<ContentItem, Long> 
     boolean existsByOwnerIdAndSlug(Long ownerId, String slug);
 
     long countByOwnerId(Long ownerId);
+
+    long countByOwnerIdAndKind(Long ownerId, ContentKind kind);
 }

@@ -47,8 +47,16 @@ public class ContentStarService {
                 "select item_id from content_star where user_id = ?", Long.class, userId));
     }
 
-    public List<Long> starredItemIds(Long userId) {
+    public long count(Long userId) {
         if (userId == null) {
+            return 0;
+        }
+        Long n = jdbc.queryForObject(
+                "select count(*) from content_star where user_id = ?", Long.class, userId);
+        return n == null ? 0 : n;
+    }
+
+    public List<Long> starredItemIds(Long userId) {        if (userId == null) {
             return List.of();
         }
         return jdbc.queryForList(

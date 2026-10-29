@@ -9,18 +9,24 @@
     <script th:inline="javascript">
         (() => {
             try {
-                const saved = localStorage.getItem('theme');
-                if (saved === 'light' || saved === 'dark') document.documentElement.dataset.theme = saved;
+                const theme = localStorage.getItem('theme');
+                if (theme === 'light' || theme === 'dark' || theme === 'sepia') {
+                    document.documentElement.dataset.theme = theme;
+                }
+                const size = localStorage.getItem('read-size');
+                if (size === 'sm' || size === 'md' || size === 'lg') {
+                    document.documentElement.dataset.readSize = size;
+                }
             } catch (e) {}
         })();
     </script>
-    <link rel="stylesheet" th:href="@{/css/app.css(v=10)}">
+    <link rel="stylesheet" th:href="@{/css/app.css(v=12)}">
 </head>
 <body>
 
 <header th:fragment="nav" class="site-header">
     <div class="header-inner">
-        <a class="brand" href="/">byte-love</a>
+        <a class="brand" th:href="@{/}">byte-love</a>
         <nav class="tabs" aria-label="站点分区">
             <a class="tab" th:href="@{/projects}"
                th:classappend="${tabActive == 'project'} ? 'is-active'">项目</a>
@@ -32,11 +38,9 @@
                th:classappend="${tabActive == 'algo'} ? 'is-active'">算法</a>
         </nav>
         <div class="header-tools">
-            <a sec:authorize="isAuthenticated()" th:href="@{/memo}">备忘录</a>
             <a sec:authorize="isAuthenticated()" th:href="@{/admin}">管理</a>
-            <form sec:authorize="isAuthenticated()" th:action="@{/logout}" method="post" class="inline">
-                <button type="submit" class="link-button">退出</button>
-            </form>
+            <a sec:authorize="isAuthenticated()" th:href="@{/me}"
+               th:text="${#authentication.name}">用户名</a>
             <a sec:authorize="!isAuthenticated()" th:if="${registerEnabled}" th:href="@{/register}">注册</a>
             <a sec:authorize="!isAuthenticated()" th:href="@{/login}">登录</a>
             <button class="theme-toggle" type="button" aria-label="切换深浅色">☀</button>
@@ -45,10 +49,6 @@
 </header>
 
 <th:block th:fragment="foot">
-<footer class="site-footer">
-    <span>byte-love</span>
-</footer>
-
 <script>
     (() => {
         const btn = document.querySelector('.theme-toggle');

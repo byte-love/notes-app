@@ -51,6 +51,18 @@ html[data-theme='dark'] {
     --tree-guide: #2e3a4a;
 }
 
+html[data-theme='sepia'] {
+    --fg: #3b3227;
+    --fg-2: #6b5f4f;
+    --fg-3: #968a76;
+    --bg: #f5efe2;
+    --bg-2: #efe7d6;
+    --line: #ddd2bd;
+    --accent: #a0522d;
+    --danger: #b03030;
+    --tree-guide: #d8ccb6;
+}
+
 * {
     box-sizing: border-box;
 }
@@ -447,6 +459,27 @@ button:hover,
     border: none;
     padding: 0;
     cursor: pointer;
+}
+
+/* 页面头部的次级动作（新建之类）：描边不抢眼，不用实心强调色 */
+.btn-quiet {
+    display: inline-flex;
+    align-items: center;
+    font: inherit;
+    font-size: 0.88rem;
+    line-height: 1;
+    color: var(--fg);
+    background: transparent;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 0.42rem 0.85rem;
+    cursor: pointer;
+}
+
+.btn-quiet:hover {
+    background: var(--bg-2);
+    border-color: var(--fg-3);
+    text-decoration: none;
 }
 
 .link-button.danger {
@@ -1203,4 +1236,147 @@ button:hover,
     .header-inner .tab {
         padding: 5px 8px;
     }
+}
+
+/* ---- 个人主页 ---- */
+
+.me-head {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+.me-avatar {
+    width: 56px;
+    height: 56px;
+    flex: none;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    font-size: 1.35rem;
+    font-weight: 600;
+    color: #fff;
+    background: hsl(var(--h, 210) 42% 46%);
+}
+
+.me-head h1 {
+    margin: 0 0 0.15rem;
+    font-size: 1.3rem;
+}
+
+.me-sub {
+    margin: 0;
+    color: var(--fg-3);
+    font-size: 0.86rem;
+}
+
+.me-stats {
+    list-style: none;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+    padding: 0;
+    margin: 0 0 2.4rem;
+}
+
+.me-stats li {
+    flex: 1 1 5rem;
+}
+
+.me-stats a {
+    display: block;
+    padding: 0.7rem 0.9rem;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--bg-2);
+    color: var(--fg);
+}
+
+.me-stats a:hover {
+    border-color: var(--fg-3);
+    text-decoration: none;
+}
+
+.me-stats strong {
+    display: block;
+    font-size: 1.25rem;
+    font-weight: 600;
+}
+
+.me-stats span {
+    color: var(--fg-2);
+    font-size: 0.82rem;
+}
+
+.me-section {
+    margin-bottom: 2.4rem;
+}
+
+.me-section h2 {
+    margin: 0 0 0.9rem;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--fg-2);
+}
+
+.me-row {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid var(--line);
+}
+
+.me-row:last-child {
+    border-bottom: none;
+}
+
+.me-label {
+    width: 5.5rem;
+    flex: none;
+    color: var(--fg-2);
+    font-size: 0.88rem;
+}
+
+.seg {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+}
+
+.seg button {
+    font: inherit;
+    font-size: 0.85rem;
+    padding: 0.3rem 0.75rem;
+    color: var(--fg-2);
+    background: transparent;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    cursor: pointer;
+}
+
+.seg button:hover {
+    color: var(--fg);
+    border-color: var(--fg-3);
+}
+
+.seg button.on {
+    color: var(--fg);
+    background: var(--bg-2);
+    border-color: var(--fg-3);
+}
+
+/* ---- 正文字号 ---- */
+
+html[data-read-size='sm'] .markdown {
+    font-size: 14px;
+}
+
+html[data-read-size='md'] .markdown {
+    font-size: 16px;
+}
+
+html[data-read-size='lg'] .markdown {
+    font-size: 18px;
 }
