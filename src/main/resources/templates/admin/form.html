@@ -57,6 +57,13 @@
         </label>
 
         <label>
+            项目结构化字段（JSON，只在类型选 PROJECT 时生效）
+            <textarea th:field="*{projectDoc}" rows="14" spellcheck="false"
+                      placeholder='{"title":{"zh":"…","en":"…"},"stack":["Spring Boot"],"action":{"zh":["…"],"en":["…"]}}'></textarea>
+            <span class="error" th:if="${#fields.hasErrors('projectDoc')}" th:errors="*{projectDoc}"></span>
+        </label>
+
+        <label>
             正文（Markdown）
             <textarea th:field="*{body}" rows="24" spellcheck="false"></textarea>
             <span class="error" th:if="${#fields.hasErrors('body')}" th:errors="*{body}"></span>

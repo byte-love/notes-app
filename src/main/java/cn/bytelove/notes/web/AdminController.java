@@ -5,6 +5,7 @@ import cn.bytelove.notes.domain.ContentKind;
 import cn.bytelove.notes.domain.Visibility;
 import cn.bytelove.notes.repo.ContentItemRepository;
 import cn.bytelove.notes.service.NoteTreeService;
+import cn.bytelove.notes.service.ProjectMetaService;
 import cn.bytelove.notes.service.ViewerService;
 import cn.bytelove.notes.service.VisibilityService.Viewer;
 import cn.bytelove.notes.web.form.ContentForm;
@@ -36,11 +37,14 @@ public class AdminController {
     private final ContentItemRepository items;
     private final NoteTreeService tree;
     private final ViewerService viewers;
+    private final ProjectMetaService meta;
 
-    public AdminController(ContentItemRepository items, NoteTreeService tree, ViewerService viewers) {
+    public AdminController(ContentItemRepository items, NoteTreeService tree, ViewerService viewers,
+                           ProjectMetaService meta) {
         this.items = items;
         this.tree = tree;
         this.viewers = viewers;
+        this.meta = meta;
     }
 
     @ModelAttribute("kinds")
@@ -80,6 +84,9 @@ public class AdminController {
         if (items.existsByOwnerIdAndSlug(viewer.userId(), form.getSlug())) {
             binding.rejectValue("slug", "duplicate", "slug 已存在");
         }
+        if (!meta.isValid(form.getProjectDoc())) {
+            binding.rejectValue("projectDoc", "invalid", "项目字段不是合法的 JSON");
+        }
         if (binding.hasErrors()) {
             model.addAttribute("editing", false);
             model.addAttribute("parents", parentOptions(null, viewer.userId()));
@@ -91,7 +98,8 @@ public class AdminController {
         item.setSortOrder(form.getSortOrder() == null ? 0 : form.getSortOrder());
         // 管理员的公开内容就是站点的推荐栏；普通用户的内容先只留给自己
         item.setRecommended(viewer.admin());
-        items.save(item);
+        ContentItem saved = items.save(item);
+        saveProjectDoc(saved, form);
         return "redirect:/admin";
     }
 
@@ -108,6 +116,7 @@ public class AdminController {
         form.setVisibility(item.getVisibility());
         form.setParentId(item.getParentId());
         form.setSortOrder(item.getSortOrder());
+        form.setProjectDoc(meta.findDoc(item.getId()).orElse(null));
         model.addAttribute("form", form);
         model.addAttribute("itemId", id);
         model.addAttribute("editing", true);
@@ -132,6 +141,9 @@ public class AdminController {
                 binding.rejectValue("parentId", "cycle", "不能把子孙节点设为父节点");
             }
         }
+        if (!meta.isValid(form.getProjectDoc())) {
+            binding.rejectValue("projectDoc", "invalid", "项目字段不是合法的 JSON");
+        }
         if (binding.hasErrors()) {
             model.addAttribute("editing", true);
             model.addAttribute("itemId", id);
@@ -147,8 +159,19 @@ public class AdminController {
         item.setVisibility(form.getVisibility());
         item.setParentId(form.getParentId());
         item.setSortOrder(form.getSortOrder() == null ? 0 : form.getSortOrder());
-        items.save(item);
+        ContentItem saved = items.save(item);
+        saveProjectDoc(saved, form);
         return "redirect:/admin";
+    }
+
+    /** 项目类型的结构化字段跟着内容一起存；其它类型清掉残留。 */
+    private void saveProjectDoc(ContentItem item, ContentForm form) {
+        String doc = form.getProjectDoc();
+        if (item.getKind() == ContentKind.PROJECT && doc != null && !doc.isBlank()) {
+            meta.save(item.getId(), doc, item.getSlug());
+        } else {
+            meta.delete(item.getId());
+        }
     }
 
     @PostMapping("/{id}/delete")

@@ -20,9 +20,10 @@
 
 <header th:fragment="nav" class="site-header">
     <div class="header-inner">
-        <a class="brand" th:href="@{/}">byte-love</a>
+        <a class="brand" href="/">byte-love</a>
         <nav class="tabs" aria-label="站点分区">
-            <a class="tab" th:href="${tabProjectsHref}">项目</a>
+            <a class="tab" th:href="@{/projects}"
+               th:classappend="${tabActive == 'project'} ? 'is-active'">项目</a>
             <a class="tab" th:href="@{/notes}"
                th:classappend="${tabActive == null or tabActive == 'note'} ? 'is-active'">笔记</a>
             <a class="tab" th:href="@{/bagu}"

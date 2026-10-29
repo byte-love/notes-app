@@ -15,6 +15,8 @@ public interface ContentItemRepository extends JpaRepository<ContentItem, Long> 
     /** 推荐栏：所有标为推荐的内容，不分作者。 */
     List<ContentItem> findByKindAndRecommendedTrueOrderByUpdatedAtDesc(ContentKind kind);
 
+    List<ContentItem> findByKindAndRecommendedTrueOrderBySortOrderAscIdAsc(ContentKind kind);
+
     List<ContentItem> findByOwnerIdAndKindOrderBySortOrderAsc(Long ownerId, ContentKind kind);
 
     List<ContentItem> findByOwnerIdOrderByKindAscSortOrderAsc(Long ownerId);
