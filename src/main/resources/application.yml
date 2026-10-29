@@ -43,6 +43,7 @@ notes:
   viewer-username: ${VIEWER_USERNAME:viewer}
   viewer-password: ${VIEWER_PASSWORD:}
   tab-projects-href: ${TAB_PROJECTS_HREF:/}
+  register-enabled: ${REGISTER_ENABLED:true}
 
 logging:
   level:

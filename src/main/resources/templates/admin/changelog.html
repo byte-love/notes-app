@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="zh-CN">
+<head th:replace="~{fragments/layout :: head('更新日志管理 · byte-love')}"></head>
+<body>
+<header th:replace="~{fragments/layout :: nav}"></header>
+
+<main class="wrap">
+    <a th:href="@{/changelog}" class="back-link">返回</a>
+
+    <div class="section-head">
+        <h1>更新日志</h1>
+        <a th:href="@{/changelog}" class="btn-quiet">看页面</a>
+    </div>
+
+    <form th:action="@{/admin/changelog/new}" method="post" class="stack">
+        <div class="field">
+            <div class="field-label"><span>日期</span></div>
+            <input type="date" name="releasedOn"
+                   th:value="${#temporals.format(#temporals.createToday(), 'yyyy-MM-dd')}">
+        </div>
+
+        <div class="field">
+            <div class="field-label">
+                <span>版本号</span>
+                <span class="help" role="button" tabindex="0"
+                      data-help="可以不填。填了就显示成 v1.2.0 这样，方便和代码里的 tag 对照。">?</span>
+            </div>
+            <input type="text" name="version" placeholder="4.1">
+        </div>
+
+        <div class="field">
+            <div class="field-label"><span>这次更新叫什么</span></div>
+            <input type="text" name="title" placeholder="论文删除 + 回收站">
+        </div>
+
+        <div class="field">
+            <div class="field-label">
+                <span>内容</span>
+                <span class="help" role="button" tabindex="0"
+                      data-help="以 ## 开头的行是小节标题，以 - 开头（或者直接写）的行是一条要点。要点里用方括号括起来的部分会显示成小标签，比如 [删除]、[回收站]。">?</span>
+            </div>
+            <textarea name="body" rows="14" spellcheck="false"
+                      th:attr="placeholder='## 论文列表支持删除&#10;- 每行操作列新增 [删除]，抓取到不符合要求的数据直接删掉&#10;- 勾选多篇后顶部出现 [批量删除]&#10;## 新增回收站&#10;- 论文列表右上角新增 [回收站]'"></textarea>
+        </div>
+
+        <div class="form-actions">
+            <button type="submit" class="btn-primary">发布</button>
+            <a th:href="@{/admin/changelog}" class="btn-ghost">取消</a>
+        </div>
+    </form>
+
+    <h2 class="cl-admin-head">已有的发布</h2>
+
+    <div class="cl-admin" th:each="r : ${releases}">
+        <div class="cl-admin-head-row">
+            <strong th:text="${r.title()}">标题</strong>
+            <span class="cl-admin-meta">
+                <time th:text="${#temporals.format(r.releasedOn(), 'yyyy-MM-dd')}">2026-10-29</time>
+                <span th:if="${r.version() != null}" th:text="${'v' + r.version()}">v4.1</span>
+                <span th:text="${r.count()} + ' 条'">1 条</span>
+            </span>
+            <form th:action="@{/admin/changelog/delete}" method="post" class="inline"
+                  onsubmit="return confirm('删掉这一整组？');">
+                <input type="hidden" name="releasedOn" th:value="${r.releasedOn()}">
+                <input type="hidden" name="title" th:value="${r.title()}">
+                <button type="submit" class="link-button danger">删除整组</button>
+            </form>
+        </div>
+        <ul class="cl-admin-entries">
+            <li th:each="s : ${r.sections()}">
+                <span class="cl-admin-section" th:if="${s.name() != null}" th:text="${s.name()}">小节</span>
+                <ul class="cl-admin-sub">
+                    <li th:each="i : ${s.items()}">
+                        <span th:utext="${i.html()}">条目</span>
+                        <form th:action="@{/admin/changelog/entry/{id}/delete(id=${i.id()})}"
+                              method="post" class="inline">
+                            <button type="submit" class="link-button danger">删</button>
+                        </form>
+                    </li>
+                </ul>
+            </li>
+        </ul>
+    </div>
+
+    <p class="empty" th:if="${#lists.isEmpty(releases)}">还没有发布记录</p>
+</main>
+
+<footer th:replace="~{fragments/layout :: foot}"></footer>
+</body>
+</html>

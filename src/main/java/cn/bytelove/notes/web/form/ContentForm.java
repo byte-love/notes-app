@@ -34,6 +34,17 @@ public class ContentForm {
 
     private Integer sortOrder = 0;
 
+    /** 项目的结构化字段（中英双语、action/result 是数组），存 project_meta.doc，只在类型为 PROJECT 时生效。 */
+    private String projectDoc;
+
+    public String getProjectDoc() {
+        return projectDoc;
+    }
+
+    public void setProjectDoc(String projectDoc) {
+        this.projectDoc = projectDoc;
+    }
+
     public ContentKind getKind() {
         return kind;
     }

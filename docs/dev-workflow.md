@@ -41,11 +41,33 @@ cd notes-app && git checkout dev
 git add -A && git commit -m "feat: 描述你改了什么"
 git push origin dev
 
-# 上测试环境
+# 上测试环境：先把包投到共享目录（不需要 root）
+tar czf notes-src-dev.tar.gz --exclude=notes-app/target --exclude=notes-app/.git notes-app
+scp notes-src-dev.tar.gz dev@47.104.210.93:/srv/deploy/
+
 ssh dev@47.104.210.93
 sudo /opt/deploy/app.sh dev      # 改后端/模板/CSS
-sudo /opt/deploy/site.sh dev     # 改作品集（Astro 静态站）时用
+# 改作品集：把 dist.tar.gz 传成 /srv/deploy/dist-dev.tar.gz，再 sudo /opt/deploy/site.sh dev
 ```
+
+**包必须放在脚本自己会去找的位置。** 脚本按环境名读 `/srv/deploy/` 下的包：
+
+| 命令 | 优先读 | 没有才回落到 |
+|---|---|---|
+| `app.sh dev` | `/srv/deploy/notes-src-dev.tar.gz` | `/root/notes-src.tar.gz` |
+| `app.sh prod` | `/srv/deploy/notes-src-prod.tar.gz` | `/root/notes-src.tar.gz` |
+| `site.sh dev` | `/srv/deploy/dist-dev.tar.gz` | `/root/dist-dev.tar.gz` |
+| `site.sh prod` | `/srv/deploy/dist-prod.tar.gz` | `/root/dist.tar.gz` |
+
+`/srv/deploy` 是 `root:dev`、组可写，两个人都能往里面放包。脚本开头会打印
+`用的包: <路径> (修改时间 …, 属主 …)`，部署完看一眼就知道发的是谁传的那份。
+
+`sudo` 白名单是**精确匹配**的：`sudo /opt/deploy/app.sh dev` 能过，
+在后面多加一个参数（比如自己指定源码包路径 `... dev /tmp/x.tar.gz`）就不匹配了，
+会提示 `sudo: a password is required`。
+
+**两个人都能发正式。** 所以发之前先确认那份包是对的——覆盖上去就是线上，
+出问题用 `/srv/backup/pg/` 的小时备份回滚数据库，jar 用 `notes-app.jar.bak` 换回来。
 
 部署脚本会自动：解压源码 → Maven 编译 → 备份旧 jar（`.bak`）→ 停服 → 换包 → 启动 → 等健康检查 → 报告状态码。编译失败会直接退出，**不会把服务搞停**。
 
@@ -100,6 +122,17 @@ sudo /opt/deploy/sync-db.sh    # 正式库整库覆盖到测试库
 
 `restore-db.sh` 和 `sync-db.sh` 都会先停服、导入、再启动，中间大约 40 秒服务不可用，别在别人正在看的时候跑。
 
+## 多用户与权限
+
+从 V5 开始，每个用户有自己的项目/笔记/八股/算法空间。
+
+- `content_item.owner_id` 指向创建者；`slug` 只在本人范围内唯一（`uq_content_owner_slug`）
+- `recommended = true` 的内容才会出现在「推荐」里、对别人可见；管理员新建的内容自动是 `true`
+- `visibility` 只在「别人看推荐内容」时起作用：`PUBLIC` 谁都能看、`MEMBER` 要登录、`PRIVATE` 只有本人
+- 备忘录是 `content_star(user_id, item_id)`，不是内容上的一个布尔值——标记属于「谁标的」
+- `/admin` 现在登录就能进，默认只看到自己的；管理员额外能看到全部
+- 注册开关：`/opt/apps/notes-app-test/app.env` 里的 `REGISTER_ENABLED=false` 关掉（关掉后 `/register` 直接 404），同 IP 每小时最多注册 3 个
+
 ## 约定
 
 - **不要直接往 `main` 推**，`main` 只接 `dev` 的合并
@@ -121,4 +154,19 @@ grep 命中就退出，`tee` 收到 SIGPIPE，整个管道退出码变成 141，
 **CSS 里 `padding` 简写会覆盖同一条规则的 `padding-left`**：给树的分组按钮加
 `padding: 0.34rem 0.5rem` 之后，之前单独写的 `padding-left: 0.95rem` 被冲掉，折叠箭头直接压在文字上。
 改的时候要么写全四个值，要么把 `padding-left` 放在简写之后。
+
+**PowerShell 写文件会带 BOM，javac 编译不过**：`Set-Content -Encoding UTF8` 在 Windows PowerShell 下
+会写 `EF BB BF` 开头，编译报 `class, interface, enum, or record expected`（位置指向第一个 import，
+很容易误以为是括号问题）。改 Java 源码要么用编辑器，要么写完后去掉 BOM。
+
+**`grant all` 不等于能改表**：测试库的表是从正式库 dump 恢复的，属主是 `notes`，而 `notes-app-dev`
+用 `notes_dev` 连。`grant all` 只给 DML 权限，`ALTER TABLE`（Flyway 迁移）要的是**属主**，
+报错 `must be owner of table content_item`。`restore-db.sh` / `sync-db.sh` 现在恢复完会调用
+`/opt/deploy/test-owner.sql` 把表和序列的属主转给 `notes_dev`。
+不能用 `REASSIGN OWNED`：`notes` 同时是数据库属主，会报「被数据库系统要求的对象不能转」。
+
+**健康检查别用 nginx 的状态码**：应用没起来时 nginx 返回 502，而 502 不等于「连接失败」，
+脚本里 `[ "$code" != "000" ]` 会立刻误判为已就绪。要么直连 `127.0.0.1:8082` 等 200，
+要么显式排除 502/504。重启一次大概要 30 秒。
+
 

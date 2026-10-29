@@ -14,6 +14,8 @@
 
     <main class="doc-wrap" th:classappend="${#lists.isEmpty(toc)} ? 'no-toc'">
         <article class="doc">
+            <a class="back-link" th:href="${basePath}" onclick="if (history.length > 1) { history.back(); return false; }">返回</a>
+
             <nav class="crumbs" th:if="${crumbs != null and #lists.size(crumbs) > 1}">
                 <a th:each="c, s : ${crumbs}"
                    th:href="${basePath + '/' + c.slug}"
@@ -27,8 +29,14 @@
                     <time th:text="${#temporals.format(item.updatedAt, 'yyyy-MM-dd')}">2026-01-01</time>
                     <form sec:authorize="isAuthenticated()" th:action="@{/star/{s}(s=${item.slug})}"
                           method="post" class="inline">
-                        <button type="submit" class="star-btn" th:classappend="${item.starred} ? 'on'"
-                                th:text="${item.starred} ? '★ 已在备忘录' : '☆ 加入备忘录'">☆ 加入备忘录</button>
+                        <button type="submit" class="star-btn" th:classappend="${starred} ? 'on'"
+                                th:text="${starred} ? '★ 已收藏' : '☆ 收藏'">☆ 收藏</button>
+                    </form>
+                    <form sec:authorize="isAuthenticated()" th:action="@{/bookmark/{s}(s=${item.slug})}"
+                          method="post" class="inline">
+                        <button type="submit" class="star-btn"
+                                th:classappend="${bookmarked} ? 'on'"
+                                th:text="${bookmarked} ? '已加书签' : '加书签'">加书签</button>
                     </form>
                 </div>
             </header>

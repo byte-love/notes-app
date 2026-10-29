@@ -9,33 +9,46 @@
     <script th:inline="javascript">
         (() => {
             try {
-                const saved = localStorage.getItem('theme');
-                if (saved === 'light' || saved === 'dark') document.documentElement.dataset.theme = saved;
+                const theme = localStorage.getItem('theme');
+                if (theme === 'light' || theme === 'dark' || theme === 'sepia') {
+                    document.documentElement.dataset.theme = theme;
+                }
+                const size = localStorage.getItem('read-size');
+                if (size === 'sm' || size === 'md' || size === 'lg') {
+                    document.documentElement.dataset.readSize = size;
+                }
             } catch (e) {}
         })();
     </script>
-    <link rel="stylesheet" th:href="@{/css/app.css(v=10)}">
+    <link rel="stylesheet" th:href="@{/css/app.css(v=35)}">
 </head>
 <body>
 
 <header th:fragment="nav" class="site-header">
     <div class="header-inner">
-        <a class="brand" th:href="@{/}">byte-love</a>
         <nav class="tabs" aria-label="站点分区">
-            <a class="tab" th:href="${tabProjectsHref}">项目</a>
+            <a class="tab" th:href="@{/projects}"
+               th:classappend="${tabActive == 'project'} ? 'is-active'">项目</a>
             <a class="tab" th:href="@{/notes}"
-               th:classappend="${tabActive == null or tabActive == 'note'} ? 'is-active'">笔记</a>
+               th:classappend="${tabActive == 'note'} ? 'is-active'">笔记</a>
             <a class="tab" th:href="@{/bagu}"
                th:classappend="${tabActive == 'bagu'} ? 'is-active'">八股</a>
             <a class="tab" th:href="@{/algo}"
                th:classappend="${tabActive == 'algo'} ? 'is-active'">算法</a>
+            <a class="tab" th:href="@{/explore}"
+               th:classappend="${tabActive == 'explore'} ? 'is-active'">推荐</a>
+            <a class="tab" th:href="@{/changelog}"
+               th:classappend="${tabActive == 'updates'} ? 'is-active'">更新日志</a>
         </nav>
         <div class="header-tools">
-            <a sec:authorize="isAuthenticated()" th:href="@{/memo}">备忘录</a>
-            <a sec:authorize="hasRole('ADMIN')" th:href="@{/admin}">后台</a>
-            <form sec:authorize="isAuthenticated()" th:action="@{/logout}" method="post" class="inline">
-                <button type="submit" class="link-button">退出</button>
-            </form>
+            <a sec:authorize="isAuthenticated()" th:href="@{/admin}">管理</a>
+            <a sec:authorize="isAuthenticated()" th:if="${navUser != null}"
+               th:href="@{/me}" class="user-entry" th:title="${navUser.name()}">
+                <span class="user-dot" th:style="|--h:${navUser.hue()}|"
+                      th:text="${navUser.initial()}">U</span>
+                <span class="user-name" th:text="${navUser.name()}">用户名</span>
+            </a>
+            <a sec:authorize="!isAuthenticated()" th:if="${registerEnabled}" th:href="@{/register}">注册</a>
             <a sec:authorize="!isAuthenticated()" th:href="@{/login}">登录</a>
             <button class="theme-toggle" type="button" aria-label="切换深浅色">☀</button>
         </div>
@@ -43,9 +56,135 @@
 </header>
 
 <th:block th:fragment="foot">
-<footer class="site-footer">
-    <span>byte-love</span>
-</footer>
+<script>
+    // 自制下拉：原生 select 的弹层是系统画的，改不动样式，所以自己实现一个
+    (() => {
+        const selects = [...document.querySelectorAll('.select')];
+        if (!selects.length) return;
+
+        const closeAll = () => {
+            selects.forEach((s) => {
+                s.classList.remove('open');
+                s.querySelector('.select-panel').hidden = true;
+            });
+        };
+
+        selects.forEach((sel) => {
+            const btn = sel.querySelector('.select-btn');
+            const panel = sel.querySelector('.select-panel');
+            const text = sel.querySelector('.select-text');
+            const input = sel.querySelector('input[type="hidden"]');
+            const filter = sel.querySelector('.select-filter');
+            const items = [...sel.querySelectorAll('.select-list li')];
+
+            const mark = (value) => {
+                items.forEach((li) => li.classList.toggle('on', li.dataset.value === value));
+            };
+
+            const apply = (value) => {
+                const li = items.find((x) => x.dataset.value === value);
+                if (!li) return;
+                input.value = li.dataset.value;
+                text.textContent = li.dataset.label || li.textContent.trim();
+                mark(li.dataset.value);
+            };
+
+            apply(input.value);
+
+            btn.addEventListener('click', () => {
+                const wasOpen = sel.classList.contains('open');
+                closeAll();
+                if (wasOpen) return;
+                sel.classList.add('open');
+                panel.hidden = false;
+                if (filter) {
+                    filter.value = '';
+                    items.forEach((li) => li.classList.remove('hide'));
+                    filter.focus();
+                }
+                const on = items.find((li) => li.classList.contains('on'));
+                if (on) on.scrollIntoView({ block: 'nearest' });
+            });
+
+            items.forEach((li) => {
+                li.addEventListener('click', () => {
+                    apply(li.dataset.value);
+                    closeAll();
+                });
+            });
+
+            if (filter) {
+                filter.addEventListener('input', () => {
+                    const q = filter.value.trim().toLowerCase();
+                    items.forEach((li) => {
+                        const name = (li.dataset.label || li.textContent).toLowerCase();
+                        li.classList.toggle('hide', q !== '' && !name.includes(q));
+                    });
+                });
+            }
+        });
+
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.select')) closeAll();
+        });
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') closeAll();
+        });
+    })();
+</script>
+
+<script>
+    // 表单里行末那个问号：点一下在旁边弹出说明
+    (() => {
+        const triggers = document.querySelectorAll('.help[data-help]');
+        if (!triggers.length) return;
+
+        const tip = document.createElement('div');
+        tip.className = 'gl-tip';
+        document.body.appendChild(tip);
+
+        let current = null;
+
+        const hide = () => {
+            current = null;
+            tip.classList.remove('on');
+        };
+
+        const show = (el) => {
+            current = el;
+            tip.textContent = el.getAttribute('data-help');
+            tip.style.left = '0px';
+            tip.style.top = '0px';
+            tip.classList.add('on');
+
+            const r = el.getBoundingClientRect();
+            const tw = tip.offsetWidth;
+            const th = tip.offsetHeight;
+            let left = r.left + r.width / 2 - tw / 2;
+            left = Math.max(12, Math.min(left, window.innerWidth - tw - 12));
+            let top = r.bottom + 8;
+            if (top + th > window.innerHeight - 12) top = r.top - th - 8;
+            tip.style.left = Math.round(left) + 'px';
+            tip.style.top = Math.round(Math.max(12, top)) + 'px';
+        };
+
+        document.addEventListener('click', (e) => {
+            const el = e.target.closest('.help[data-help]');
+            if (el) {
+                e.preventDefault();
+                e.stopPropagation();
+                if (current === el) hide();
+                else show(el);
+                return;
+            }
+            hide();
+        });
+
+        window.addEventListener('scroll', hide, { passive: true });
+        window.addEventListener('resize', hide);
+    })();
+</script>
 
 <script>
     (() => {

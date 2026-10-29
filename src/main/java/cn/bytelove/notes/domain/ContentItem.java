@@ -10,25 +10,31 @@ import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
+import org.hibernate.annotations.SQLRestriction;
 
 import java.time.Instant;
 
 /**
  * 笔记和项目共用一张表：两者字段结构相同，只有 kind 不同，分成两张表只会多一份重复代码。
+ * 每个用户有自己的空间，slug 只在本人范围内唯一。
  */
 @Entity
 @Table(name = "content_item")
+@SQLRestriction("deleted_at is null")
 public class ContentItem {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(name = "owner_id", nullable = false)
+    private Long ownerId;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 16)
     private ContentKind kind;
 
-    @Column(nullable = false, unique = true, length = 128)
+    @Column(nullable = false, length = 128)
     private String slug;
 
     @Column(nullable = false, length = 200)
@@ -50,9 +56,13 @@ public class ContentItem {
     @Column(name = "sort_order", nullable = false)
     private int sortOrder = 0;
 
-    /** 备忘录：背了几次还是记不住的条目。 */
+    /** 是否放进推荐栏：只有推荐的内容才对本人以外的人可见。 */
     @Column(nullable = false)
-    private boolean starred = false;
+    private boolean recommended = false;
+
+    /** 从哪一条复制来的，用于「加入我的空间」的溯源。 */
+    @Column(name = "copied_from_id")
+    private Long copiedFromId;
 
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
@@ -60,11 +70,16 @@ public class ContentItem {
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 
+    /** 软删除时间：非空表示进了回收站，所有查询由 @SQLRestriction 自动过滤掉。 */
+    @Column(name = "deleted_at")
+    private Instant deletedAt;
+
     protected ContentItem() {
     }
 
-    public ContentItem(ContentKind kind, String slug, String title, String summary,
+    public ContentItem(Long ownerId, ContentKind kind, String slug, String title, String summary,
                        String body, Visibility visibility) {
+        this.ownerId = ownerId;
         this.kind = kind;
         this.slug = slug;
         this.title = title;
@@ -87,6 +102,14 @@ public class ContentItem {
 
     public Long getId() {
         return id;
+    }
+
+    public Long getOwnerId() {
+        return ownerId;
+    }
+
+    public void setOwnerId(Long ownerId) {
+        this.ownerId = ownerId;
     }
 
     public ContentKind getKind() {
@@ -153,12 +176,20 @@ public class ContentItem {
         this.sortOrder = sortOrder;
     }
 
-    public boolean isStarred() {
-        return starred;
+    public boolean isRecommended() {
+        return recommended;
     }
 
-    public void setStarred(boolean starred) {
-        this.starred = starred;
+    public void setRecommended(boolean recommended) {
+        this.recommended = recommended;
+    }
+
+    public Long getCopiedFromId() {
+        return copiedFromId;
+    }
+
+    public void setCopiedFromId(Long copiedFromId) {
+        this.copiedFromId = copiedFromId;
     }
 
     public Instant getCreatedAt() {

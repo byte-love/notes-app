@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="zh-CN">
+<head th:replace="~{fragments/layout :: head('推荐 · byte-love')}"></head>
+<body>
+<header th:replace="~{fragments/layout :: nav}"></header>
+
+<main class="wrap wide">
+    <div class="section-head">
+        <h1>推荐</h1>
+    </div>
+
+    <p class="notice" th:if="${copied != null and copied > 0}">
+        已把 <span th:text="${copied}">0</span> 条内容加入你的空间。
+    </p>
+
+    <div class="filters">
+        <div class="seg">
+            <a th:href="@{/explore}" th:classappend="${filterKind == null} ? 'on'">全部</a>
+            <a th:each="k : ${kinds}"
+               th:href="@{/explore(kind=${#strings.toLowerCase(k.name())})}"
+               th:classappend="${filterKind == k} ? 'on'" th:text="${k.label}">笔记</a>
+        </div>
+    </div>
+
+    <section th:each="sec : ${sections}" th:if="${!#lists.isEmpty(sec.cards)}">
+        <h2 class="explore-kind" th:text="${sec.label}">八股</h2>
+        <div class="tpl-grid">
+            <article class="tpl-card" th:each="c : ${sec.cards}">
+                <a class="tpl-title"
+                   th:href="@{/explore/{k}/{s}(k=${#strings.toLowerCase(sec.kind.name())},s=${c.item.slug})}"
+                   th:text="${c.item.title}">标题</a>
+                <p class="tpl-summary" th:if="${c.item.summary != null}" th:text="${c.item.summary}">摘要</p>
+                <div class="tpl-foot">
+                    <span class="tpl-count" th:text="${c.count} + ' 条'">1 条</span>
+                    <form sec:authorize="isAuthenticated()"
+                          th:action="@{/explore/copy/{id}(id=${c.item.id})}" method="post" class="inline">
+                        <button type="submit" class="btn-small">加入我的空间</button>
+                    </form>
+                    <a sec:authorize="!isAuthenticated()" th:href="@{/login}" class="btn-small">加入我的空间</a>
+                </div>
+            </article>
+        </div>
+    </section>
+
+    <p class="empty" th:if="${!hasAny}">暂无推荐内容</p>
+</main>
+
+<footer th:replace="~{fragments/layout :: foot}"></footer>
+</body>
+</html>

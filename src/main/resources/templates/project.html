@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="zh-CN">
+<head th:replace="~{fragments/layout :: head(${item.title + ' · byte-love'})}"></head>
+<body>
+<header th:replace="~{fragments/layout :: nav}"></header>
+
+<main class="project-wrap">
+    <a class="back-link" th:href="${basePath}" onclick="if (history.length > 1) { history.back(); return false; }">返回</a>
+
+    <nav class="crumbs">
+        <a th:href="@{/projects}">项目</a>
+        <span class="sep">/</span>
+        <span class="here" th:text="${item.title}">标题</span>
+    </nav>
+
+    <article class="project">
+        <header class="project-head">
+            <h1 th:text="${project != null and project.title != null} ? ${project.title} : ${item.title}">标题</h1>
+
+            <p class="project-sub" th:if="${project != null and project.subtitle != null}"
+               th:text="${project.subtitle}">一句话说明</p>
+
+            <div class="project-facts" th:if="${project != null}">
+                <div th:if="${project.role != null}">
+                    <span class="fact-label">角色</span>
+                    <span th:text="${project.role}">全栈</span>
+                </div>
+                <div th:if="${project.period != null}">
+                    <span class="fact-label">周期</span>
+                    <span th:text="${project.period}">2026.08 – 2026.09</span>
+                </div>
+                <div>
+                    <span class="fact-label">更新</span>
+                    <time th:text="${#temporals.format(item.updatedAt, 'yyyy-MM-dd')}">2026-10-29</time>
+                </div>
+            </div>
+
+            <ul class="stack" th:if="${project != null and !#lists.isEmpty(project.stack)}">
+                <li th:each="s : ${project.stack}" th:text="${s}">Spring Boot</li>
+            </ul>
+
+            <div class="doc-meta">
+                <form sec:authorize="isAuthenticated()" th:action="@{/star/{s}(s=${item.slug})}"
+                      method="post" class="inline">
+                    <button type="submit" class="star-btn" th:classappend="${starred} ? 'on'"
+                            th:text="${starred} ? '★ 已收藏' : '☆ 收藏'">☆ 收藏</button>
+                </form>
+                <form sec:authorize="isAuthenticated()" th:action="@{/bookmark/{s}(s=${item.slug})}"
+                      method="post" class="inline">
+                    <button type="submit" class="star-btn" th:classappend="${bookmarked} ? 'on'"
+                            th:text="${bookmarked} ? '已加书签' : '加书签'">加书签</button>
+                </form>
+            </div>
+        </header>
+
+        <section th:if="${project != null and project.problem != null}">
+            <h2>背景</h2>
+            <p class="project-problem" th:text="${project.problem}">问题背景</p>
+        </section>
+
+        <section th:if="${project != null and !#lists.isEmpty(project.actions)}">
+            <h2>我做了什么</h2>
+            <ol class="project-list">
+                <li th:each="a : ${project.actions}">
+                    <span th:text="${a.text}">做了什么</span>
+                    <small th:if="${a.note != null}" th:text="${a.note}">注解</small>
+                </li>
+            </ol>
+        </section>
+
+        <section th:if="${project != null and !#lists.isEmpty(project.results)}">
+            <h2>结果</h2>
+            <ul class="project-list results">
+                <li th:each="r : ${project.results}" th:text="${r}">结果</li>
+            </ul>
+        </section>
+
+        <section th:if="${project != null and project.diagram != null}">
+            <h2>架构</h2>
+            <img class="project-diagram" th:src="${project.diagram}" th:alt="${item.title}">
+        </section>
+
+        <section th:if="${project != null and !#lists.isEmpty(project.shots)}">
+            <h2>界面截图</h2>
+            <figure class="project-shot" th:each="s : ${project.shots}">
+                <img th:src="${s.src}" th:alt="${s.caption}">
+                <figcaption th:if="${s.caption != null}" th:text="${s.caption}">说明</figcaption>
+            </figure>
+        </section>
+
+        <p class="project-repo" th:if="${project != null and project.repo != null}">
+            <a th:href="${project.repo}" class="btn-quiet" target="_blank" rel="noopener">仓库</a>
+        </p>
+
+        <div class="markdown" th:if="${project == null}" th:utext="${html}"></div>
+    </article>
+</main>
+
+<footer th:replace="~{fragments/layout :: foot}"></footer>
+</body>
+</html>

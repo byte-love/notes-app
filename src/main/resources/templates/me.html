@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="zh-CN">
+<head th:replace="~{fragments/layout :: head('个人主页 · byte-love')}"></head>
+<body>
+<header th:replace="~{fragments/layout :: nav}"></header>
+
+<main class="wrap narrow">
+    <div class="me-head">
+        <div class="me-avatar" th:style="|--h:${avatarHue}|" th:text="${initial}">Y</div>
+        <div>
+            <h1 th:text="${displayName}">用户名</h1>
+            <p class="me-sub">
+                <span th:text="|@${username}|">@username</span>
+                · 加入于 <time th:text="${#temporals.format(joined, 'yyyy-MM-dd')}">2026-10-29</time>
+            </p>
+        </div>
+    </div>
+
+    <ul class="me-stats">
+        <li><a th:href="@{/notes}"><strong th:text="${noteCount}">0</strong><span>笔记</span></a></li>
+        <li><a th:href="@{/bagu}"><strong th:text="${baguCount}">0</strong><span>八股</span></a></li>
+        <li><a th:href="@{/algo}"><strong th:text="${algoCount}">0</strong><span>算法</span></a></li>
+        <li><a th:href="@{/projects}"><strong th:text="${projectCount}">0</strong><span>项目</span></a></li>
+        <li><a th:href="@{/memo}"><strong th:text="${memoCount}">0</strong><span>收藏夹</span></a></li>
+        <li><a th:href="@{/trash}"><strong th:text="${trashCount}">0</strong><span>回收站</span></a></li>
+    </ul>
+
+    <section class="me-section">
+        <h2>阅读设置</h2>
+
+        <div class="me-row">
+            <span class="me-label">外观</span>
+            <div class="seg" data-setting="theme">
+                <button type="button" data-value="system">跟随系统</button>
+                <button type="button" data-value="light">浅色</button>
+                <button type="button" data-value="dark">深色</button>
+                <button type="button" data-value="sepia">护眼</button>
+            </div>
+        </div>
+
+        <div class="me-row">
+            <span class="me-label">正文字号</span>
+            <div class="seg" data-setting="read-size">
+                <button type="button" data-value="sm">小</button>
+                <button type="button" data-value="md">标准</button>
+                <button type="button" data-value="lg">大</button>
+            </div>
+        </div>
+    </section>
+
+    <form th:action="@{/logout}" method="post">
+        <button type="submit" class="btn-quiet">退出登录</button>
+    </form>
+</main>
+
+<script>
+    (() => {
+        const root = document.documentElement;
+        const mq = window.matchMedia('(prefers-color-scheme: dark)');
+
+        const read = (key) => {
+            try { return localStorage.getItem(key); } catch (e) { return null; }
+        };
+        const write = (key, value) => {
+            try { localStorage.setItem(key, value); } catch (e) {}
+        };
+
+        const applyTheme = (value) => {
+            if (value === 'system') {
+                delete root.dataset.theme;
+            } else {
+                root.dataset.theme = value;
+            }
+        };
+
+        const applySize = (value) => {
+            root.dataset.readSize = value;
+        };
+
+        const mark = (group, value) => {
+            group.querySelectorAll('button').forEach((b) => {
+                b.classList.toggle('on', b.dataset.value === value);
+            });
+        };
+
+        document.querySelectorAll('.seg[data-setting]').forEach((group) => {
+            const key = group.dataset.setting;
+            if (key === 'theme') {
+                mark(group, read('theme') || 'system');
+            } else {
+                mark(group, read('read-size') || 'md');
+            }
+
+            group.addEventListener('click', (e) => {
+                const btn = e.target.closest('button[data-value]');
+                if (!btn) return;
+                const value = btn.dataset.value;
+
+                if (key === 'theme') {
+                    write('theme', value);
+                    applyTheme(value);
+                } else {
+                    write('read-size', value);
+                    applySize(value);
+                }
+                mark(group, value);
+            });
+        });
+
+        // 选「跟随系统」时，系统主题变了要立刻反映
+        mq.addEventListener('change', () => {
+            if ((read('theme') || 'system') === 'system') applyTheme('system');
+        });
+    })();
+</script>
+
+<footer th:replace="~{fragments/layout :: foot}"></footer>
+</body>
+</html>

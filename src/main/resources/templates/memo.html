@@ -1,17 +1,17 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org" lang="zh-CN">
-<head th:replace="~{fragments/layout :: head('备忘录 · byte-love')}"></head>
+<head th:replace="~{fragments/layout :: head('收藏夹 · byte-love')}"></head>
 <body>
 <header th:replace="~{fragments/layout :: nav}"></header>
 
 <main class="wrap wide">
     <div class="page-head">
-        <h1>备忘录</h1>
+        <h1>收藏夹</h1>
         <span class="count" th:text="${total} + ' 条'">0 条</span>
     </div>
 
     <p class="muted" th:if="${total == 0}">
-        还没有标记的内容，在任意一条内容详情页点「☆ 加入备忘录」。
+        还没有标记的内容，在任意一条内容详情页点「☆ 收藏」。
     </p>
 
     <section th:each="g : ${grouped}" th:if="${total > 0}">

@@ -1,47 +1,93 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org" lang="zh-CN">
-<head th:replace="~{fragments/layout :: head('后台 · byte-love')}"></head>
+<head th:replace="~{fragments/layout :: head('管理 · byte-love')}"></head>
 <body>
 <header th:replace="~{fragments/layout :: nav}"></header>
 
 <main class="wrap wide">
     <div class="section-head">
-        <h1>后台</h1>
-        <a th:href="@{/admin/new}" class="button">新建</a>
+        <h1>管理</h1>
+        <a th:href="@{/admin/new}" class="btn-new">
+            <svg class="plus" viewBox="0 0 16 16" aria-hidden="true">
+                <path d="M8 3.5v9M3.5 8h9" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+            </svg>
+            新建
+        </a>
     </div>
 
-    <table class="admin-table">
-        <thead>
-        <tr>
-            <th>ID</th>
-            <th>类型</th>
-            <th>Slug</th>
-            <th>标题</th>
-            <th>可见性</th>
-            <th>更新时间</th>
-            <th>操作</th>
-        </tr>
-        </thead>
-        <tbody>
-        <tr th:each="i : ${items}">
-            <td th:text="${i.id}">1</td>
-            <td th:text="${i.kind}">NOTE</td>
-            <td><code th:text="${i.slug}">slug</code></td>
-            <td th:text="${i.title}">标题</td>
-            <td th:text="${i.visibility}">PUBLIC</td>
-            <td th:text="${#temporals.format(i.updatedAt, 'yyyy-MM-dd HH:mm')}">2026-01-01 00:00</td>
-            <td class="actions">
-                <a th:href="@{/admin/{id}/edit(id=${i.id})}">编辑</a>
-                <form th:action="@{/admin/{id}/delete(id=${i.id})}" method="post" class="inline"
-                      onsubmit="return confirm('确认删除？');">
-                    <button type="submit" class="link-button danger">删除</button>
-                </form>
-            </td>
-        </tr>
-        </tbody>
-    </table>
+    <div class="filters">
+        <div class="seg">
+            <a th:href="@{/admin(range=${filterRange},q=${filterQ})}"
+               th:classappend="${filterKind == null} ? 'on'">全部</a>
+            <a th:each="k : ${kinds}"
+               th:href="@{/admin(kind=${k},range=${filterRange},q=${filterQ})}"
+               th:classappend="${filterKind == k} ? 'on'" th:text="${k.label}">笔记</a>
+        </div>
 
-    <p class="empty" th:if="${#lists.isEmpty(items)}">还没有内容</p>
+        <div class="seg">
+            <a th:href="@{/admin(kind=${filterKind},q=${filterQ})}"
+               th:classappend="${filterRange == null} ? 'on'">全部</a>
+            <a th:href="@{/admin(kind=${filterKind},range=7,q=${filterQ})}"
+               th:classappend="${filterRange == 7} ? 'on'">近 7 天</a>
+            <a th:href="@{/admin(kind=${filterKind},range=30,q=${filterQ})}"
+               th:classappend="${filterRange == 30} ? 'on'">近 30 天</a>
+        </div>
+
+        <form th:action="@{/admin}" method="get" class="filter-search">
+            <svg class="search-icon" viewBox="0 0 16 16" aria-hidden="true">
+                <circle cx="7" cy="7" r="4.3" fill="none" stroke="currentColor" stroke-width="1.5"/>
+                <path d="M10.4 10.4 14 14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+            </svg>
+            <input type="search" name="q" th:value="${filterQ}" placeholder="搜索标题或 slug">
+            <input type="hidden" name="kind" th:if="${filterKind != null}" th:value="${filterKind}">
+            <input type="hidden" name="range" th:if="${filterRange != null}" th:value="${filterRange}">
+        </form>
+    </div>
+
+    <p class="filter-summary" th:if="${filterKind != null or filterRange != null or filterQ != null}">
+        筛出 <span th:text="${#lists.size(items)}">0</span> 条
+        <a th:href="@{/admin}" class="filter-clear">清除</a>
+    </p>
+
+    <div class="table-scroll" th:if="${!#lists.isEmpty(items)}">
+        <table class="admin-table">
+            <thead>
+            <tr>
+                <th>ID</th>
+                <th>类型</th>
+                <th>Slug</th>
+                <th>标题</th>
+                <th>可见性</th>
+                <th>更新时间</th>
+                <th class="actions">操作</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="i : ${items}">
+                <td class="cell-id" th:text="${i.id}">1</td>
+                <td th:text="${i.kind.label}">笔记</td>
+                <td><code th:text="${i.slug}" th:title="${i.slug}">slug</code></td>
+                <td class="cell-title" th:text="${i.title}">标题</td>
+                <td><span class="badge" th:text="${i.visibility.label}">公开</span></td>
+                <td th:text="${#temporals.format(i.updatedAt, 'yyyy-MM-dd HH:mm')}">2026-01-01 00:00</td>
+                <td class="actions">
+                    <div class="row-actions">
+                        <a th:href="@{/admin/{id}/edit(id=${i.id})}">编辑</a>
+                        <form th:action="@{/admin/{id}/delete(id=${i.id})}" method="post" class="inline"
+                              onsubmit="return confirm('确认删除？删掉的内容会在回收站保留 30 天。');">
+                            <button type="submit" class="link-button danger">删除</button>
+                        </form>
+                    </div>
+                </td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <p class="empty" th:if="${#lists.isEmpty(items)}">
+        <span th:if="${filterKind != null or filterRange != null or filterQ != null}">没有符合条件的内容</span>
+        <span th:unless="${filterKind != null or filterRange != null or filterQ != null}">还没有内容</span>
+    </p>
 </main>
 
 <footer th:replace="~{fragments/layout :: foot}"></footer>

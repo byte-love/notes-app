@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="zh-CN">
+<head th:replace="~{fragments/layout :: head(${pageTitle})}"></head>
+<body>
+<header th:replace="~{fragments/layout :: nav}"></header>
+
+<main class="wrap">
+    <div class="err-box">
+        <div class="err-code" th:text="${status}">404</div>
+        <h1 th:text="${heading}">页面不存在</h1>
+        <p class="err-text" th:text="${hint}">说明</p>
+
+        <div class="err-actions">
+            <a th:href="@{/}" class="btn-quiet">回首页</a>
+            <a sec:authorize="!isAuthenticated()" th:if="${needLogin}"
+               th:href="@{/login}" class="btn-new">去登录</a>
+        </div>
+    </div>
+</main>
+
+<footer th:replace="~{fragments/layout :: foot}"></footer>
+</body>
+</html>

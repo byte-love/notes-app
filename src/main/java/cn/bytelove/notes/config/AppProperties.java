@@ -8,6 +8,7 @@ public record AppProperties(
         String ownerPassword,
         String viewerUsername,
         String viewerPassword,
-        String tabProjectsHref
+        String tabProjectsHref,
+        Boolean registerEnabled
 ) {
 }

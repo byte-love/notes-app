@@ -2,6 +2,7 @@ package cn.bytelove.notes.config;
 
 import cn.bytelove.notes.service.LoginAttemptService;
 import org.springframework.context.annotation.Bean;
+import org.springframework.http.HttpMethod;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -22,10 +23,14 @@ public class SecurityConfig {
     public SecurityFilterChain filterChain(HttpSecurity http, LoginAttemptService attempts) throws Exception {
         http
                 .authorizeHttpRequests(auth -> auth
+                        // 推荐栏和更新记录对游客开放，写操作要登录
+                        .requestMatchers(HttpMethod.POST, "/explore/copy/**").authenticated()
+                                                .requestMatchers("/explore", "/explore/**", "/changelog", "/updates").permitAll()
                         .requestMatchers("/", "/notes", "/notes/**", "/projects", "/projects/**",
                                 "/bagu", "/bagu/**", "/algo", "/algo/**",
-                                "/login", "/api/**", "/css/**", "/media/**", "/favicon.ico", "/error").permitAll()
-                        .requestMatchers("/admin/**").hasRole("ADMIN")
+                                "/login", "/register", "/api/**", "/css/**", "/media/**", "/favicon.ico",
+                                "/error").permitAll()
+                        .requestMatchers("/admin/**").authenticated()
                         .requestMatchers("/star/**", "/memo").authenticated()
                         .anyRequest().authenticated()
                 )

@@ -2,27 +2,34 @@ package cn.bytelove.notes.web;
 
 import cn.bytelove.notes.domain.ContentItem;
 import cn.bytelove.notes.domain.ContentKind;
-import cn.bytelove.notes.domain.Visibility;
 import cn.bytelove.notes.repo.ContentItemRepository;
+import cn.bytelove.notes.service.BookmarkService;
+import cn.bytelove.notes.service.ContentStarService;
 import cn.bytelove.notes.service.MarkdownRenderer;
+import cn.bytelove.notes.service.ProjectMetaService;
+import cn.bytelove.notes.service.ReadingPositionService;
 import cn.bytelove.notes.service.NoteTreeService;
+import cn.bytelove.notes.service.ViewerService;
 import cn.bytelove.notes.service.VisibilityService;
+import cn.bytelove.notes.service.VisibilityService.Viewer;
 import org.springframework.http.HttpStatus;
-import org.springframework.web.context.request.RequestContextHolder;
-import org.springframework.web.context.request.ServletRequestAttributes;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.ArrayList;
-import java.util.LinkedHashSet;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
 @Controller
@@ -30,13 +37,24 @@ public class PublicController {
 
     private final ContentItemRepository items;
     private final VisibilityService visibility;
+    private final ViewerService viewers;
+    private final ContentStarService stars;
+    private final ProjectMetaService meta;
+    private final ReadingPositionService positions;
+    private final BookmarkService bookmarks;
     private final MarkdownRenderer markdown;
     private final NoteTreeService tree;
 
-    public PublicController(ContentItemRepository items, VisibilityService visibility,
+    public PublicController(ContentItemRepository items, VisibilityService visibility, ViewerService viewers,
+                            ContentStarService stars, ProjectMetaService meta, ReadingPositionService positions, BookmarkService bookmarks,
                             MarkdownRenderer markdown, NoteTreeService tree) {
         this.items = items;
         this.visibility = visibility;
+        this.viewers = viewers;
+        this.stars = stars;
+        this.meta = meta;
+        this.positions = positions;
+        this.bookmarks = bookmarks;
         this.markdown = markdown;
         this.tree = tree;
     }
@@ -61,6 +79,11 @@ public class PublicController {
         return listing(ContentKind.ALGO, "算法", model, auth);
     }
 
+    @GetMapping("/projects")
+    public String projects(Model model, Authentication auth) {
+        return listing(ContentKind.PROJECT, "项目", model, auth);
+    }
+
     @GetMapping("/bagu/{slug}")
     public String baguItem(@PathVariable String slug, Model model, Authentication auth) {
         return detail(ContentKind.BAGU, slug, model, auth);
@@ -76,13 +99,16 @@ public class PublicController {
         return detail(ContentKind.NOTE, slug, model, auth);
     }
 
-    @GetMapping("/projects")
-    public String projects(Model model, Authentication auth) {
-        return listing(ContentKind.PROJECT, "项目", model, auth);
+    @GetMapping("/projects/{slug}")
+    public String project(@PathVariable String slug, Model model, Authentication auth) {
+        return detail(ContentKind.PROJECT, slug, model, auth);
     }
 
     private String listing(ContentKind kind, String pageTitle, Model model, Authentication auth) {
-        List<ContentItem> all = load(model, kind, auth);
+        Viewer viewer = viewers.current(auth);
+        Set<Long> lockedIds = new LinkedHashSet<>();
+        List<ContentItem> all = filtered(poolForListing(kind, viewer), viewer, lockedIds);
+
         // 目录节点只出现在左侧树里，不混进右侧正文列表
         Set<Long> parentIds = new LinkedHashSet<>();
         for (ContentItem i : all) {
@@ -96,7 +122,24 @@ public class PublicController {
                 leaves.add(i);
             }
         }
+
+        Long lastReadId = positions.find(viewer.userId(), kind);
+        ContentItem lastRead = null;
+        for (ContentItem i : all) {
+            if (i.getId().equals(lastReadId)) {
+                lastRead = i;
+                break;
+            }
+        }
+
         model.addAttribute("items", leaves);
+        model.addAttribute("tree", tree.build(all, lockedIds));
+        model.addAttribute("starIds", stars.starredIds(viewer.userId()));
+        model.addAttribute("bookmarkIds", bookmarks.ids(viewer.userId()));
+        model.addAttribute("lastReadId", lastReadId);
+        model.addAttribute("lastRead", lastRead);
+        model.addAttribute("lockedIds", lockedIds);
+        model.addAttribute("lockedCount", lockedIds.size());
         model.addAttribute("kind", kind);
         model.addAttribute("activeId", null);
         model.addAttribute("blank", true);
@@ -106,38 +149,66 @@ public class PublicController {
         return "list";
     }
 
-    @GetMapping("/projects/{slug}")
-    public String project(@PathVariable String slug, Model model, Authentication auth) {
-        return detail(ContentKind.PROJECT, slug, model, auth);
-    }
-
     private String detail(ContentKind kind, String slug, Model model, Authentication auth) {
-        ContentItem item = items.findBySlug(slug)
-                .filter(i -> i.getKind() == kind)
-                .filter(i -> visibility.canView(i.getVisibility(), auth))
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+        Viewer viewer = viewers.current(auth);
+        ContentItem item = resolve(kind, slug, viewer);
 
-        List<ContentItem> siblings = load(model, kind, auth);
+        // 只记自己内容的阅读位置：别人的推荐内容记下来也没法在自己列表里标出来
+        if (viewer.isSelf(item)) {
+            positions.remember(viewer.userId(), kind, item.getId());
+        }
+        model.addAttribute("bookmarked", bookmarks.isBookmarked(viewer.userId(), item.getId()));
+        model.addAttribute("bookmarkIds", bookmarks.ids(viewer.userId()));
+
+        // 项目走单独的模板：它渲染的是作品集卡片那套结构化字段，没有目录树
+        if (kind == ContentKind.PROJECT) {
+            model.addAttribute("basePath", contextPath() + basePath(kind));
+            model.addAttribute("tabActive", "project");
+            model.addAttribute("item", item);
+            model.addAttribute("project", meta.view(item.getId()).orElse(null));
+            model.addAttribute("html", markdown.toHtml(item.getBody()));
+            model.addAttribute("starred", viewer.userId() != null && stars.isStarred(viewer.userId(), item.getId()));
+            return "project";
+        }
+
+        Set<Long> lockedIds = new LinkedHashSet<>();
+        // 侧栏树跟着这条内容的作者走：看别人的推荐内容时，列的是他自己的目录
+        List<ContentItem> siblings = filtered(
+                items.findByOwnerIdAndKindOrderByUpdatedAtDesc(item.getOwnerId(), kind), viewer, lockedIds);
+
         if (kind != ContentKind.PROJECT) {
             model.addAttribute("crumbs", tree.breadcrumb(siblings, item));
             model.addAttribute("activeId", item.getId());
         }
+        model.addAttribute("tree", tree.build(siblings, lockedIds));
+        model.addAttribute("starIds", stars.starredIds(viewer.userId()));
+        model.addAttribute("lockedIds", lockedIds);
+        model.addAttribute("lockedCount", lockedIds.size());
         model.addAttribute("basePath", contextPath() + basePath(kind));
         model.addAttribute("tabActive", kind.name().toLowerCase(java.util.Locale.ROOT));
 
         model.addAttribute("item", item);
         model.addAttribute("html", markdown.toHtml(item.getBody()));
         model.addAttribute("toc", markdown.toc(item.getBody()));
+        model.addAttribute("starred", viewer.userId() != null && stars.isStarred(viewer.userId(), item.getId()));
         return "detail";
     }
 
-    /** 备忘录：加入 / 移出。登录用户都能标记。 */
+    /** 手动书签：自己插的旗，想标几处标几处。 */
+    @PostMapping("/bookmark/{slug}")
+    public String toggleBookmark(@PathVariable String slug, Authentication auth) {
+        Viewer viewer = viewers.current(auth);
+        ContentItem item = resolveAnyKind(slug, viewer);
+        bookmarks.toggle(viewer.userId(), item.getId());
+        return "redirect:" + basePath(item.getKind()) + "/" + item.getSlug();
+    }
+
+    /** 收藏夹：加入 / 移出。标记落在用户自己名下。 */
     @PostMapping("/star/{slug}")
-    public String toggleStar(@PathVariable String slug) {
-        ContentItem item = items.findBySlug(slug)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
-        item.setStarred(!item.isStarred());
-        items.save(item);
+    public String toggleStar(@PathVariable String slug, Authentication auth) {
+        Viewer viewer = viewers.current(auth);
+        ContentItem item = resolveAnyKind(slug, viewer);
+        stars.toggle(viewer.userId(), item.getId());
         // 这里不能自己拼 contextPath：redirect: 的目标 Spring 会自动加上前缀，
         // 手动再加一次会变成 /app/app/bagu/xxx 直接 404
         return "redirect:" + basePath(item.getKind()) + "/" + item.getSlug();
@@ -145,8 +216,16 @@ public class PublicController {
 
     /** 备忘录列表：把标记过的条目按类型分组列出来。 */
     @GetMapping("/memo")
-    public String memo(Model model) {
-        List<ContentItem> starred = items.findByStarredTrueOrderByKindAscSortOrderAsc();
+    public String memo(Model model, Authentication auth) {
+        Viewer viewer = viewers.current(auth);
+        List<Long> ids = stars.starredItemIds(viewer.userId());
+        List<ContentItem> starred = ids.isEmpty()
+                ? new ArrayList<>()
+                : new ArrayList<>(items.findAllById(ids));
+        starred.removeIf(i -> !visibility.canRead(i, viewer));
+        starred.sort(Comparator.comparingInt(ContentItem::getSortOrder)
+                .thenComparing(ContentItem::getTitle, Comparator.nullsLast(String::compareTo)));
+
         Map<String, List<ContentItem>> grouped = new LinkedHashMap<>();
         // 固定顺序：笔记 -> 八股 -> 算法 -> 项目，避免按枚举名字母序排成「算法/八股/笔记/项目」
         for (ContentKind k : new ContentKind[]{ContentKind.NOTE, ContentKind.BAGU,
@@ -162,6 +241,67 @@ public class PublicController {
         model.addAttribute("basePathOf", (java.util.function.Function<ContentKind, String>) PublicController::basePath);
         model.addAttribute("tabActive", "memo");
         return "memo";
+    }
+
+    /**
+     * 列表页的内容池：登录后是自己的空间，游客看的是推荐栏里公开的那部分。
+     */
+    private List<ContentItem> poolForListing(ContentKind kind, Viewer viewer) {
+        if (viewer.userId() != null) {
+            return items.findByOwnerIdAndKindOrderByUpdatedAtDesc(viewer.userId(), kind);
+        }
+        return items.findByKindAndRecommendedTrueOrderByUpdatedAtDesc(kind);
+    }
+
+    /** 能看的留下，只能看标题的收进 lockedIds。 */
+    private List<ContentItem> filtered(List<ContentItem> pool, Viewer viewer, Set<Long> lockedIds) {
+        List<ContentItem> kept = new ArrayList<>();
+        for (ContentItem item : pool) {
+            if (visibility.canRead(item, viewer)) {
+                kept.add(item);
+            } else if (visibility.isLocked(item, viewer)) {
+                kept.add(item);
+                lockedIds.add(item.getId());
+            }
+        }
+        return kept;
+    }
+
+    /** 先找自己的，找不到再在推荐栏里按 slug 找一条能看的。 */
+    private ContentItem resolve(ContentKind kind, String slug, Viewer viewer) {
+        if (viewer.userId() != null) {
+            Optional<ContentItem> mine = items.findByOwnerIdAndSlug(viewer.userId(), slug)
+                    .filter(i -> i.getKind() == kind);
+            if (mine.isPresent()) {
+                return mine.get();
+            }
+        }
+        List<ContentItem> candidates = items.findBySlugAndRecommendedTrueOrderByIdAsc(slug).stream()
+                .filter(i -> i.getKind() == kind)
+                .toList();
+        Optional<ContentItem> readable = candidates.stream()
+                .filter(i -> visibility.canRead(i, viewer))
+                .findFirst();
+        if (readable.isPresent()) {
+            return readable.get();
+        }
+        // 内容存在、只是没登录看不了：引导去登录，而不是丢一个 404
+        boolean existsButLocked = candidates.stream().anyMatch(i -> visibility.isLocked(i, viewer));
+        throw new ResponseStatusException(existsButLocked ? HttpStatus.FORBIDDEN : HttpStatus.NOT_FOUND);
+    }
+
+    /** 同上，但不管类型（/star/{slug} 的路径里没有 kind）。 */
+    private ContentItem resolveAnyKind(String slug, Viewer viewer) {
+        if (viewer.userId() != null) {
+            Optional<ContentItem> mine = items.findByOwnerIdAndSlug(viewer.userId(), slug);
+            if (mine.isPresent()) {
+                return mine.get();
+            }
+        }
+        return items.findBySlugAndRecommendedTrueOrderByIdAsc(slug).stream()
+                .filter(i -> visibility.canRead(i, viewer))
+                .findFirst()
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
     }
 
     /**
@@ -201,29 +341,5 @@ public class PublicController {
             default:
                 return "/notes";
         }
-    }
-
-    /**
-     * 取「能看的」+「只给标题占位的」，一起装配目录树。返回值按更新时间倒序。
-     */
-    private List<ContentItem> load(Model model, ContentKind kind, Authentication auth) {
-        List<ContentItem> visible = items.findByKindAndVisibilityInOrderByUpdatedAtDesc(kind, visibility.visibleTo(auth));
-        List<Visibility> lockedVisibilities = visibility.lockedTo(auth);
-        List<ContentItem> locked = lockedVisibilities.isEmpty()
-                ? List.of()
-                : items.findByKindAndVisibilityInOrderByUpdatedAtDesc(kind, lockedVisibilities);
-
-        Set<Long> lockedIds = new LinkedHashSet<>();
-        for (ContentItem item : locked) {
-            lockedIds.add(item.getId());
-        }
-
-        List<ContentItem> all = new ArrayList<>(visible);
-        all.addAll(locked);
-
-        model.addAttribute("tree", tree.build(all, lockedIds));
-        model.addAttribute("lockedIds", lockedIds);
-        model.addAttribute("lockedCount", locked.size());
-        return all;
     }
 }
