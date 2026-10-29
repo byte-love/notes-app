@@ -2149,3 +2149,112 @@ html[data-read-size='lg'] .markdown {
     flex: none;
     margin: 0;
 }
+
+/* ---- 更新记录 ---- */
+
+.log-form {
+    display: flex;
+    align-items: flex-end;
+    gap: 0.7rem;
+    margin-bottom: 1.4rem;
+}
+
+.log-form textarea {
+    flex: 1;
+    font-family: var(--sans);
+    font-size: 0.88rem;
+    line-height: 1.6;
+    padding: 0.6rem 0.75rem;
+    color: var(--fg);
+    background: var(--bg-2);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    resize: vertical;
+}
+
+.log-form textarea:focus {
+    outline: none;
+    background: var(--bg);
+    border-color: var(--accent);
+}
+
+.day {
+    margin-bottom: 2.2rem;
+}
+
+.day-label {
+    margin: 0 0 0.8rem;
+    font-size: 0.82rem;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    color: var(--fg-3);
+}
+
+.feed {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.feed li {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.7rem;
+    padding: 0.6rem 0;
+    border-bottom: 1px solid var(--line);
+}
+
+.feed li:last-child {
+    border-bottom: none;
+}
+
+/* 标签做成小胶囊，和筛选胶囊同一套语言 */
+.feed-tag {
+    flex: none;
+    min-width: 3.1rem;
+    text-align: center;
+    padding: 0.1rem 0.5rem;
+    font-size: 0.74rem;
+    line-height: 1.7;
+    border-radius: 999px;
+    color: var(--fg-2);
+    background: var(--bg-2);
+    border: 1px solid var(--line);
+}
+
+.feed-tag.new {
+    color: var(--accent);
+    border-color: var(--accent);
+    background: transparent;
+}
+
+.feed-tag.log {
+    color: var(--fg);
+    border-color: var(--fg-3);
+    background: transparent;
+}
+
+.feed-main {
+    min-width: 0;
+    display: flex;
+    align-items: baseline;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+}
+
+.feed-text {
+    margin: 0;
+    font-size: 0.9rem;
+    line-height: 1.7;
+    color: var(--fg);
+}
+
+.feed-kind,
+.feed-who {
+    font-size: 0.78rem;
+    color: var(--fg-3);
+}
+
+.feed-log .feed-text {
+    white-space: pre-wrap;
+}
