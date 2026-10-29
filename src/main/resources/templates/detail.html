@@ -206,36 +206,43 @@
 </script>
 
 <script>
-    // 左右两栏可以拖拽调宽（左：目录树，右：本页目录），宽度记在 localStorage
+    // 三栏联动：左栏用像素，中间和右边按比例分剩余宽度。
+    // 拖左栏 -> 左栏变宽，中间和右边一起变窄，两者比例不变；
+    // 拖右栏 -> 只改中间和右边的比例。宽度都记在 localStorage。
     (() => {
         const wrap = document.querySelector('.with-tree.has-tree');
         if (!wrap) return;
         const tree = wrap.querySelector('.tree-pane');
         const docWrap = wrap.querySelector('.doc-wrap');
         const toc = docWrap ? docWrap.querySelector('.toc') : null;
+        if (!tree || !docWrap) return;
 
-        const MIN_TREE = 150, MAX_TREE = 420;
-        const MIN_TOC = 130, MAX_TOC = 380;
+        const MIN_TREE = 140, MAX_TREE = 520;
+        const MIN_TOC_PCT = 8, MAX_TOC_PCT = 45;
 
         const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
-        const read = (k) => {
-            try { return parseInt(localStorage.getItem(k), 10); } catch (e) { return NaN; }
+        const read = (k, dflt) => {
+            try {
+                const v = parseFloat(localStorage.getItem(k));
+                return isNaN(v) ? dflt : v;
+            } catch (e) { return dflt; }
         };
         const save = (k, v) => {
             try { localStorage.setItem(k, String(v)); } catch (e) {}
         };
 
-        let treeW = read('layout:tree');
-        if (isNaN(treeW)) treeW = tree.getBoundingClientRect().width;
-        let tocW = toc ? read('layout:toc') : NaN;
-        if (toc && isNaN(tocW)) tocW = toc.getBoundingClientRect().width;
+        let treeW = read('layout:tree', tree.getBoundingClientRect().width || 236);
+        // tocPct：右边的目录占「剩余宽度」的百分比
+        let tocPct = toc ? read('layout:tocpct', 22) : 0;
 
         const applyTree = () => {
-            wrap.style.setProperty('--tree-w', clamp(treeW, MIN_TREE, MAX_TREE) + 'px');
+            wrap.style.gridTemplateColumns = clamp(treeW, MIN_TREE, MAX_TREE) + 'px minmax(0, 1fr)';
         };
         const applyToc = () => {
             if (!toc) return;
-            docWrap.style.gridTemplateColumns = 'minmax(0, 1fr) ' + clamp(tocW, MIN_TOC, MAX_TOC) + 'px';
+            const p = clamp(tocPct, MIN_TOC_PCT, MAX_TOC_PCT);
+            // 用 fr 分配，两边一起缩放，比例固定
+            docWrap.style.gridTemplateColumns = (100 - p) + 'fr ' + p + 'fr';
         };
 
         applyTree();
@@ -246,15 +253,14 @@
             bar.className = 'splitter';
             host.appendChild(bar);
 
-            let startX = 0;
+            let lastX = 0;
             const down = (e) => {
-                startX = e.touches ? e.touches[0].clientX : e.clientX;
+                lastX = e.touches ? e.touches[0].clientX : e.clientX;
                 bar.classList.add('dragging');
                 const move = (ev) => {
                     const x = ev.touches ? ev.touches[0].clientX : ev.clientX;
-                    onMove(x - startX);
-                    startX = x;
-                    layout();
+                    onMove(x - lastX);
+                    lastX = x;
                     if (ev.cancelable) ev.preventDefault();
                 };
                 const up = () => {
@@ -264,7 +270,6 @@
                     document.removeEventListener('touchmove', move);
                     document.removeEventListener('touchend', up);
                     onDone();
-                    layout();
                 };
                 document.addEventListener('mousemove', move);
                 document.addEventListener('mouseup', up);
@@ -277,23 +282,23 @@
             return bar;
         };
 
-        // 左边：贴着树目录的右边缘
+        // 左：树目录的右边缘
         const leftBar = makeSplitter(wrap, (dx) => {
             treeW = clamp(treeW + dx, MIN_TREE, MAX_TREE);
             applyTree();
-        }, () => save('layout:tree', Math.round(treeW)));   // layout() 在 makeSplitter 的 move 里已调
+        }, () => save('layout:tree', Math.round(treeW)));
 
-        // 右边：贴着本页目录的左边缘
+        // 右：本页目录的左边缘（改的是中间和右边的宽度比例）
         let rightBar = null;
         if (toc) {
             rightBar = makeSplitter(docWrap, (dx) => {
-                tocW = clamp(tocW - dx, MIN_TOC, MAX_TOC);
+                const total = docWrap.getBoundingClientRect().width || 1;
+                tocPct = clamp(tocPct - (dx / total) * 100, MIN_TOC_PCT, MAX_TOC_PCT);
                 applyToc();
-            }, () => save('layout:toc', Math.round(tocW)));
+            }, () => save('layout:tocpct', Math.round(tocPct * 10) / 10));
         }
 
-        // 把两条分隔条放到两栏的缝上
-        function layout() {
+        const layout = () => {
             const wr = wrap.getBoundingClientRect();
             const tr = tree.getBoundingClientRect();
             leftBar.style.left = (tr.right - wr.left) + 'px';
@@ -303,11 +308,18 @@
                 const rr = toc.getBoundingClientRect();
                 rightBar.style.left = (rr.left - dr.left) + 'px';
             }
-        }
+        };
 
         layout();
         window.addEventListener('resize', layout);
+        // 拖动时也要让分隔条跟着走
+        const tick = () => { layout(); requestAnimationFrame(tick); };
+        wrap.addEventListener('mousemove', layout);
+        wrap.addEventListener('touchmove', layout, { passive: true });
+        document.addEventListener('mouseup', layout);
+        document.addEventListener('touchend', layout);
     })();
 </script>
+
 </body>
 </html>
