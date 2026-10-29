@@ -4,6 +4,7 @@
 <head th:fragment="head(pageTitle)">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="_csrf" th:if="${_csrf != null}" th:content="${_csrf.token}">
     <title th:text="${pageTitle}">notes</title>
     <link rel="icon" href="/favicon.svg?v=3" type="image/svg+xml">
     <script th:inline="javascript">
@@ -20,7 +21,7 @@
             } catch (e) {}
         })();
     </script>
-    <link rel="stylesheet" th:href="@{/css/app.css(v=35)}">
+    <link rel="stylesheet" th:href="@{/css/app.css(v=36)}">
 </head>
 <body>
 

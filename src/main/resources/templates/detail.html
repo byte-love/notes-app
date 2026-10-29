@@ -41,7 +41,7 @@
                 </div>
             </header>
 
-            <div class="markdown" th:utext="${html}"></div>
+            <div class="markdown" th:utext="${html}" th:attr="data-slug=${item.slug},data-anchors=${bookmarkAnchorCsv}"></div>
         </article>
 
         <aside class="toc" th:if="${!#lists.isEmpty(toc)}">
@@ -163,5 +163,46 @@
 </script>
 
 <footer th:replace="~{fragments/layout :: foot}"></footer>
+
+<script>
+    // 每个正文标题右边挂一个书签按钮，点一下把位置记下来；下次从「书签」页直接跳回来
+    (() => {
+        const box = document.querySelector('.markdown[data-slug]');
+        if (!box) return;
+        const token = document.querySelector('meta[name="_csrf"]')?.content;
+        if (!token) return;
+
+        const slug = box.dataset.slug;
+        const mine = new Set((box.dataset.anchors || '').split(',').filter(Boolean));
+        const heads = [...box.querySelectorAll('h2[id], h3[id]')];
+        if (!heads.length) return;
+
+        heads.forEach((h) => {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'head-bookmark' + (mine.has(h.id) ? ' on' : '');
+            btn.title = mine.has(h.id) ? '已在此加书签' : '在这一块加书签';
+            btn.setAttribute('aria-label', btn.title);
+            btn.addEventListener('click', async (e) => {
+                e.preventDefault();
+                btn.disabled = true;
+                try {
+                    await fetch(`/app/bookmark/${encodeURIComponent(slug)}?anchor=${encodeURIComponent(h.id)}`, {
+                        method: 'POST',
+                        headers: { 'X-CSRF-TOKEN': token },
+                        credentials: 'same-origin',
+                    });
+                    btn.classList.toggle('on');
+                    btn.title = btn.classList.contains('on') ? '已在此加书签' : '在这一块加书签';
+                } catch (err) {
+                    /* 失败就不改状态 */
+                } finally {
+                    btn.disabled = false;
+                }
+            });
+            h.appendChild(btn);
+        });
+    })();
+</script>
 </body>
 </html>

@@ -2558,3 +2558,41 @@ html[data-theme='dark'] .cl-latest {
     justify-content: center;
     gap: 0.6rem;
 }
+
+/* ---- 正文标题上的书签按钮 ---- */
+
+.markdown h2,
+.markdown h3 {
+    scroll-margin-top: 80px;
+}
+
+.head-bookmark {
+    display: inline-block;
+    width: 13px;
+    height: 18px;
+    margin-left: 0.5rem;
+    padding: 0;
+    vertical-align: middle;
+    background: transparent;
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.12s ease, border-color 0.12s ease;
+}
+
+.markdown h2:hover .head-bookmark,
+.markdown h3:hover .head-bookmark,
+.head-bookmark.on,
+.head-bookmark:focus-visible {
+    opacity: 1;
+}
+
+.head-bookmark:hover {
+    border-color: var(--fg-3);
+}
+
+.head-bookmark.on {
+    background: var(--accent);
+    border-color: var(--accent);
+}
