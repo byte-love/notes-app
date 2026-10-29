@@ -30,6 +30,7 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 
@@ -194,8 +195,29 @@ public class PublicController {
         model.addAttribute("item", item);
         model.addAttribute("html", markdown.toHtml(item.getBody()));
         model.addAttribute("toc", markdown.toc(item.getBody()));
+        // 九成八股正文里没有 ## 标题，右栏会空着；没有目录时改用「同分类的其他条目」填上
+        model.addAttribute("rail", railOf(siblings, item, lockedIds));
         model.addAttribute("starred", viewer.userId() != null && stars.isStarred(viewer.userId(), item.getId()));
         return "detail";
+    }
+
+    /** 右栏的替代目录：同一父节点下的其他条目，至少 2 条才有意义。 */
+    private List<ContentItem> railOf(List<ContentItem> siblings, ContentItem current, Set<Long> lockedIds) {
+        List<ContentItem> same = new ArrayList<>();
+        for (ContentItem s : siblings) {
+            if (s.getId().equals(current.getId()) || lockedIds.contains(s.getId())) {
+                continue;
+            }
+            if (Objects.equals(s.getParentId(), current.getParentId())) {
+                same.add(s);
+            }
+        }
+        if (same.size() < 2) {
+            return List.of();
+        }
+        same.sort(Comparator.comparingInt(ContentItem::getSortOrder)
+                .thenComparing(ContentItem::getTitle, Comparator.nullsLast(String::compareTo)));
+        return same;
     }
 
     /** 手动书签：自己插的旗，想标几处标几处；anchor 为空是整篇，非空是某个标题块。 */

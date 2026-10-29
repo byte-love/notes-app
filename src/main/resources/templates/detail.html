@@ -12,7 +12,7 @@
         <ul th:replace="~{fragments/tree :: nodes(${tree})}"></ul>
     </aside>
 
-    <main class="doc-wrap" th:classappend="${#lists.isEmpty(toc)} ? 'no-toc'">
+    <main class="doc-wrap" th:classappend="${#lists.isEmpty(toc) and #lists.isEmpty(rail)} ? 'no-toc'">
         <article class="doc">
             <a class="back-link" th:href="${basePath}" onclick="if (history.length > 1) { history.back(); return false; }">返回</a>
 
@@ -48,6 +48,15 @@
             <ul>
                 <li th:each="h : ${toc}" th:class="'lv' + ${h.level()}">
                     <a th:href="'#' + ${h.id()}" th:text="${h.text()}"></a>
+                </li>
+            </ul>
+        </aside>
+
+        <!-- 没有目录时右栏放同分类的其他条目，免得右侧整块空着 -->
+        <aside class="toc toc-rail" th:if="${#lists.isEmpty(toc) and !#lists.isEmpty(rail)}">
+            <ul>
+                <li th:each="r : ${rail}">
+                    <a th:href="${basePath + '/' + r.slug}" th:text="${r.title}"></a>
                 </li>
             </ul>
         </aside>

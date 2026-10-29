@@ -2675,20 +2675,26 @@ html[data-theme='dark'] .cl-latest {
 .with-tree .item-list {
     max-width: min(1000px, 92%);
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    gap: 0.9rem;
+    grid-template-columns: repeat(auto-fill, minmax(238px, 1fr));
+    gap: 0.8rem;
 }
 
 /* 每条一块卡片，不再用横线分隔 */
 .with-tree .item-list li {
     border: 1px solid var(--line);
     border-radius: 10px;
-    padding: 0.95rem 1.1rem;
+    padding: 0.9rem 1rem;
     background: var(--bg-2);
 }
 
 .with-tree .item-list li:hover {
     border-color: var(--fg-3);
+}
+
+/* 右栏没有目录时列同分类条目：长列表要能自己滚，不然撑出屏幕 */
+.toc-rail {
+    max-height: calc(100vh - 110px);
+    overflow-y: auto;
 }
 
 /* 卡片按分类分小节 */
