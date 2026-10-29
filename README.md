@@ -61,6 +61,11 @@ src/main/resources/
 
 ## 部署
 
-线上是单机：nginx 占 80 端口，`/app/` 反代到 `127.0.0.1:8081`，Spring Boot 只监听回环；PostgreSQL 跑在 Docker 里，同样只绑回环，不对外暴露。应用由 systemd 托管，JVM 参数按 2G 内存调（`-Xmx448m -XX:+UseSerialGC`）。
+线上是单机双环境：nginx 占 8080（正式）和 8180（测试），两边的 `/app/` 分别反代到 `127.0.0.1:8081`
+（`notes-app`）和 `127.0.0.1:8082`（`notes-app-dev`）；Spring Boot 只监听回环，PostgreSQL 跑在 Docker 里
+也只绑回环，不对外暴露。应用由 systemd 托管，JVM 参数按 2G 内存调（正式 `-Xmx448m`、测试 `-Xmx256m`，
+都是 `-XX:+UseSerialGC`）。测试实例连独立的 `notes_test` 库，改坏了可以用 `sync-db.sh` 从正式库重灌。
 
 发布流程：源码打包上传服务器 → 服务器上 `mvn package` → 停服务、换 jar、起服务、探活。
+正式和测试共用同一套参数化脚本 `/opt/deploy/app.sh <dev|prod>`，完整流程与权限边界见
+[`docs/dev-workflow.md`](docs/dev-workflow.md)。

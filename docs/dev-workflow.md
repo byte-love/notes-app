@@ -106,3 +106,19 @@ sudo /opt/deploy/sync-db.sh    # 正式库整库覆盖到测试库
 - 改表结构（加字段/加表）前先 `sync-db.sh` 拿一份新的测试数据，在自己环境上验证 migration 能跑通
 - 部署前确认工作区干净（`git status`），别把临时文件带上服务器
 - 前台改动（CSS/模板）部署完记得**硬刷新**再看效果，浏览器会缓存
+
+## 踩过的坑
+
+**恢复脚本必须解压**：`restore-db.sh` 早期版本把 `.sql.gz` 直接喂给 `psql`，日志里只有一堆
+`invalid byte sequence for encoding "UTF8"`，脚本却照样跑完并打印 `DONE`——`drop schema` 执行了、
+数据一条没进去，库被清空。现在脚本会先数备份里有几个 `CREATE TABLE`，一个都没有就直接拒绝恢复。
+**任何恢复/导入脚本改完，必须在测试库上真跑一次并核对条数，不能只看退出码和 `DONE`。**
+
+**`set -o pipefail` 配 `grep -q` 会误判**：`nginx -t 2>&1 | tee log | grep -q "syntax is ok"`，
+grep 命中就退出，`tee` 收到 SIGPIPE，整个管道退出码变成 141，`if` 认为「配置有问题」——
+实际上配置是好的。正确写法是先 `nginx -t > log 2>&1`，再用 `grep -q ... log` 判断。
+
+**CSS 里 `padding` 简写会覆盖同一条规则的 `padding-left`**：给树的分组按钮加
+`padding: 0.34rem 0.5rem` 之后，之前单独写的 `padding-left: 0.95rem` 被冲掉，折叠箭头直接压在文字上。
+改的时候要么写全四个值，要么把 `padding-left` 放在简写之后。
+
