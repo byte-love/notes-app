@@ -32,6 +32,8 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -52,6 +54,9 @@ public class AdminController {
 
     private static final DateTimeFormatter UPDATED_AT =
             DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm").withZone(ZoneId.systemDefault());
+
+    /** 一次渲染多少行；剩下的滚动加载 */
+    private static final int ADMIN_BATCH = 60;
 
     private final ContentItemRepository items;
     private final NoteTreeService tree;
@@ -88,6 +93,8 @@ public class AdminController {
     public String list(@RequestParam(required = false) String kind,
                        @RequestParam(required = false) Integer range,
                        @RequestParam(required = false) String q,
+                       @RequestParam(required = false) Integer from,
+                       @RequestParam(defaultValue = "false") boolean fragment,
                        Model model, Authentication auth, HttpServletRequest request) {
         Viewer viewer = viewers.current(auth);
 
@@ -128,14 +135,38 @@ public class AdminController {
         }
 
         model.addAttribute("items", found);
-        model.addAttribute("rows", rows);
+        // 一次只渲染 60 行，滚到底再取下一批（和列表页同一套做法）。
+        // 313 行一次渲染光 Thymeleaf 输出就要 60ms 左右，首屏没必要等
+        int start = Math.max(0, from == null ? 0 : from);
+        if (start > rows.size()) {
+            start = rows.size();
+        }
+        int end = Math.min(rows.size(), start + ADMIN_BATCH);
+        model.addAttribute("rows", rows.subList(start, end));
+        model.addAttribute("nextFrom", end < rows.size() ? end : null);
+        model.addAttribute("baseUrl", request.getContextPath() + "/admin" + querySuffix(filterKind, range, q));
         // 行内链接自己拼 URL（模板里 @{} 每行两个，313 行要多花几十毫秒）；
         // #request 在 Thymeleaf 3.1 里默认不给了，所以从控制器传 contextPath
         model.addAttribute("ctx", request.getContextPath());
         model.addAttribute("filterKind", filterKind);
         model.addAttribute("filterRange", range);
         model.addAttribute("filterQ", q == null ? null : q.trim());
-        return "admin/list";
+        return fragment ? "fragments/admin-rows :: rows" : "admin/list";
+    }
+
+    /** 追加下一批时要带上的筛选条件，拼成 ?kind=..&range=..&q=.. */
+    private static String querySuffix(ContentKind kind, Integer range, String q) {
+        List<String> parts = new ArrayList<>();
+        if (kind != null) {
+            parts.add("kind=" + kind.name());
+        }
+        if (range != null) {
+            parts.add("range=" + range);
+        }
+        if (q != null && !q.isBlank()) {
+            parts.add("q=" + URLEncoder.encode(q.trim(), StandardCharsets.UTF_8));
+        }
+        return parts.isEmpty() ? "" : "?" + String.join("&", parts);
     }
 
     private static ContentKind parseKind(String raw) {

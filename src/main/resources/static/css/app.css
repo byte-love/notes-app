@@ -2767,6 +2767,14 @@ html[data-theme='dark'] .cl-latest {
     height: 8px;
 }
 
+/* 管理列表的「还有下一批」锚点行：占 1px，别让表格多出一条空行 */
+.admin-more td {
+    padding: 0;
+    border: 0;
+    height: 1px;
+    line-height: 0;
+}
+
 /* 卡片按分类分小节 */
 .item-group + .item-group {
     margin-top: 1.8rem;
