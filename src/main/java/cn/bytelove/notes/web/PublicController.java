@@ -317,12 +317,16 @@ public class PublicController {
         if (text.length() > MAX_COMMENT) {
             text = text.substring(0, MAX_COMMENT);
         }
+        // 现在只有「注释」：没有引文就没有落点，收下也显示不出来，直接忽略
+        String anchor = (quote == null || quote.isBlank()) ? null : quote.trim();
+        if (anchor == null || anchor.isEmpty()) {
+            return "redirect:" + basePath(item.getKind()) + "/" + item.getSlug();
+        }
         // 10 秒内只收一条：连点、刷屏都卡在这里，不落库
         if (!commentLimiter.tryAcquire(viewer.userId())) {
             return "redirect:" + basePath(item.getKind()) + "/" + item.getSlug() + "#comments";
         }
         String clean = commentFilter.mask(text);
-        String anchor = (quote == null || quote.isBlank()) ? null : quote.trim();
         long id = comments.add(commentKeyOf(item), viewer.userId(), anchorKind, anchor,
                 trim40(prefix), trim40(suffix), blockIndex, parentId, clean);
         return "redirect:" + basePath(item.getKind()) + "/" + item.getSlug() + "#c" + id;
