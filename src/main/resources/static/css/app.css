@@ -2545,6 +2545,14 @@ html[data-read-size='lg'] .markdown {
     border-color: var(--accent);
 }
 
+/* 卡片头的版本号（同一天多个版本时才有） */
+.cl-card-head .cl-version {
+    flex: none;
+    color: var(--accent);
+    border-color: var(--accent);
+    font-weight: 600;
+}
+
 /* 右边卡片 */
 .cl-card {
     margin-bottom: 1.6rem;
