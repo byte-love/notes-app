@@ -154,7 +154,13 @@ code {
     border-radius: 4px;
 }
 
+/* 顶栏常驻：翻到文章中间也能直接切分区，不用先滚回顶部
+   （以前一往下滑导航就没了，滚回顶部切换完再回来位置也丢了） */
 .site-header {
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    background: var(--bg);
     border-bottom: 1px solid var(--line);
 }
 
@@ -1017,13 +1023,12 @@ button:hover,
     opacity: 1;
 }
 
-/* 代码块：等宽 + 左侧色条，和正文、表格都能分开 */
+/* 代码块：等宽 + 顶部语言条 + 行号（行号由 js/code.js 加），整体像飞书那种卡片 */
 .markdown pre {
     background: var(--bg-2);
     border: 1px solid var(--line);
-    border-left: 3px solid var(--accent);
     border-radius: 8px;
-    padding: 0.95rem 1.1rem;
+    padding: 0.85rem 1rem;
     overflow-x: auto;
     line-height: 1.6;
     margin: 0 0 1.2rem;
@@ -1036,6 +1041,97 @@ button:hover,
     padding: 0;
     font-size: 0.86em;
     color: var(--fg);
+}
+
+/* 带语言条/行号的代码块（js/code.js 处理过的） */
+.code-block {
+    margin: 0 0 1.2rem;
+}
+
+.code-block pre {
+    margin: 0;
+    border-radius: 0 0 8px 8px;
+    counter-reset: ln;
+}
+
+.code-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.34rem 0.7rem;
+    background: var(--bg-2);
+    border: 1px solid var(--line);
+    border-bottom: 0;
+    border-radius: 8px 8px 0 0;
+    font-family: var(--mono);
+    font-size: 0.74rem;
+    color: var(--fg-3);
+}
+
+.code-lang {
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.code-copy {
+    display: inline-flex;
+    align-items: center;
+    width: 20px;
+    height: 20px;
+    padding: 0;
+    border: 0;
+    border-radius: 4px;
+    background: transparent;
+    color: var(--fg-3);
+    cursor: pointer;
+}
+
+.code-copy:hover {
+    color: var(--accent);
+    background: var(--bg);
+}
+
+.code-copy svg {
+    width: 13px;
+    height: 13px;
+}
+
+.code-block .line {
+    display: block;
+    padding-left: 2.9em;
+    position: relative;
+    min-height: 1.6em;
+}
+
+.code-block .line::before {
+    counter-increment: ln;
+    content: counter(ln);
+    position: absolute;
+    left: 0;
+    width: 2.1em;
+    text-align: right;
+    color: var(--fg-3);
+    opacity: 0.55;
+    user-select: none;
+}
+
+/* 轻量高亮：关键字松绿、字符串赭石、注释灰斜体、数字灰 */
+.code-block .tok-k {
+    color: var(--accent);
+    font-weight: 600;
+}
+
+.code-block .tok-s {
+    color: var(--accent-2);
+}
+
+.code-block .tok-c {
+    color: var(--fg-3);
+    font-style: italic;
+}
+
+.code-block .tok-n {
+    color: var(--fg-2);
 }
 
 /* 引用块当提示块用（仿飞书的 highlight block）：暖米底 + 赭石左边条 + 圆角，正文回到正常色 */

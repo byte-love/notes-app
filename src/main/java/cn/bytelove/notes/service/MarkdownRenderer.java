@@ -99,7 +99,7 @@ public class MarkdownRenderer {
         if (markdown == null || markdown.isBlank()) {
             return "";
         }
-        Node document = parser.parse(fenceBareSql(stripFrontMatter(markdown)));
+        Node document = parser.parse(fenceBareCode(stripFrontMatter(markdown)));
         wrapGlossary(document);
 
         Map<Heading, String> ids = assignHeadingIds(document);
@@ -121,10 +121,11 @@ public class MarkdownRenderer {
     }
 
     /**
-     * 笔记里手写的 SQL 常常没加代码围栏，渲染出来和正文长得一模一样。
-     * 这里把「单独成段、整行是 SQL」的行自动包进代码块——判据放得很窄：
-     * 单行、前后都是空行、≤400 字、去掉结尾标点后不含中文、以 SQL 关键字开头，
-     * 并且带 where/set/from/values/join 之一，避免把普通句子误判成代码。
+     * 笔记里手写/粘贴的代码常常没加围栏：有的是一行 SQL 裸贴在正文里，有的是整段 Java
+     * 被拆成「一行一个段落」还带了列表符号（以前的导入流程留下的）。
+     * 这里在渲染前把它们收进代码块——判据放得很窄，避免把中文正文误判成代码：
+     * 一行代码 = 去掉列表符号后不含中文、长度 ≤200、含 ; { } ( ) = 之一，
+     * 或者以 // # -- 开头（注释里可以带中文）。连续 ≥3 行才算一段代码。
      */
     private static final java.util.regex.Pattern BARE_SQL = java.util.regex.Pattern.compile(
             "^(select|update|insert|delete|create|alter|drop|with|truncate)\\b",
@@ -133,44 +134,108 @@ public class MarkdownRenderer {
     private static final java.util.regex.Pattern CJK = java.util.regex.Pattern.compile(
             "[\\u4e00-\\u9fff\\u3000-\\u303f\\uff00-\\uffef]");
 
-    static String fenceBareSql(String markdown) {
+    private static final java.util.regex.Pattern BULLET =
+            java.util.regex.Pattern.compile("^\\s*[-*+]\\s+");
+
+    static String fenceBareCode(String markdown) {
         String[] lines = markdown.split("\n", -1);
-        StringBuilder out = new StringBuilder(markdown.length() + 32);
+        StringBuilder out = new StringBuilder(markdown.length() + 64);
         boolean inFence = false;
-        for (int i = 0; i < lines.length; i++) {
-            String line = lines[i];
-            String trimmed = line.trim();
+        int i = 0;
+        while (i < lines.length) {
+            String trimmed = lines[i].trim();
             if (trimmed.startsWith("```")) {
                 inFence = !inFence;
-                out.append(line).append('\n');
+                out.append(lines[i]).append('\n');
+                i++;
                 continue;
             }
-            boolean aloneBefore = i == 0 || lines[i - 1].isBlank();
-            boolean aloneAfter = i == lines.length - 1 || lines[i + 1].isBlank();
-            if (!inFence && aloneBefore && aloneAfter && looksLikeSql(trimmed)) {
-                out.append("```\n").append(trimmed).append("\n```\n");
+            if (inFence || !codeish(trimmed)) {
+                out.append(lines[i]).append('\n');
+                i++;
                 continue;
             }
-            out.append(line).append('\n');
+
+            // 从这一行开始攒「连续代码行」，中间的空行允许跳过
+            List<String> run = new ArrayList<>();
+            int j = i;
+            while (j < lines.length) {
+                String next = lines[j].trim();
+                if (next.isEmpty()) {
+                    j++;
+                    continue;
+                }
+                if (next.startsWith("```") || !codeish(next)) {
+                    break;
+                }
+                run.add(stripBullet(lines[j]));
+                j++;
+            }
+
+            if (run.size() >= 3) {
+                String joined = String.join("\n", run);
+                out.append("```").append(guessLang(joined)).append('\n')
+                        .append(joined).append("\n```\n");
+                i = j;
+            } else if (run.size() == 1 && isBareSql(run.get(0))) {
+                out.append("```\n").append(run.get(0)).append("\n```\n");
+                i = j;
+            } else {
+                out.append(lines[i]).append('\n');
+                i++;
+            }
         }
         return out.toString();
     }
 
-    private static boolean looksLikeSql(String line) {
-        if (line.isEmpty() || line.length() > 400) {
+    private static String stripBullet(String line) {
+        return BULLET.matcher(line).replaceFirst("");
+    }
+
+    private static boolean codeish(String trimmed) {
+        if (trimmed.isEmpty()) {
             return false;
         }
-        // 先去掉结尾的中文句号/分号，再做中文判断（否则结尾的「。」会被当成中文）
+        String s = stripBullet(trimmed).trim();
+        if (s.isEmpty()) {
+            return false;
+        }
+        if (s.startsWith("//") || s.startsWith("#") || s.startsWith("--")
+                || s.startsWith("/*") || s.startsWith("@")) {
+            return true;
+        }
+        if (s.length() > 200 || CJK.matcher(s).find()) {
+            return false;
+        }
+        return s.indexOf(';') >= 0 || s.indexOf('{') >= 0 || s.indexOf('}') >= 0
+                || s.indexOf('(') >= 0 || s.indexOf(')') >= 0 || s.indexOf('=') >= 0;
+    }
+
+    private static boolean isBareSql(String line) {
         String body = line.replaceAll("[\\s；;。.]+$", "");
-        if (body.isEmpty() || CJK.matcher(body).find()) {
-            return false;
-        }
-        if (!BARE_SQL.matcher(body).find() || !body.contains(" ")) {
+        if (body.isEmpty() || CJK.matcher(body).find() || !BARE_SQL.matcher(body).find()
+                || !body.contains(" ")) {
             return false;
         }
         String lower = body.toLowerCase(java.util.Locale.ROOT);
         return lower.contains(" where ") || lower.contains(" set ") || lower.contains(" from ")
                 || lower.contains(" values ") || lower.contains(" join ");
+    }
+
+    private static String guessLang(String joined) {
+        String l = joined.toLowerCase(java.util.Locale.ROOT);
+        if (l.contains("class ") || l.contains("public ") || l.contains("void ")
+                || l.contains("system.out") || l.contains("new thread")) {
+            return "java";
+        }
+        if (l.contains("redis.call") || l.contains("local ")) {
+            return "lua";
+        }
+        if (l.contains("select ") || l.contains("update ") || l.contains("insert ")
+                || l.contains("delete from")) {
+            return "sql";
+        }
+        return "";
     }
 
     /** 只收 h2/h3，h1 是文章标题本身，放进目录没有意义。 */
