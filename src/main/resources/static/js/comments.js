@@ -172,11 +172,18 @@
 
     toolBtn.addEventListener('click', () => {
         const quote = lastQuote || (window.getSelection() ? window.getSelection().toString().trim() : '');
-        if (!quote) return;
         const index = lastRange ? blockOf(lastRange.startContainer) : -1;
         const block = index >= 0 ? blocks[index] : null;
         const blockText = textOf(block);
         const at = blockText.indexOf(quote);
+        // 先把工具条和选区一起收掉，再开输入框：焦点挪进 textarea 会再触发一次 selectionchange，
+        // 留着旧选区的话 showTool 会把工具条又画回来
+        hideTool();
+        const sel = window.getSelection();
+        sel && sel.removeAllRanges();
+        lastQuote = '';
+        lastRange = null;
+        if (!quote) return;
         openForm({
             kind: 'text',
             quote,
@@ -184,9 +191,6 @@
             suffix: at >= 0 ? blockText.slice(at + quote.length, at + quote.length + 20) : '',
             block: index,
         });
-        hideTool();
-        const sel = window.getSelection();
-        sel && sel.removeAllRanges();
     });
 
     // 点空白处要把工具条和选区一起收掉。
@@ -237,6 +241,7 @@
             btn.title = '评论这一段';
             btn.addEventListener('click', (e) => {
                 e.stopPropagation();
+                hideTool();
                 openForm({ kind: 'block', quote: textOf(block).slice(0, 120), block: index });
             });
             block.classList.add('cmt-block-host');
