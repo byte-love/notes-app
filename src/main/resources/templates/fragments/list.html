@@ -4,8 +4,14 @@
 
 <!-- 一个分类小节 + 卡片；列表页和「加载更多」的分片请求共用这一段 -->
 <th:block th:fragment="groupSections(groups, basePath, nextFrom)">
-    <section class="item-group" th:each="g : ${groups}">
-        <h2 class="item-group-title" th:if="${g.title() != null}" th:text="${g.title()}">分类</h2>
+    <section class="item-group" th:each="g : ${groups}" th:attr="data-key=${g.title()}">
+        <!-- 分类标题点一下收起 / 展开，状态记在 localStorage（内容多了以后一眼能扫） -->
+        <button type="button" class="item-group-toggle" th:if="${g.title() != null}">
+            <span class="item-group-caret" aria-hidden="true"></span>
+            <h2 class="item-group-title" th:text="${g.title()}">分类</h2>
+            <span class="item-group-count" th:text="${#lists.size(g.items())}">0</span>
+        </button>
+        <h2 class="item-group-title" th:unless="${g.title() != null}" th:text="${g.title()}">分类</h2>
 
         <ul class="item-list">
             <li th:each="i : ${g.items()}">

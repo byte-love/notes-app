@@ -3271,3 +3271,52 @@ html[data-theme='dark'] .cl-latest {
 .cmt-anchor-clear:hover {
     color: var(--danger);
 }
+/* 分类标题做成可点的折叠条：左边小三角 + 标题 + 条数 */
+.item-group-toggle {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    width: 100%;
+    margin: 0 0 0.8rem;
+    padding: 0;
+    font: inherit;
+    text-align: left;
+    color: inherit;
+    background: none;
+    border: 0;
+    cursor: pointer;
+}
+
+.item-group-caret {
+    width: 0;
+    height: 0;
+    border-left: 5px solid var(--fg-3);
+    border-top: 4px solid transparent;
+    border-bottom: 4px solid transparent;
+    transform: rotate(90deg);
+    transition: transform 0.12s ease;
+    flex: none;
+}
+
+.item-group.folded .item-group-caret {
+    transform: rotate(0deg);
+}
+
+.item-group-toggle:hover .item-group-title {
+    text-decoration: underline;
+    text-underline-offset: 3px;
+}
+
+.item-group-count {
+    font-size: 0.76rem;
+    color: var(--fg-3);
+    font-variant-numeric: tabular-nums;
+}
+
+.item-group.folded .item-list {
+    display: none;
+}
+
+.item-group.folded .item-group-toggle {
+    margin-bottom: 0;
+}
