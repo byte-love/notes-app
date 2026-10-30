@@ -1255,13 +1255,14 @@ button:hover,
     grid-template-columns: minmax(0, 720px);
 }
 
-/* 有树时正文不再单独居中 */
+/* 有树时正文不再单独居中。gap 是正文到右栏的留白（2.4rem→6rem），
+   右栏宽度是 JS 设的固定像素，拖分隔条只改列宽，这个留白一直不变 */
 .with-tree .doc-wrap {
     max-width: none;
     margin: 0;
     padding: 0;
     grid-template-columns: minmax(0, 1fr) 200px;
-    gap: 2.4rem;
+    gap: 6rem;
 }
 
 .with-tree .doc {
@@ -2673,10 +2674,13 @@ html[data-theme='dark'] .cl-latest {
     background: var(--fg-3);
 }
 
-/* 详情页：正文列吃剩余宽度，不再卡在 720px，这样拖左栏才真的能改变正文宽度 */
+/* 详情页：正文列吃剩余宽度，不再卡在 720px，这样拖左栏才真的能改变正文宽度。
+   gap 是正文到两侧导航的留白（2rem→5rem）。列宽是 px('var(--tree-w)') + 1fr，
+   分隔条只改列宽，gap 不参与拖拽，所以拖的时候留白不变。 */
 .with-tree.has-tree {
     grid-template-columns: var(--tree-w, 300px) minmax(0, 1fr);
     justify-content: stretch;
+    gap: 5rem;
 }
 
 .with-tree.has-tree.no-tree {
