@@ -155,7 +155,7 @@
         if (!tree || !docWrap) return;
 
         const MIN_TREE = 140, MAX_TREE = 520;
-        const MIN_TOC_PCT = 8, MAX_TOC_PCT = 45;
+        const MIN_TOC = 150, MAX_TOC = 380;
 
         const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
         const read = (k, dflt) => {
@@ -169,8 +169,8 @@
         };
 
         let treeW = read('layout:tree2', 300);
-        // tocPct：右边的目录占「剩余宽度」的百分比
-        let tocPct = toc ? read('layout:tocpct', 22) : 0;
+        // 右栏固定像素：拖左栏时它只是被推着走，宽度不变
+        let tocW = read('layout:toc3', 200);
 
         // <=820 是单列堆叠、<=1100 没有右侧目录，这两种宽度下列宽交给 CSS 媒体查询；
         // 内联样式一旦盖上去，手机上正文会被挤成 0 宽
@@ -181,15 +181,13 @@
 
         const applyTree = () => {
             const w = clamp(treeW, MIN_TREE, MAX_TREE);
-            // --tree-w 和列宽一起改：左边距按它算，正文才能一直待在屏幕正中
-            wrap.style.setProperty('--tree-w', w + 'px');
             wrap.style.gridTemplateColumns = stacked() ? '' : w + 'px minmax(0, 1fr)';
         };
         const applyToc = () => {
             if (!toc) return;
-            const p = clamp(tocPct, MIN_TOC_PCT, MAX_TOC_PCT);
-            // 用 fr 分配，两边一起缩放，比例固定
-            docWrap.style.gridTemplateColumns = tocHidden() ? '' : (100 - p) + 'fr ' + p + 'fr';
+            const w = clamp(tocW, MIN_TOC, MAX_TOC);
+            // 右栏固定像素宽度，正文列吃剩下的
+            docWrap.style.gridTemplateColumns = tocHidden() ? '' : 'minmax(0, 1fr) ' + w + 'px';
         };
 
         applyTree();
@@ -235,27 +233,27 @@
             applyTree();
         }, () => save('layout:tree2', Math.round(treeW)));
 
-        // 右：本页目录的左边缘（改的是中间和右边的宽度比例）
+        // 右：本页目录的左边缘（只改右栏自己的宽度）
         let rightBar = null;
         if (toc) {
             rightBar = makeSplitter(docWrap, (dx) => {
-                const total = docWrap.getBoundingClientRect().width || 1;
-                tocPct = clamp(tocPct - (dx / total) * 100, MIN_TOC_PCT, MAX_TOC_PCT);
+                tocW = clamp(tocW - dx, MIN_TOC, MAX_TOC);
                 applyToc();
-            }, () => save('layout:tocpct', Math.round(tocPct * 10) / 10));
+            }, () => save('layout:toc3', Math.round(tocW)));
         }
 
         const layout = () => {
             const wr = wrap.getBoundingClientRect();
             const tr = tree.getBoundingClientRect();
+            // 分隔条是 .with-tree（position: relative）的绝对定位子元素，
+            // left 一律按 wrap 的坐标算；原先右栏用 docWrap 的坐标，整体偏了一个 padding
             leftBar.style.left = (tr.right - wr.left) + 'px';
             // 单列堆叠时段落中间没有可拖的分界，藏掉
             leftBar.style.display = stacked() ? 'none' : '';
 
             if (rightBar && toc) {
-                const dr = docWrap.getBoundingClientRect();
                 const rr = toc.getBoundingClientRect();
-                rightBar.style.left = (rr.left - dr.left) + 'px';
+                rightBar.style.left = (rr.left - wr.left) + 'px';
                 rightBar.style.display = tocHidden() ? 'none' : '';
             }
         };

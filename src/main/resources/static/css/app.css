@@ -2691,16 +2691,11 @@ html[data-theme='dark'] .cl-latest {
     }
 }
 
-/* 正文按阅读宽度（68ch）在整屏居中：左边距 = (整宽 - 阅读宽)/2 - 树宽 - 间距，
-   这样树栏和正文一起右移，正文左右留白相等。窄屏放不下时回落到 1.5rem，
-   和原来一样靠左。 */
-.with-tree.has-tree:has(.tree-pane) {
-    padding-left: max(1.5rem, calc((100% - 68ch) / 2 - var(--tree-w, 300px) - 2rem));
-}
-
-/* 没有右侧目录时正文上限是 82ch，居中基准跟着换 */
-.with-tree.has-tree:has(.tree-pane):has(.doc-wrap.no-toc) {
-    padding-left: max(1.5rem, calc((100% - 82ch) / 2 - var(--tree-w, 300px) - 2rem));
+/* 正文在「左树、右目录」之间居中。以前是反算 padding-left = (100% - 68ch)/2 - 树宽 - 间距，
+   结果 padding 和树宽互相抵消：拖左分隔条正文不跟着动，树宽过了阈值又突然开始挤右栏，
+   分隔条看着停在屏幕中间。现在正文自己居中，三栏各管各的宽度。 */
+.with-tree.has-tree .doc {
+    justify-self: center;
 }
 
 /* ---- 列表页（左目录 + 右条目，没有正文那一栏）----
