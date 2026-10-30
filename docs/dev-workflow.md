@@ -143,6 +143,10 @@ sudo /opt/deploy/sync-db.sh    # 正式库整库覆盖到测试库
   `/api/tree/{kind}?parent=<slug>` 补子节点
 - 静态资源带 `?v=` 版本号 + `Cache-Control: max-age=31536000`，nginx 开了 `gzip_types`（css/js）；
   nginx 到应用是长连接（`upstream ... keepalive` + `Connection ""`）
+- **改完要看响应时间**：`bash /opt/deploy/measure.sh dev`（服务器上跑，5 个主页面各热身 6 次再采 40 次，
+  报 p50/p95 和 TTFB；源码 `deploy/measure.sh`）。2026-10-30 基线：p50 25~82ms，p95 ≤ 111ms
+- `app.sh` 部署完会自己把 4 个列表页 + 一篇正文各打 5 遍**预热**——JVM 刚起来头十几次请求是解释执行的，
+  慢 5~10 倍（实测 2.7s / 850ms / 500ms 一路降到 80ms），不预热的话「刚发布完打开就很慢」
 - `/admin` 现在登录就能进，默认只看到自己的；管理员额外能看到全部
 - 更新日志（`/changelog`）是手写的发版说明，存在 `changelog_entry`，只有管理员能写
 - 缩略图和更新日志里没有「内容动态」那个页面了（2026-10-29 去掉）
