@@ -18,7 +18,7 @@
         </div>
     </form>
     <p class="cmt-login" th:unless="${canComment}">
-        <a th:href="@{/login}">登录</a> 后可以评论
+        <a th:href="@{/login}">登录</a> 后可以注释
     </p>
 
     <section class="cmt-thread" th:each="t : ${threads}"
