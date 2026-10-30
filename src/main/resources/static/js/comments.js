@@ -72,6 +72,36 @@
         newBtn && newBtn.addEventListener('click', () => openForm({ kind: 'text', quote: '' }));
     }
 
+    // ---------- 发完一条后 10 秒内不让再发 ----------
+    // 服务端同样按 10 秒拦一次；这里只是别让人把字打完再被丢掉
+    const COOLDOWN = 10000;
+    const LAST_KEY = 'cmt:last';
+    const submitButtons = [...pane.querySelectorAll('.cmt-submit')];
+    const lastPost = () => {
+        try {
+            return Number(window.localStorage.getItem(LAST_KEY) || 0);
+        } catch (e) {
+            return 0;
+        }
+    };
+    const lockSubmit = (ms) => {
+        submitButtons.forEach((b) => {
+            b.disabled = true;
+        });
+        setTimeout(() => submitButtons.forEach((b) => {
+            b.disabled = false;
+        }), ms);
+    };
+    const left = COOLDOWN - (Date.now() - lastPost());
+    if (left > 0) lockSubmit(left);
+    pane.addEventListener('submit', () => {
+        try {
+            window.localStorage.setItem(LAST_KEY, String(Date.now()));
+        } catch (e) {
+            // 隐私模式下写不进去就算了，服务端还拦着一道
+        }
+    });
+
     // ---------- 选中文字后的浮动工具条 ----------
     let lastRange = null;
     let lastQuote = '';

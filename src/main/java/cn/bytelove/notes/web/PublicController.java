@@ -5,6 +5,7 @@ import cn.bytelove.notes.domain.ContentKind;
 import cn.bytelove.notes.repo.ContentItemRepository;
 import cn.bytelove.notes.service.BookmarkService;
 import cn.bytelove.notes.service.CommentFilter;
+import cn.bytelove.notes.service.CommentRateLimiter;
 import cn.bytelove.notes.service.CommentService;
 import cn.bytelove.notes.service.ContentStarService;
 import cn.bytelove.notes.service.MarkdownRenderer;
@@ -54,11 +55,13 @@ public class PublicController {
     private final NoteTreeService tree;
     private final CommentService comments;
     private final CommentFilter commentFilter;
+    private final CommentRateLimiter commentLimiter;
 
     public PublicController(ContentItemRepository items, VisibilityService visibility, ViewerService viewers,
                             ContentStarService stars, ProjectMetaService meta, ReadingPositionService positions, BookmarkService bookmarks,
                             MarkdownRenderer markdown, NoteTreeService tree,
-                            CommentService comments, CommentFilter commentFilter) {
+                            CommentService comments, CommentFilter commentFilter,
+                            CommentRateLimiter commentLimiter) {
         this.items = items;
         this.visibility = visibility;
         this.viewers = viewers;
@@ -70,6 +73,7 @@ public class PublicController {
         this.tree = tree;
         this.comments = comments;
         this.commentFilter = commentFilter;
+        this.commentLimiter = commentLimiter;
     }
 
     @GetMapping("/")
@@ -309,6 +313,10 @@ public class PublicController {
         }
         if (text.length() > 500) {
             text = text.substring(0, 500);
+        }
+        // 10 秒内只收一条：连点、刷屏都卡在这里，不落库
+        if (!commentLimiter.tryAcquire(viewer.userId())) {
+            return "redirect:" + basePath(item.getKind()) + "/" + item.getSlug() + "#comments";
         }
         String clean = commentFilter.mask(text);
         String anchor = (quote == null || quote.isBlank()) ? null : quote.trim();
