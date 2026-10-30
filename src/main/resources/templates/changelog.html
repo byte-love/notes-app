@@ -40,11 +40,21 @@
                             <span th:text="${r.title()}">这版做了什么</span>
                         </h3>
 
+                        <!-- 修复 / 优化 / 清理这类小节默认折叠：想看的人再展开，不占版面 -->
                         <section class="cl-section" th:each="s : ${r.sections()}">
-                            <h4 th:if="${s.name() != null}" th:text="${s.name()}">小节名</h4>
-                            <ul class="cl-points">
-                                <li th:each="i : ${s.items()}" th:utext="${i.html()}">要点</li>
-                            </ul>
+                            <details class="cl-fold"
+                                     th:if="${s.name() != null and (#strings.contains(s.name(), '修复') or #strings.contains(s.name(), '优化') or #strings.contains(s.name(), '清理'))}">
+                                <summary th:text="${s.name()}">修复与优化</summary>
+                                <ul class="cl-points">
+                                    <li th:each="i : ${s.items()}" th:utext="${i.html()}">要点</li>
+                                </ul>
+                            </details>
+                            <th:block th:unless="${s.name() != null and (#strings.contains(s.name(), '修复') or #strings.contains(s.name(), '优化') or #strings.contains(s.name(), '清理'))}">
+                                <h4 th:if="${s.name() != null}" th:text="${s.name()}">小节名</h4>
+                                <ul class="cl-points">
+                                    <li th:each="i : ${s.items()}" th:utext="${i.html()}">要点</li>
+                                </ul>
+                            </th:block>
                         </section>
                     </div>
                 </div>

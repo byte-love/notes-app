@@ -3385,3 +3385,39 @@ html[data-theme='dark'] .cl-latest {
     cursor: default;
     opacity: 1;
 }
+/* 更新日志里「修复 / 优化」这类小节默认折叠 */
+.cl-fold {
+    margin-top: 0.5rem;
+}
+
+.cl-fold summary {
+    cursor: pointer;
+    list-style: none;
+    font-size: 0.84rem;
+    font-weight: 600;
+    color: var(--fg-3);
+    padding: 0.25rem 0;
+}
+
+.cl-fold summary::-webkit-details-marker {
+    display: none;
+}
+
+.cl-fold summary::before {
+    content: "▸";
+    margin-right: 0.4rem;
+    display: inline-block;
+    transition: transform 0.12s ease;
+}
+
+.cl-fold[open] summary::before {
+    transform: rotate(90deg);
+}
+
+.cl-fold summary:hover {
+    color: var(--accent);
+}
+
+.cl-fold ul {
+    margin-top: 0.3rem;
+}
