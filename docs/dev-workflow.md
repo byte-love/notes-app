@@ -161,6 +161,14 @@ sudo /opt/deploy/sync-db.sh    # 正式库整库覆盖到测试库
   `title` 必须一致，后补条目时 `title` 留空会在页面上多出一个同名版本块（2026-10-30 出现过一天两个 v1.1.0）。
   补条目要么照抄标题，要么插完跑一次
   `update changelog_entry set title = '...' where version = '...' and coalesce(title,'') = ''`
+- **`hidden` 属性要靠 `app.css` 开头那条 `[hidden] { display: none !important }` 才真生效**：
+  组件自己写了 `display: flex` 的（`.cmt-tool`、`.cmt-anchor-chip`）会把浏览器默认的
+  `[hidden] { display: none }` 盖掉，属性设上了、元素还在屏上（2026-10-30 就踩了：评论工具条、
+  引文小框一直不消失，前端量 `el.hidden` 却是 true，误判了两轮）。以后新增带 `display` 的浮层
+  要记得这条全局规则，别删
+- **前端改动要量渲染结果，不能只量 DOM 属性**：判断「收起来了没有」用
+  `getComputedStyle(el).display === 'none'` / `el.offsetParent === null` / `document.elementFromPoint`
+  实际命中的元素，必要时截一张图；只读 `el.hidden`、只读 JS 返回值都会骗人
 - **改完要看响应时间**：`bash /opt/deploy/measure.sh dev`（服务器上跑，5 个主页面各热身 6 次再采 40 次，
   报 p50/p95 和 TTFB；源码 `deploy/measure.sh`）。2026-10-30 基线：p50 25~82ms，p95 ≤ 111ms
 - `app.sh` 部署完会自己把 4 个列表页 + 一篇正文各打 5 遍**预热**——JVM 刚起来头十几次请求是解释执行的，
