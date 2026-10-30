@@ -30,6 +30,8 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -42,6 +44,14 @@ import java.util.Locale;
 @Controller
 @RequestMapping("/admin")
 public class AdminController {
+
+    /** 列表行：值都在控制器里算好，模板只做输出。 */
+    public record AdminRow(long id, String kind, String slug, String title, String visibility,
+                           String updated) {
+    }
+
+    private static final DateTimeFormatter UPDATED_AT =
+            DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm").withZone(ZoneId.systemDefault());
 
     private final ContentItemRepository items;
     private final NoteTreeService tree;
@@ -109,7 +119,16 @@ public class AdminController {
         List<ContentItem> found = items.findAll(spec,
                 Sort.by(Sort.Order.asc("sortOrder"), Sort.Order.asc("title")));
 
+        // 每行要用到的值在这里一次性算好：模板里 #temporals.format 每行都会新建一次
+        // formatter，300 多行加起来是几十毫秒；枚举的 label、URL 也一样
+        List<AdminRow> rows = new ArrayList<>(found.size());
+        for (ContentItem i : found) {
+            rows.add(new AdminRow(i.getId(), i.getKind().getLabel(), i.getSlug(), i.getTitle(),
+                    i.getVisibility().getLabel(), UPDATED_AT.format(i.getUpdatedAt())));
+        }
+
         model.addAttribute("items", found);
+        model.addAttribute("rows", rows);
         // 行内链接自己拼 URL（模板里 @{} 每行两个，313 行要多花几十毫秒）；
         // #request 在 Thymeleaf 3.1 里默认不给了，所以从控制器传 contextPath
         model.addAttribute("ctx", request.getContextPath());
