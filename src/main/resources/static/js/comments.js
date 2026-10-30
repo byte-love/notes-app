@@ -58,7 +58,7 @@
         closeBtn.className = 'ann-pop-close';
         closeBtn.setAttribute('aria-label', '关闭');
         closeBtn.textContent = '×';
-        closeBtn.addEventListener('click', closePop);
+        closeBtn.addEventListener('click', () => closePop());
         pop.appendChild(closeBtn);
         document.body.appendChild(pop);
     }
@@ -122,7 +122,7 @@
 
     if (annForm) {
         const cancel = annForm.querySelector('.ann-cancel');
-        cancel && cancel.addEventListener('click', closePop);
+        cancel && cancel.addEventListener('click', () => closePop());
     }
     document.addEventListener('mousedown', (e) => {
         if (!pop || pop.hidden || pop.contains(e.target)) return;
@@ -132,7 +132,7 @@
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') closePop();
     });
-    window.addEventListener('scroll', closePop, { passive: true });
+    window.addEventListener('scroll', () => closePop(), { passive: true });
 
     // ---------- 打开 / 关闭输入框 ----------
     const openForm = (anchor) => {
