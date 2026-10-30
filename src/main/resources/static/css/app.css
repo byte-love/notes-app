@@ -10,6 +10,9 @@
     --accent-2: #8a5a20;
     --danger: #b3261e;
     --tree-guide: #dfdacf;
+    /* 滚动条：滚动时用 active，停手后 JS 会把它插值到 idle */
+    --sb-active: rgba(114, 109, 99, 0.9);
+    --sb-idle: rgba(28, 27, 24, 0.12);
     --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
     --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
         "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
@@ -28,6 +31,8 @@
         --accent-2: #d8a25e;
         --danger: #f07c74;
         --tree-guide: #2b302e;
+        --sb-active: rgba(140, 137, 128, 0.85);
+        --sb-idle: rgba(231, 229, 223, 0.1);
     }
 }
 
@@ -43,6 +48,8 @@ html[data-theme='light'] {
     --accent-2: #8a5a20;
     --danger: #b3261e;
     --tree-guide: #dfdacf;
+    --sb-active: rgba(114, 109, 99, 0.9);
+    --sb-idle: rgba(28, 27, 24, 0.12);
 }
 
 html[data-theme='dark'] {
@@ -57,6 +64,8 @@ html[data-theme='dark'] {
     --accent-2: #d8a25e;
     --danger: #f07c74;
     --tree-guide: #2b302e;
+    --sb-active: rgba(140, 137, 128, 0.85);
+    --sb-idle: rgba(231, 229, 223, 0.1);
 }
 
 html[data-theme='sepia'] {
@@ -71,6 +80,8 @@ html[data-theme='sepia'] {
     --accent-2: #8a5a20;
     --danger: #a82f2f;
     --tree-guide: #d8ccb6;
+    --sb-active: rgba(111, 101, 82, 0.9);
+    --sb-idle: rgba(59, 50, 39, 0.12);
 }
 
 * {
@@ -82,7 +93,18 @@ html {
     color: var(--fg);
     -webkit-text-size-adjust: 100%;
     scrollbar-width: thin;
-    scrollbar-color: var(--line) transparent;
+    scrollbar-color: var(--sb-thumb, var(--line)) transparent;
+}
+
+/* 滚动条：滚动时是实色，停手 3 秒后淡到只剩轮廓（JS 会插值改这个变量） */
+::-webkit-scrollbar-thumb {
+    background: var(--sb-thumb, var(--line));
+    border-radius: 999px;
+    border: 2px solid var(--bg);
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--sb-thumb, var(--fg-3));
 }
 
 /* 滚动条跟随主题，默认的亮色轨道在深色背景下太刺眼 */
@@ -94,16 +116,6 @@ html {
 ::-webkit-scrollbar-track,
 ::-webkit-scrollbar-corner {
     background: transparent;
-}
-
-::-webkit-scrollbar-thumb {
-    background: var(--line);
-    border-radius: 999px;
-    border: 2px solid var(--bg);
-}
-
-::-webkit-scrollbar-thumb:hover {
-    background: var(--fg-3);
 }
 
 ::selection {

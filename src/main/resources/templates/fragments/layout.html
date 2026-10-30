@@ -21,7 +21,7 @@
             } catch (e) {}
         })();
     </script>
-    <link rel="stylesheet" th:href="@{/css/app.css(v=52)}">
+    <link rel="stylesheet" th:href="@{/css/app.css(v=53)}">
 </head>
 <body>
 
@@ -250,6 +250,67 @@
         };
 
         buttons.forEach(bind);
+    })();
+</script>
+
+<script>
+    // 滚动条：滚动时是实色，停手 3 秒后慢慢淡到只剩一圈轮廓。
+    // scrollbar-color 不能用 CSS 过渡，所以这里自己插值写 --sb-thumb。
+    (() => {
+        const root = document.documentElement;
+        const color = (name, fallback) => (getComputedStyle(root).getPropertyValue(name) || '').trim() || fallback;
+
+        const parse = (value) => {
+            const rgb = value.match(/rgba?\(([^)]+)\)/);
+            if (rgb) {
+                const p = rgb[1].split(',').map((x) => parseFloat(x));
+                return [p[0] || 0, p[1] || 0, p[2] || 0, p.length > 3 ? p[3] : 1];
+            }
+            let hex = value.replace('#', '').trim();
+            if (hex.length === 3) hex = hex.split('').map((x) => x + x).join('');
+            return [
+                parseInt(hex.slice(0, 2), 16) || 0,
+                parseInt(hex.slice(2, 4), 16) || 0,
+                parseInt(hex.slice(4, 6), 16) || 0,
+                1,
+            ];
+        };
+
+        const apply = (c) => root.style.setProperty('--sb-thumb', `rgba(${Math.round(c[0])}, ${Math.round(c[1])}, ${Math.round(c[2])}, ${c[3].toFixed(3)})`);
+
+        let frame = 0;
+        let idleTimer = 0;
+
+        const fadeTo = (target, ms) => {
+            cancelAnimationFrame(frame);
+            const from = parse(getComputedStyle(root).getPropertyValue('--sb-thumb') || color('--sb-idle', '#808080'));
+            const start = performance.now();
+            const step = (now) => {
+                const t = Math.min(1, (now - start) / ms);
+                const k = 1 - Math.pow(1 - t, 3); // 先快后慢
+                apply([
+                    from[0] + (target[0] - from[0]) * k,
+                    from[1] + (target[1] - from[1]) * k,
+                    from[2] + (target[2] - from[2]) * k,
+                    from[3] + (target[3] - from[3]) * k,
+                ]);
+                if (t < 1) frame = requestAnimationFrame(step);
+            };
+            frame = requestAnimationFrame(step);
+        };
+
+        const onScroll = () => {
+            cancelAnimationFrame(frame);
+            apply(parse(color('--sb-active', '#888')));
+            clearTimeout(idleTimer);
+            idleTimer = setTimeout(() => fadeTo(parse(color('--sb-idle', '#888888')), 700), 3000);
+        };
+
+        // 刚打开页面先给淡的，滚动过才变实
+        apply(parse(color('--sb-idle', '#888888')));
+        window.addEventListener('scroll', onScroll, { passive: true });
+        window.addEventListener('wheel', onScroll, { passive: true });
+        window.addEventListener('touchmove', onScroll, { passive: true });
     })();
 </script>
 </th:block>

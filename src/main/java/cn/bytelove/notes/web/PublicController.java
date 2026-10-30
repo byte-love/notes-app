@@ -270,18 +270,22 @@ public class PublicController {
         return "";
     }
 
-    /** 手动书签：自己插的旗，想标几处标几处；anchor 为空是整篇，非空是某个标题块。 */
+    /** 手动书签：自己插的旗，想标几处标几处；anchor 为空是整篇（带当时的位置），非空是某个标题块。 */
     @PostMapping("/bookmark/{slug}")
     public String toggleBookmark(@PathVariable String slug,
                                  @RequestParam(required = false) String anchor,
+                                 @RequestParam(defaultValue = "0") double progress,
                                  Authentication auth) {
         Viewer viewer = viewers.current(auth);
         ContentItem item = resolveAnyKind(slug, viewer);
-        bookmarks.toggle(viewer.userId(), item.getId(), anchor);
+        bookmarks.toggle(viewer.userId(), item.getId(), anchor, progress);
         String target = basePath(item.getKind()) + "/" + item.getSlug();
         if (anchor != null && !anchor.isBlank()) {
             // 标题 id 是按标题文字生成的，可能是中文；原样塞进 Location 会被 Tomcat 丢掉整个头
             target = target + "#" + URLEncoder.encode(anchor, StandardCharsets.UTF_8).replace("+", "%20");
+        } else if (progress > 0.005) {
+            // 整篇书签记了滚动位置，跳回去就落在那一段
+            target = target + "#pos=" + String.format(java.util.Locale.ROOT, "%.4f", Math.min(1, progress));
         }
         return "redirect:" + target;
     }
@@ -292,6 +296,7 @@ public class PublicController {
         Viewer viewer = viewers.current(auth);
         List<ContentItem> all = new ArrayList<>();
         List<String> anchors = new ArrayList<>();
+        List<String> progresses = new ArrayList<>();
         for (BookmarkService.Spot spot : bookmarks.spots(viewer.userId())) {
             ContentItem item = items.findById(spot.itemId()).orElse(null);
             if (item == null || !visibility.canRead(item, viewer)) {
@@ -299,9 +304,13 @@ public class PublicController {
             }
             all.add(item);
             anchors.add(spot.anchor());
+            progresses.add(spot.progress() > 0.005
+                    ? String.format(java.util.Locale.ROOT, "%.4f", Math.min(1, spot.progress()))
+                    : "");
         }
         model.addAttribute("items", all);
         model.addAttribute("anchors", anchors);
+        model.addAttribute("progresses", progresses);
         model.addAttribute("basePathOf", basePathOf());
         model.addAttribute("tabActive", "memo");
         return "bookmarks";

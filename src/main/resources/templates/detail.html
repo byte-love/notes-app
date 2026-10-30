@@ -33,7 +33,8 @@
                                 th:text="${starred} ? '★ 已收藏' : '☆ 收藏'">☆ 收藏</button>
                     </form>
                     <form sec:authorize="isAuthenticated()" th:action="@{/bookmark/{s}(s=${item.slug})}"
-                          method="post" class="inline">
+                          method="post" class="inline bookmark-form">
+                        <input type="hidden" name="progress" value="0">
                         <button type="submit" class="star-btn"
                                 th:classappend="${bookmarked} ? 'on'"
                                 th:text="${bookmarked} ? '已加书签' : '加书签'">加书签</button>
@@ -64,7 +65,7 @@
     </main>
 </div>
 
-    <script th:src="@{/js/detail.js(v=3)}"></script>
+    <script th:src="@{/js/detail.js(v=4)}"></script>
 
 <footer th:replace="~{fragments/layout :: foot}"></footer>
 

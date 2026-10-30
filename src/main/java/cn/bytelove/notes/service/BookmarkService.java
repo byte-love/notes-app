@@ -10,6 +10,7 @@ import java.util.Set;
 
 /**
  * 手动书签。可以标整篇（anchor 为空串），也可以标正文里的某个标题块（anchor 是标题 id）。
+ * 整篇书签同时记一个滚动比例，点进去能落回当时读的那一行。
  * 和「上次看到」的区别：那个是自动记的分区位置，每个分区只有一条；这个想标几处标几处。
  */
 @Service
@@ -21,10 +22,14 @@ public class BookmarkService {
         this.jdbc = jdbc;
     }
 
-    public record Spot(Long itemId, String anchor) {
+    public record Spot(Long itemId, String anchor, double progress) {
     }
 
     public void toggle(Long userId, Long itemId, String anchor) {
+        toggle(userId, itemId, anchor, 0);
+    }
+
+    public void toggle(Long userId, Long itemId, String anchor, double progress) {
         String key = anchor == null ? "" : anchor;
         Integer n = jdbc.queryForObject(
                 "select count(*) from content_bookmark where user_id = ? and item_id = ? and anchor = ?",
@@ -33,8 +38,9 @@ public class BookmarkService {
             jdbc.update("delete from content_bookmark where user_id = ? and item_id = ? and anchor = ?",
                     userId, itemId, key);
         } else {
-            jdbc.update("insert into content_bookmark (user_id, item_id, anchor) values (?, ?, ?) "
-                    + "on conflict do nothing", userId, itemId, key);
+            double p = Math.min(1, Math.max(0, progress));
+            jdbc.update("insert into content_bookmark (user_id, item_id, anchor, progress) values (?, ?, ?, ?) "
+                    + "on conflict do nothing", userId, itemId, key, p);
         }
     }
 
@@ -57,14 +63,14 @@ public class BookmarkService {
                 "select distinct item_id from content_bookmark where user_id = ?", Long.class, userId));
     }
 
-    public List<Spot> spots(Long userId) {
+    /** 能看的书签列表：锚点 + 当时滚到哪。 */    public List<Spot> spots(Long userId) {
         if (userId == null) {
             return List.of();
         }
         Set<Spot> out = new LinkedHashSet<>();
-        jdbc.query("select item_id, anchor from content_bookmark where user_id = ? order by created_at desc",
+        jdbc.query("select item_id, anchor, progress from content_bookmark where user_id = ? order by created_at desc",
                 rs -> {
-                    out.add(new Spot(rs.getLong("item_id"), rs.getString("anchor")));
+                    out.add(new Spot(rs.getLong("item_id"), rs.getString("anchor"), rs.getDouble("progress")));
                 }, userId);
         return List.copyOf(out);
     }
