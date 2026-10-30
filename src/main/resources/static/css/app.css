@@ -1275,7 +1275,7 @@ button:hover,
 }
 
 .with-tree .doc-wrap.no-toc .doc {
-    max-width: 82ch;
+    max-width: min(82ch, 100%);
 }
 
 .crumbs {
@@ -2702,11 +2702,14 @@ html[data-theme='dark'] .cl-latest {
     justify-self: center;
 }
 
-/* 有右栏时正文跟着列宽走（不再卡 68ch），拖左右分隔条都能看到行宽变化；
+/* 有右栏时正文吃满列宽（不设居中），代码块自己横向滚动，不再顶开列宽；
    没有右栏（正文没有 ## 标题、右栏是「同分类其他条目」）时仍留 82ch 上限。
-   :has 选的是 .toc / .toc-rail 两种右栏。 */
+   :has 选的是 .toc / .toc-rail 两种右栏。
+   注意不能只写 max-width:none 再靠 justify-self:center —— 居中会让正文按 min-content 撑开
+   （代码块里最长的行），821~1100 之间会横着溢出半屏。 */
 .with-tree.has-tree .doc-wrap:has(.toc) .doc {
     max-width: none;
+    justify-self: stretch;
 }
 
 /* ---- 列表页（左目录 + 右条目，没有正文那一栏）----
