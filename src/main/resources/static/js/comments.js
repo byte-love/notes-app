@@ -56,6 +56,7 @@
         document.body.appendChild(btn);
 
         let lastRange = null;
+        let lastQuote = '';
 
         const blockOf = (node) => {
             for (let el = node.nodeType === 1 ? node : node.parentElement; el; el = el.parentElement) {
@@ -68,9 +69,15 @@
             btn.hidden = true;
         };
 
-        document.addEventListener('selectionchange', () => {
+        // 点按钮这一下会先把选区清空，引文就丢了；所以拦住 mousedown，用记下来的那份
+        btn.addEventListener('mousedown', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+        });
+
+        const showBtn = () => {
             const sel = window.getSelection();
-            if (!sel || sel.isCollapsed) {
+            if (!sel || sel.isCollapsed || !sel.rangeCount) {
                 hideBtn();
                 return;
             }
@@ -86,17 +93,21 @@
                 return;
             }
             lastRange = range.cloneRange();
+            lastQuote = text;
             btn.hidden = false;
             btn.style.top = `${Math.min(window.innerHeight - 44, rect.bottom + window.scrollY + 6)}px`;
             btn.style.left = `${Math.max(12, rect.left + window.scrollX - 6)}px`;
-        });
+        };
+
+        // selectionchange 有时机不稳的情况，鼠标抬起/按键再兜一次
+        document.addEventListener('selectionchange', showBtn);
+        article.addEventListener('mouseup', () => setTimeout(showBtn, 0));
+        article.addEventListener('keyup', showBtn);
 
         btn.addEventListener('click', () => {
-            if (!lastRange) return;
-            const sel = window.getSelection();
-            const quote = sel ? sel.toString().trim() : '';
+            const quote = lastQuote || (window.getSelection() ? window.getSelection().toString().trim() : '');
             if (!quote) return;
-            const index = blockOf(lastRange.startContainer);
+            const index = lastRange ? blockOf(lastRange.startContainer) : -1;
             const block = index >= 0 ? blocks[index] : null;
             const blockText = block ? block.textContent || '' : '';
             const at = blockText.indexOf(quote);
@@ -104,7 +115,6 @@
             const suffix = at >= 0 ? blockText.slice(at + quote.length, at + quote.length + 20) : '';
             setAnchor({ kind: 'text', quote, prefix, suffix, block: index });
             hideBtn();
-            sel && sel.removeAllRanges();
         });
 
         // 点到别处就收起按钮
