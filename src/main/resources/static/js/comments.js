@@ -189,12 +189,42 @@
         sel && sel.removeAllRanges();
     });
 
-    document.addEventListener('mousedown', (e) => {
-        if (!tool.contains(e.target)) hideTool();
-    });
-    document.addEventListener('touchstart', (e) => {
-        if (!tool.contains(e.target)) hideTool();
-    }, { passive: true });
+    // 点空白处要把工具条和选区一起收掉。
+    // 有些位置（按钮、块间距、容器边缘）浏览器不会自己清掉旧选区，mouseup 之后 showTool
+    // 看到选区还在，又把工具条画回来——所以要自己判断「按下到松开之间有没有产生新选区」。
+    let down = null;
+    const selected = () => (window.getSelection() ? window.getSelection().toString() : '');
+
+    const onDown = (e) => {
+        if (tool.contains(e.target)) return;
+        down = { x: e.clientX || 0, y: e.clientY || 0, text: selected() };
+        hideTool();
+    };
+
+    const onUp = (e) => {
+        if (!down) return;
+        const moved = Math.abs((e.clientX || 0) - down.x) + Math.abs((e.clientY || 0) - down.y) > 4;
+        const same = selected() === down.text;
+        down = null;
+        if (moved) return; // 拖选，交给 showTool
+        const sel = window.getSelection();
+        if (!sel || sel.isCollapsed) {
+            hideTool();
+            return;
+        }
+        if (same) {
+            // 只是点了一下空白，旧选区还原样挂着：手动清掉
+            sel.removeAllRanges();
+            hideTool();
+        }
+    };
+
+    document.addEventListener('mousedown', onDown);
+    document.addEventListener('mouseup', onUp);
+    document.addEventListener('touchstart', onDown, { passive: true });
+    document.addEventListener('touchend', onUp, { passive: true });
+    // 滚动时工具条别跟着飘
+    window.addEventListener('scroll', hideTool, { passive: true });
 
     // ---------- 整段 / 代码块左侧的 ＋ ----------
     if (canComment) {
