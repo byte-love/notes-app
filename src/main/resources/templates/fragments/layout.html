@@ -213,20 +213,43 @@
     (() => {
         const buttons = document.querySelectorAll('.tree-group[data-key]');
         if (!buttons.length) return;
-        buttons.forEach((btn) => {
+
+        // 折叠状态记在 localStorage；data-lazy 的节点子列表还没渲染，第一次展开时去取
+        const bind = (btn) => {
             const li = btn.closest('li');
-            if (!li) return;
+            if (!li || btn.dataset.bound === '1') return;
+            btn.dataset.bound = '1';
             const key = 'tree-fold:' + btn.dataset.key;
             try {
                 if (localStorage.getItem(key) === '1') li.classList.add('folded');
             } catch (e) {}
-            btn.addEventListener('click', () => {
+            btn.addEventListener('click', async () => {
+                const lazy = btn.dataset.lazy;
+                if (lazy && !li.querySelector(':scope > ul')) {
+                    btn.dataset.loading = '1';
+                    try {
+                        const res = await fetch(lazy, { credentials: 'same-origin' });
+                        if (res.ok) {
+                            li.insertAdjacentHTML('beforeend', await res.text());
+                            li.querySelectorAll('.tree-group[data-key]').forEach(bind);
+                        }
+                    } catch (e) {
+                        /* 取不到就只是展开不了，不影响别的 */
+                    }
+                    delete btn.dataset.lazy;
+                    delete btn.dataset.loading;
+                    li.classList.remove('folded');
+                    try { localStorage.setItem(key, '0'); } catch (e) {}
+                    return;
+                }
                 li.classList.toggle('folded');
                 try {
                     localStorage.setItem(key, li.classList.contains('folded') ? '1' : '0');
                 } catch (e) {}
             });
-        });
+        };
+
+        buttons.forEach(bind);
     })();
 </script>
 </th:block>

@@ -6,6 +6,7 @@ import org.springframework.stereotype.Service;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -16,7 +17,10 @@ import java.util.Set;
 @Service
 public class NoteTreeService {
 
-    public record Node(ContentItem item, List<Node> children, boolean locked) {
+    /**
+     * lazy = 有子节点但没渲染出来（前端展开时再取），避免几百条内容把整棵树塞进每个页面。
+     */
+    public record Node(ContentItem item, List<Node> children, boolean locked, boolean lazy) {
 
         public boolean hasChildren() {
             return !children.isEmpty();
@@ -59,9 +63,45 @@ public class NoteTreeService {
         List<Node> result = new ArrayList<>();
         for (ContentItem item : nodes) {
             List<ContentItem> kids = childrenOf.getOrDefault(item.getId(), List.of());
-            result.add(new Node(item, toNodes(kids, childrenOf, lockedIds), lockedIds.contains(item.getId())));
+            result.add(new Node(item, toNodes(kids, childrenOf, lockedIds),
+                    lockedIds.contains(item.getId()), false));
         }
         return result;
+    }
+
+    /**
+     * 只保留「顶层的 + 通向 activeId 的那条路」的子节点，其余标成 lazy 让前端点了再取。
+     * 三百条内容时，整棵树的 HTML 有 50KB 以上，比正文大得多。
+     */
+    public List<Node> pruned(List<Node> nodes, Long activeId) {
+        Set<Long> keep = new LinkedHashSet<>();
+        if (activeId != null) {
+            collectPath(nodes, activeId, keep);
+        }
+        return prune(nodes, keep);
+    }
+
+    private boolean collectPath(List<Node> nodes, Long target, Set<Long> keep) {
+        for (Node n : nodes) {
+            if (n.item().getId().equals(target) || collectPath(n.children(), target, keep)) {
+                keep.add(n.item().getId());
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private List<Node> prune(List<Node> nodes, Set<Long> keep) {
+        List<Node> out = new ArrayList<>();
+        for (Node n : nodes) {
+            List<Node> kids = n.children();
+            if (!kids.isEmpty()) {
+                kids = keep.contains(n.item().getId()) ? prune(kids, keep) : List.of();
+            }
+            boolean lazy = !n.children().isEmpty() && kids.isEmpty();
+            out.add(new Node(n.item(), kids, n.locked(), lazy));
+        }
+        return out;
     }
 
     /** 从根到目标节点的路径，用于面包屑。 */
