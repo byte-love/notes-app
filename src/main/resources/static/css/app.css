@@ -1,3 +1,9 @@
+/* hidden 属性要真的不显示：下面不少组件自带 display: flex，会把浏览器默认的
+   [hidden] { display: none } 盖掉（工具条「评论」、引文小框就这么赖着不走） */
+[hidden] {
+    display: none !important;
+}
+
 :root {
     --fg: #1c1b18;
     --fg-2: #57534b;
