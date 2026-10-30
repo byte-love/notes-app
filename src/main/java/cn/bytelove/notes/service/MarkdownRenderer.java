@@ -173,7 +173,8 @@ public class MarkdownRenderer {
             }
 
             if (run.size() >= 3) {
-                String joined = String.join("\n", run);
+                // 这些行是从段落里拼出来的，本身没有缩进，按大括号重排一下才看得懂层次
+                String joined = String.join("\n", reindent(run));
                 out.append("```").append(guessLang(joined)).append('\n')
                         .append(joined).append("\n```\n");
                 i = j;
@@ -186,6 +187,47 @@ public class MarkdownRenderer {
             }
         }
         return out.toString();
+    }
+
+    /**
+     * 按大括号给拼出来的代码重排缩进（4 空格一层）。
+     * 以 {@code }} 开头的行先退一级再输出；lua 的 then/do 当开括号、end 当闭括号。
+     */
+    static List<String> reindent(List<String> lines) {
+        List<String> out = new ArrayList<>(lines.size());
+        int level = 0;
+        for (String raw : lines) {
+            String t = raw.trim();
+            if (t.isEmpty()) {
+                out.add("");
+                continue;
+            }
+            boolean closerStart = t.startsWith("}") || t.equals("end") || t.startsWith("end ");
+            if (closerStart) {
+                level = Math.max(0, level - 1);
+            }
+            out.add("    ".repeat(level) + t);
+
+            int net = count(t, '{') - count(t, '}');
+            if (closerStart) {
+                net += 1; // 开头那个闭括号已经退过了，别重复算
+            }
+            if (t.endsWith(" then") || t.endsWith(" do") || t.equals("then") || t.equals("do")) {
+                net += 1;
+            }
+            level = Math.max(0, level + net);
+        }
+        return out;
+    }
+
+    private static int count(String s, char c) {
+        int n = 0;
+        for (int i = 0; i < s.length(); i++) {
+            if (s.charAt(i) == c) {
+                n++;
+            }
+        }
+        return n;
     }
 
     private static String stripBullet(String line) {
