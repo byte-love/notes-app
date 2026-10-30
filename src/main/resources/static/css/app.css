@@ -1,7 +1,11 @@
-/* 正在评论的那段原文：光标点进输入框后原生选区就没了，这里用 Custom Highlight 再铺一层底 */
+/* 正在评论的那段原文：光标点进输入框后原生选区就没了，这里用 Custom Highlight 再铺一层底。
+   底色 + 下划线，跟「已有评论」的 .cmt-mark 同一套视觉语言，但整段铺满，一眼能看出在评哪句 */
 ::highlight(cmt-anchor) {
     background-color: var(--accent-soft);
     color: inherit;
+    text-decoration: underline;
+    text-decoration-color: var(--accent);
+    text-decoration-thickness: 2px;
 }
 
 /* hidden 属性要真的不显示：下面不少组件自带 display: flex，会把浏览器默认的
