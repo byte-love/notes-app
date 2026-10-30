@@ -1,13 +1,13 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org" lang="zh-CN">
-<head th:replace="~{fragments/layout :: head(${item.title + ' 路 byte-love'})}"></head>
+<head th:replace="~{fragments/layout :: head(${item.title + ' · byte-love'})}"></head>
 <body>
 <header th:replace="~{fragments/layout :: nav}"></header>
 
 <div class="with-tree" th:classappend="${item.kind.name() != 'PROJECT'} ? 'has-tree' : ''">
     <aside class="tree-pane" th:if="${item.kind.name() != 'PROJECT' and tree != null}">
         <p class="tree-hint" th:if="${lockedCount > 0}">
-            鐧诲綍鍚庡彲鏌ョ湅鍏朵綑 <span th:text="${lockedCount}">0</span> 绡?
+            登录后可查看其余 <span th:text="${lockedCount}">0</span> 篇
         </p>
         <ul th:replace="~{fragments/tree :: nodes(${tree})}"></ul>
     </aside>
@@ -24,19 +24,20 @@
             </nav>
 
             <header class="doc-head">
-                <h1 th:text="${item.title}">鏍囬</h1>
+                <h1 th:text="${item.title}">标题</h1>
                 <div class="doc-meta">
                     <time th:text="${#temporals.format(item.updatedAt, 'yyyy-MM-dd')}">2026-01-01</time>
                     <form sec:authorize="isAuthenticated()" th:action="@{/star/{s}(s=${item.slug})}"
                           method="post" class="inline">
                         <button type="submit" class="star-btn" th:classappend="${starred} ? 'on'"
-                                th:text="${starred} ? '鈽?宸叉敹钘? : '鈽?鏀惰棌'">鈽?鏀惰棌</button>
+                                th:text="${starred} ? '★ 已收藏' : '☆ 收藏'">☆ 收藏</button>
                     </form>
                     <form sec:authorize="isAuthenticated()" th:action="@{/bookmark/{s}(s=${item.slug})}"
-                          method="post" class="inline">
+                          method="post" class="inline bookmark-form">
+                        <input type="hidden" name="progress" value="0">
                         <button type="submit" class="star-btn"
                                 th:classappend="${bookmarked} ? 'on'"
-                                th:text="${bookmarked} ? '宸插姞涔︾' : '鍔犱功绛?">鍔犱功绛?/button>
+                                th:text="${bookmarked} ? '已加书签' : '加书签'">加书签</button>
                     </form>
                 </div>
             </header>
@@ -53,7 +54,7 @@
             </ul>
         </aside>
 
-        <!-- 娌℃湁鐩綍鏃跺彸鏍忔斁鍚屽垎绫荤殑鍏朵粬鏉＄洰锛屽厤寰楀彸渚ф暣鍧楃┖鐫€ -->
+        <!-- 没有目录时右栏放同分类的其他条目，免得右侧整块空着 -->
         <aside class="toc toc-rail" th:if="${#lists.isEmpty(toc) and !#lists.isEmpty(rail)}">
             <ul>
                 <li th:each="r : ${rail}">
