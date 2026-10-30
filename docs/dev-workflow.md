@@ -171,6 +171,11 @@ sudo /opt/deploy/sync-db.sh    # 正式库整库覆盖到测试库
 grep 命中就退出，`tee` 收到 SIGPIPE，整个管道退出码变成 141，`if` 认为「配置有问题」——
 实际上配置是好的。正确写法是先 `nginx -t > log 2>&1`，再用 `grep -q ... log` 判断。
 
+**别用 `padding-left` 反算「正文居中」**：早先详情页写的是
+`padding-left: max(1.5rem, calc((100% - 68ch)/2 - var(--tree-w) - 2rem))`，看着能让正文居中，
+实际上 padding 和树宽互相抵消：拖左分隔条正文不动，树宽过了阈值又突然开始挤右栏、分隔条停在屏幕中间。
+现在正文用 `justify-self: center` 自己居中，三栏各管各的宽度（树 px、右栏 px、正文吃剩下）。
+
 **CSS 里 `padding` 简写会覆盖同一条规则的 `padding-left`**：给树的分组按钮加
 `padding: 0.34rem 0.5rem` 之后，之前单独写的 `padding-left: 0.95rem` 被冲掉，折叠箭头直接压在文字上。
 改的时候要么写全四个值，要么把 `padding-left` 放在简写之后。
