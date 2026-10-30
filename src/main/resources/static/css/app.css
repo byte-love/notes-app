@@ -1053,9 +1053,9 @@ button:hover,
 /* ---------- tree ---------- */
 .with-tree {
     display: grid;
-    /* 树栏宽度固定（默认 210px），右侧吃剩余宽度。不做整体居中：
+    /* 树栏宽度按视口比例（默认 19%），右侧吃剩余宽度。不做整体居中：
        否则加宽树栏时整块会重新居中，看起来就是「树没动、正文往左挪」 */
-    grid-template-columns: 210px minmax(0, 1fr);
+    grid-template-columns: 19% minmax(0, 1fr);
     justify-content: stretch;
     gap: 2rem;
     padding: 2rem 1.5rem 0;
@@ -1255,13 +1255,13 @@ button:hover,
     grid-template-columns: minmax(0, 720px);
 }
 
-/* 有树时正文不再单独居中。gap 是正文到右栏的留白（2.4rem→9rem），
+/* 有树时正文不再单独居中。右栏宽 12%（按截图量的比例），gap 是正文到右栏的留白（2.4rem→9rem），
    右栏宽度是 JS 设的固定像素，拖分隔条只改列宽，这个留白一直不变 */
 .with-tree .doc-wrap {
     max-width: none;
     margin: 0;
     padding: 0;
-    grid-template-columns: minmax(0, 1fr) 140px;
+    grid-template-columns: minmax(0, 1fr) 12%;
     gap: 9rem;
 }
 
@@ -1269,7 +1269,7 @@ button:hover,
     max-width: 68ch;
 }
 
-/* 没有目录（正文没有 ## 标题）时，140px 的目录列不该继续占位 */
+/* 没有目录（正文没有 ## 标题）时，右侧那 12% 的目录列不该继续占位 */
 .with-tree .doc-wrap.no-toc {
     grid-template-columns: minmax(0, 1fr);
 }
@@ -2678,7 +2678,7 @@ html[data-theme='dark'] .cl-latest {
    gap 是正文到两侧导航的留白（2rem→7.5rem）。列宽是 px('var(--tree-w)') + 1fr，
    分隔条只改列宽，gap 不参与拖拽，所以拖的时候留白不变。 */
 .with-tree.has-tree {
-    grid-template-columns: var(--tree-w, 210px) minmax(0, 1fr);
+    grid-template-columns: var(--tree-w, 19%) minmax(0, 1fr);
     justify-content: stretch;
     gap: 7.5rem;
 }
@@ -2717,7 +2717,7 @@ html[data-theme='dark'] .cl-latest {
    从列表点进正文时左边缘和树栏也不会跳。 */
 @media (min-width: 821px) {
     .with-tree:not(.has-tree):not(.no-tree) {
-        padding-left: max(1.5rem, calc((100% - 68ch) / 2 - var(--tree-w, 210px) - 2rem));
+        padding-left: max(1.5rem, calc((100% - 68ch) / 2 - var(--tree-w, 19%) - 2rem));
     }
 }
 
