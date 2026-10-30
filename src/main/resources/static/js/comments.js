@@ -56,14 +56,9 @@
     if (form) {
         const cancel = form.querySelector('.cmt-cancel');
         cancel && cancel.addEventListener('click', closeForm);
+        // 引文框右上角的 × 等于取消：连输入框一起收起来，不只是把引文清掉
         const clearBtn = form.querySelector('.cmt-anchor-clear');
-        clearBtn && clearBtn.addEventListener('click', () => {
-            ['quote', 'anchorKind', 'blockIndex', 'prefix', 'suffix'].forEach((n) => {
-                const el = field(n);
-                if (el) el.value = '';
-            });
-            if (chip) chip.hidden = true;
-        });
+        clearBtn && clearBtn.addEventListener('click', closeForm);
         form.addEventListener('submit', () => {
             if (!field('anchorKind').value) field('anchorKind').value = 'text';
         });
@@ -135,6 +130,14 @@
         return -1;
     };
 
+    // 段落正文：要先把自己插进去的那些 ＋ 按钮摘掉，不然引文里会带一个「＋」
+    const textOf = (block) => {
+        if (!block) return '';
+        const clone = block.cloneNode(true);
+        clone.querySelectorAll('.cmt-block-btn').forEach((b) => b.remove());
+        return clone.textContent || '';
+    };
+
     const showTool = () => {
         if (!canComment) return;
         const sel = window.getSelection();
@@ -172,7 +175,7 @@
         if (!quote) return;
         const index = lastRange ? blockOf(lastRange.startContainer) : -1;
         const block = index >= 0 ? blocks[index] : null;
-        const blockText = block ? block.textContent || '' : '';
+        const blockText = textOf(block);
         const at = blockText.indexOf(quote);
         openForm({
             kind: 'text',
@@ -204,7 +207,7 @@
             btn.title = '评论这一段';
             btn.addEventListener('click', (e) => {
                 e.stopPropagation();
-                openForm({ kind: 'block', quote: (block.textContent || '').slice(0, 120), block: index });
+                openForm({ kind: 'block', quote: textOf(block).slice(0, 120), block: index });
             });
             block.classList.add('cmt-block-host');
             block.appendChild(btn);
