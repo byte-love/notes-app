@@ -11,6 +11,7 @@ import cn.bytelove.notes.service.ViewerService;
 import cn.bytelove.notes.service.VisibilityService.Viewer;
 import cn.bytelove.notes.web.form.ContentForm;
 import jakarta.persistence.criteria.Predicate;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
@@ -77,7 +78,7 @@ public class AdminController {
     public String list(@RequestParam(required = false) String kind,
                        @RequestParam(required = false) Integer range,
                        @RequestParam(required = false) String q,
-                       Model model, Authentication auth) {
+                       Model model, Authentication auth, HttpServletRequest request) {
         Viewer viewer = viewers.current(auth);
 
         ContentKind filterKind = parseKind(kind);
@@ -109,6 +110,9 @@ public class AdminController {
                 Sort.by(Sort.Order.asc("sortOrder"), Sort.Order.asc("title")));
 
         model.addAttribute("items", found);
+        // 行内链接自己拼 URL（模板里 @{} 每行两个，313 行要多花几十毫秒）；
+        // #request 在 Thymeleaf 3.1 里默认不给了，所以从控制器传 contextPath
+        model.addAttribute("ctx", request.getContextPath());
         model.addAttribute("filterKind", filterKind);
         model.addAttribute("filterRange", range);
         model.addAttribute("filterQ", q == null ? null : q.trim());

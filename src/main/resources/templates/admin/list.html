@@ -66,7 +66,7 @@
             <!-- 每行压成一行输出：313 行时缩进空白能占到一百多 KB。
                  链接也不用 @{}（每行两个链接过 LinkBuilder，313 行要多花几十毫秒），
                  直接拿 contextPath 拼——admin 列表是纯内部页，没有 URL 重写的需求 -->
-            <tr th:each="i : ${items}"><td class="cell-id" th:text="${i.id}">1</td><td th:text="${i.kind.label}">笔记</td><td><code th:text="${i.slug}">slug</code></td><td class="cell-title" th:text="${i.title}">标题</td><td><span class="badge" th:text="${i.visibility.label}">公开</span></td><td th:text="${#temporals.format(i.updatedAt, 'yyyy-MM-dd HH:mm')}">2026-01-01 00:00</td><td class="actions"><div class="row-actions"><a th:attr="href=${#request.contextPath + '/admin/' + i.id + '/edit'}">编辑</a><button type="submit" form="row-del" th:attr="formaction=${#request.contextPath + '/admin/' + i.id + '/delete'}" class="link-button danger" onclick="return confirm('确认删除？删掉的内容会在回收站保留 30 天。');">删除</button></div></td></tr>
+            <tr th:each="i : ${items}"><td class="cell-id" th:text="${i.id}">1</td><td th:text="${i.kind.label}">笔记</td><td><code th:text="${i.slug}">slug</code></td><td class="cell-title" th:text="${i.title}">标题</td><td><span class="badge" th:text="${i.visibility.label}">公开</span></td><td th:text="${#temporals.format(i.updatedAt, 'yyyy-MM-dd HH:mm')}">2026-01-01 00:00</td><td class="actions"><div class="row-actions"><a th:attr="href=${ctx + '/admin/' + i.id + '/edit'}">编辑</a><button type="submit" form="row-del" th:attr="formaction=${ctx + '/admin/' + i.id + '/delete'}" class="link-button danger" onclick="return confirm('确认删除？删掉的内容会在回收站保留 30 天。');">删除</button></div></td></tr>
             </tbody>
         </table>
         <!-- 删除按钮共用一个表单：以前每行一个 <form> + 一份 CSRF token，313 行多出 40KB -->
