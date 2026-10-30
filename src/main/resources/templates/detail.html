@@ -12,7 +12,7 @@
         <ul th:replace="~{fragments/tree :: nodes(${tree})}"></ul>
     </aside>
 
-    <main class="doc-wrap" th:classappend="${#lists.isEmpty(toc) and #lists.isEmpty(rail)} ? 'no-toc'">
+    <main class="doc-wrap">
         <article class="doc">
             <a th:replace="~{fragments/layout :: back(${basePath})}"></a>
 
@@ -45,25 +45,12 @@
                  th:attr="data-slug=${item.slug},data-anchors=${bookmarkAnchorCsv},data-resume=${resumeProgress}"></div>
         </article>
 
-        <aside class="toc" th:if="${!#lists.isEmpty(toc)}">
-            <ul>
-                <li th:each="h : ${toc}" th:class="'lv' + ${h.level()}">
-                    <a th:href="'#' + ${h.id()}" th:text="${h.text()}"></a>
-                </li>
-            </ul>
-        </aside>
-
-        <!-- 没有目录时右栏放同分类的其他条目，免得右侧整块空着 -->
-        <aside class="toc toc-rail" th:if="${#lists.isEmpty(toc) and !#lists.isEmpty(rail)}">
-            <ul>
-                <li th:each="r : ${rail}">
-                    <a th:href="${basePath + '/' + r.slug}" th:text="${r.title}"></a>
-                </li>
-            </ul>
-        </aside>
+        <!-- 右栏是评论区：整篇评论 + 对正文里带下划线句子的评论 -->
+        <aside th:replace="~{fragments/comments :: pane(${commentSlug}, ${threads}, ${commentCount}, ${canComment})}"></aside>
     </main>
 </div>
 
+    <script th:src="@{/js/comments.js(v=1)}"></script>
     <script th:src="@{/js/code.js(v=1)}"></script>
     <script th:src="@{/js/detail.js(v=8)}"></script>
 

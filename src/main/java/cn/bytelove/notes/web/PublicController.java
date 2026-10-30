@@ -4,6 +4,8 @@ import cn.bytelove.notes.domain.ContentItem;
 import cn.bytelove.notes.domain.ContentKind;
 import cn.bytelove.notes.repo.ContentItemRepository;
 import cn.bytelove.notes.service.BookmarkService;
+import cn.bytelove.notes.service.CommentFilter;
+import cn.bytelove.notes.service.CommentService;
 import cn.bytelove.notes.service.ContentStarService;
 import cn.bytelove.notes.service.MarkdownRenderer;
 import cn.bytelove.notes.service.ProjectMetaService;
@@ -49,10 +51,13 @@ public class PublicController {
     private final BookmarkService bookmarks;
     private final MarkdownRenderer markdown;
     private final NoteTreeService tree;
+    private final CommentService comments;
+    private final CommentFilter commentFilter;
 
     public PublicController(ContentItemRepository items, VisibilityService visibility, ViewerService viewers,
                             ContentStarService stars, ProjectMetaService meta, ReadingPositionService positions, BookmarkService bookmarks,
-                            MarkdownRenderer markdown, NoteTreeService tree) {
+                            MarkdownRenderer markdown, NoteTreeService tree,
+                            CommentService comments, CommentFilter commentFilter) {
         this.items = items;
         this.visibility = visibility;
         this.viewers = viewers;
@@ -62,6 +67,8 @@ public class PublicController {
         this.bookmarks = bookmarks;
         this.markdown = markdown;
         this.tree = tree;
+        this.comments = comments;
+        this.commentFilter = commentFilter;
     }
 
     @GetMapping("/")
@@ -231,6 +238,13 @@ public class PublicController {
         // 九成八股正文里没有 ## 标题，右栏会空着；没有目录时改用「同分类的其他条目」填上
         model.addAttribute("rail", railOf(siblings, item, lockedIds));
         model.addAttribute("starred", viewer.userId() != null && stars.isStarred(viewer.userId(), item.getId()));
+
+        // 右栏换成评论区：整篇评论 + 锚在某句话上的评论（楼中楼在 service 里组好）
+        List<CommentService.Thread> threads = comments.threads(item.getId(), viewer.userId());
+        model.addAttribute("threads", threads);
+        model.addAttribute("commentCount", comments.count(item.getId()));
+        model.addAttribute("canComment", viewer.userId() != null);
+        model.addAttribute("commentSlug", item.getSlug());
         return "detail";
     }
 
@@ -268,6 +282,43 @@ public class PublicController {
             positions.rememberProgress(viewer.userId(), item.getKind(), item.getId(), progress);
         }
         return "";
+    }
+
+    /** 发表评论：quote 为空是评论整篇，非空是锚在正文里那一句上；parentId 有值就是回复（楼中楼）。 */
+    @PostMapping("/comment/{slug}")
+    public String addComment(@PathVariable String slug,
+                             @RequestParam(required = false) String quote,
+                             @RequestParam(required = false) Long parentId,
+                             @RequestParam String body,
+                             Authentication auth) {
+        Viewer viewer = viewers.current(auth);
+        if (viewer.userId() == null) {
+            return "redirect:" + contextPath() + "/login";
+        }
+        ContentItem item = resolveAnyKind(slug, viewer);
+        String text = body == null ? "" : body.trim();
+        if (text.isEmpty()) {
+            return "redirect:" + basePath(item.getKind()) + "/" + item.getSlug() + "#comments";
+        }
+        if (text.length() > 500) {
+            text = text.substring(0, 500);
+        }
+        String clean = commentFilter.mask(text);
+        String anchor = (quote == null || quote.isBlank()) ? null : quote.trim();
+        long id = comments.add(item.getId(), viewer.userId(), anchor, parentId, clean);
+        return "redirect:" + basePath(item.getKind()) + "/" + item.getSlug() + "#c" + id;
+    }
+
+    /** 删评论：自己的、或者管理员；软删，楼里其他人的回复保留。 */
+    @PostMapping("/comment/{slug}/{id}/delete")
+    public String deleteComment(@PathVariable String slug, @PathVariable Long id, Authentication auth) {
+        Viewer viewer = viewers.current(auth);
+        if (viewer.userId() == null) {
+            return "redirect:" + contextPath() + "/login";
+        }
+        ContentItem item = resolveAnyKind(slug, viewer);
+        comments.remove(id, viewer.userId(), viewer.admin());
+        return "redirect:" + basePath(item.getKind()) + "/" + item.getSlug() + "#comments";
     }
 
     /** 手动书签：自己插的旗，想标几处标几处；anchor 为空是整篇，非空是某个标题块。 */

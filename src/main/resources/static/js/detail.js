@@ -155,7 +155,7 @@
         if (!tree || !docWrap) return;
 
         const MIN_TREE = 140, MAX_TREE = 520;
-        const MIN_TOC = 110, MAX_TOC = 380;
+        const MIN_TOC = 240, MAX_TOC = 460;
 
         const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
         const read = (k, dflt) => {
@@ -175,7 +175,7 @@
             Math.round(Math.min(hi, Math.max(lo, window.innerWidth * ratio)));
         let treeW = read('layout:tree4', byViewport(0.19, 160, 380));
         // 右栏固定像素：拖左栏时它只是被推着走，宽度不变
-        let tocW = read('layout:toc5', byViewport(0.12, 120, 300));
+        let tocW = read('layout:toc6', byViewport(0.24, 280, 420));
 
         // <=820 是单列堆叠、<=1100 没有右侧目录，这两种宽度下列宽交给 CSS 媒体查询；
         // 内联样式一旦盖上去，手机上正文会被挤成 0 宽
@@ -244,7 +244,7 @@
             rightBar = makeSplitter(docWrap, (dx) => {
                 tocW = clamp(tocW - dx, MIN_TOC, MAX_TOC);
                 applyToc();
-            }, () => save('layout:toc5', Math.round(tocW)));
+            }, () => save('layout:toc6', Math.round(tocW)));
         }
 
         const layout = () => {
