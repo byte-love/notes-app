@@ -12,7 +12,7 @@
     --tree-guide: #dfdacf;
     /* 滚动条：滚动时用 active，停手后 JS 会把它插值到 idle */
     --sb-active: rgba(114, 109, 99, 0.9);
-    --sb-idle: rgba(28, 27, 24, 0.06);
+    --sb-idle: rgba(28, 27, 24, 0.042);
     --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
     --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
         "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
@@ -32,7 +32,7 @@
         --danger: #f07c74;
         --tree-guide: #2b302e;
         --sb-active: rgba(140, 137, 128, 0.85);
-        --sb-idle: rgba(231, 229, 223, 0.05);
+        --sb-idle: rgba(231, 229, 223, 0.035);
     }
 }
 
@@ -49,7 +49,7 @@ html[data-theme='light'] {
     --danger: #b3261e;
     --tree-guide: #dfdacf;
     --sb-active: rgba(114, 109, 99, 0.9);
-    --sb-idle: rgba(28, 27, 24, 0.06);
+    --sb-idle: rgba(28, 27, 24, 0.042);
 }
 
 html[data-theme='dark'] {
@@ -65,7 +65,7 @@ html[data-theme='dark'] {
     --danger: #f07c74;
     --tree-guide: #2b302e;
     --sb-active: rgba(140, 137, 128, 0.85);
-    --sb-idle: rgba(231, 229, 223, 0.05);
+    --sb-idle: rgba(231, 229, 223, 0.035);
 }
 
 html[data-theme='sepia'] {
@@ -81,7 +81,7 @@ html[data-theme='sepia'] {
     --danger: #a82f2f;
     --tree-guide: #d8ccb6;
     --sb-active: rgba(111, 101, 82, 0.9);
-    --sb-idle: rgba(59, 50, 39, 0.06);
+    --sb-idle: rgba(59, 50, 39, 0.042);
 }
 
 * {
@@ -2696,6 +2696,13 @@ html[data-theme='dark'] .cl-latest {
    分隔条看着停在屏幕中间。现在正文自己居中，三栏各管各的宽度。 */
 .with-tree.has-tree .doc {
     justify-self: center;
+}
+
+/* 有右栏时正文跟着列宽走（不再卡 68ch），拖左右分隔条都能看到行宽变化；
+   没有右栏（正文没有 ## 标题、右栏是「同分类其他条目」）时仍留 82ch 上限。
+   :has 选的是 .toc / .toc-rail 两种右栏。 */
+.with-tree.has-tree .doc-wrap:has(.toc) .doc {
+    max-width: none;
 }
 
 /* ---- 列表页（左目录 + 右条目，没有正文那一栏）----

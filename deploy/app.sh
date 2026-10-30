@@ -57,6 +57,18 @@ done
 echo -n "  服务状态: "
 systemctl is-active "$SVC"
 
+# 预热：刚起来的 JVM 是解释执行的，头十几次请求 150~800ms，正是「改完打开就慢」的原因。
+# 先把主要页面各打几遍，用户点进来就是热的。
+DETAIL=$(curl -s "http://127.0.0.1:$PORT/app/notes" | grep -o '/app/notes/[a-z0-9-]*' | head -1)
+DETAIL=${DETAIL:-/app/notes}
+echo "[4.5/5] 预热"
+for round in 1 2 3 4 5; do
+  for u in /app/bagu /app/notes /app/algo /app/explore "$DETAIL"; do
+    curl -s -o /dev/null "http://127.0.0.1:$PORT$u"
+  done
+done
+curl -s -o /dev/null -w "  预热后 /app/bagu -> %{time_starttransfer}s\n" "http://127.0.0.1:$PORT/app/bagu"
+
 echo "[5/5] 验证"
 curl -s -o /dev/null -w "  /app/login -> %{http_code}\n" "http://127.0.0.1:$PORT/app/login"
 curl -s -o /dev/null -w "  /app/notes -> %{http_code}\n" "http://127.0.0.1:$PORT/app/notes"
