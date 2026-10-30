@@ -712,6 +712,7 @@ button:hover,
 }
 
 .cmt-form textarea,
+.ann-form textarea,
 .cmt-reply textarea {
     width: 100%;
     font: inherit;
@@ -726,6 +727,7 @@ button:hover,
 }
 
 .cmt-form textarea:focus,
+.ann-form textarea:focus,
 .cmt-reply textarea:focus {
     outline: none;
     border-color: var(--accent);
@@ -819,6 +821,8 @@ button:hover,
     line-height: 1.75;
     color: var(--fg);
     overflow-wrap: anywhere;
+    /* 注释里常整段贴代码，换行要保留 */
+    white-space: pre-wrap;
 }
 
 .cmt-ops {
@@ -862,6 +866,53 @@ button:hover,
 
 .cmt-mark:hover {
     background: var(--accent-soft);
+}
+
+/* 正文里被注释过的那句话：短虚下划线，点开是弹窗（跟评论的实线区分开） */
+.ann-mark {
+    border-bottom: 1px dotted var(--accent);
+    cursor: pointer;
+}
+
+.ann-mark:hover {
+    background: var(--accent-soft);
+}
+
+/* 注释弹窗：这一处的全部注释 + 写新注释的框 */
+.ann-pop {
+    position: fixed;
+    z-index: 90;
+    width: min(430px, 92vw);
+    max-height: 64vh;
+    overflow: auto;
+    padding: 0.7rem 0.9rem 0.8rem;
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    box-shadow: 0 14px 36px rgba(0, 0, 0, 0.22);
+}
+
+.ann-pop-close {
+    position: absolute;
+    top: 0.3rem;
+    right: 0.35rem;
+    font: inherit;
+    font-size: 1rem;
+    line-height: 1;
+    padding: 0.15rem 0.3rem;
+    color: var(--fg-3);
+    background: none;
+    border: 0;
+    cursor: pointer;
+}
+
+.ann-pop-close:hover {
+    color: var(--danger);
+}
+
+/* 数据容器不占版面 */
+.ann-data {
+    display: none;
 }
 
 /* ---------- list page ---------- */

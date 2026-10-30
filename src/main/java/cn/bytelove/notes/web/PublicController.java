@@ -44,6 +44,9 @@ import java.util.Set;
 @Controller
 public class PublicController {
 
+    /** 一条评论 / 注释的正文上限。注释里常整段贴代码，500 字不够用。 */
+    private static final int MAX_COMMENT = 2000;
+
     private final ContentItemRepository items;
     private final VisibilityService visibility;
     private final ViewerService viewers;
@@ -247,9 +250,15 @@ public class PublicController {
         // 右栏换成评论区：整篇评论 + 锚在某句话上的评论（楼中楼在 service 里组好）
         // 复制出来的副本要跟原版共用同一串评论，所以按「最初的来源条目」做 key
         long commentKey = commentKeyOf(item);
-        List<CommentService.Thread> threads = comments.threads(commentKey, viewer.userId());
+        List<CommentService.Thread> threads =
+                comments.threads(commentKey, viewer.userId(), CommentService.COMMENT);
         model.addAttribute("threads", threads);
-        model.addAttribute("commentCount", comments.count(commentKey));
+        model.addAttribute("commentCount", comments.count(commentKey, CommentService.COMMENT));
+        // 注释是另一条线：正文里画短虚下划线，点开弹窗看，和右栏评论同一张表、不同 entry_kind
+        List<CommentService.Thread> annotations =
+                comments.threads(commentKey, viewer.userId(), CommentService.ANNOTATION);
+        model.addAttribute("annotations", annotations);
+        model.addAttribute("annotationCount", comments.count(commentKey, CommentService.ANNOTATION));
         model.addAttribute("canComment", viewer.userId() != null);
         model.addAttribute("commentSlug", item.getSlug());
         return "detail";
@@ -291,9 +300,13 @@ public class PublicController {
         return "";
     }
 
-    /** 发表评论：可以对整篇、选中的一段文字、或者整段/整个代码块；parentId 有值就是楼中楼回复。 */
+    /**
+     * 发表评论 / 注释：可以对整篇、选中的一段文字、或者整段/整个代码块；parentId 有值就是楼中楼回复。
+     * entryKind=ANNOTATION 时存成注释（正文里画短虚下划线、点开是弹窗），这种必须带引文。
+     */
     @PostMapping("/comment/{slug}")
     public String addComment(@PathVariable String slug,
+                             @RequestParam(required = false) String entryKind,
                              @RequestParam(required = false) String quote,
                              @RequestParam(required = false) String anchorKind,
                              @RequestParam(required = false) Integer blockIndex,
@@ -311,17 +324,23 @@ public class PublicController {
         if (text.isEmpty()) {
             return "redirect:" + basePath(item.getKind()) + "/" + item.getSlug() + "#comments";
         }
-        if (text.length() > 500) {
-            text = text.substring(0, 500);
+        if (text.length() > MAX_COMMENT) {
+            text = text.substring(0, MAX_COMMENT);
+        }
+        String anchor = (quote == null || quote.isBlank()) ? null : quote.trim();
+        boolean annotation = CommentService.ANNOTATION.equalsIgnoreCase(entryKind == null ? "" : entryKind.trim());
+        // 注释没有引文就没有落点，收下也画不出下划线
+        if (annotation && (anchor == null || anchor.isEmpty())) {
+            return "redirect:" + basePath(item.getKind()) + "/" + item.getSlug();
         }
         // 10 秒内只收一条：连点、刷屏都卡在这里，不落库
         if (!commentLimiter.tryAcquire(viewer.userId())) {
             return "redirect:" + basePath(item.getKind()) + "/" + item.getSlug() + "#comments";
         }
         String clean = commentFilter.mask(text);
-        String anchor = (quote == null || quote.isBlank()) ? null : quote.trim();
-        long id = comments.add(commentKeyOf(item), viewer.userId(), anchorKind, anchor,
-                trim40(prefix), trim40(suffix), blockIndex, parentId, clean);
+        long id = comments.add(commentKeyOf(item), viewer.userId(),
+                annotation ? CommentService.ANNOTATION : CommentService.COMMENT,
+                anchorKind, anchor, trim40(prefix), trim40(suffix), blockIndex, parentId, clean);
         return "redirect:" + basePath(item.getKind()) + "/" + item.getSlug() + "#c" + id;
     }
 

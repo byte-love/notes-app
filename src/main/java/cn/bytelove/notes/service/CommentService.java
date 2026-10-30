@@ -22,6 +22,11 @@ import java.util.Map;
 @Service
 public class CommentService {
 
+    /** 右栏评论。 */
+    public static final String COMMENT = "COMMENT";
+    /** 正文里短虚下划线那种注释，点开是弹窗。 */
+    public static final String ANNOTATION = "ANNOTATION";
+
     public record Comment(long id, Long parentId, String author, String body, Instant createdAt,
                           boolean mine, List<Comment> replies) {
     }
@@ -40,13 +45,13 @@ public class CommentService {
         this.jdbc = jdbc;
     }
 
-    public List<Thread> threads(long itemId, Long viewerId) {
+    public List<Thread> threads(long itemId, Long viewerId, String entryKind) {
         List<Row> rows = jdbc.query(
                 "select c.id, c.parent_id, c.quote, c.body, c.created_at, c.user_id, c.anchor_kind, "
                         + "c.block_index, c.prefix, c.suffix, u.display_name "
                         + "from content_comment c join app_user u on u.id = c.user_id "
-                        + "where c.item_id = ? and c.deleted_at is null order by c.id",
-                this::map, itemId);
+                        + "where c.item_id = ? and c.entry_kind = ? and c.deleted_at is null order by c.id",
+                this::map, itemId, entryKind);
 
         Map<String, Thread> byKey = new LinkedHashMap<>();
         Map<Long, Comment> placed = new LinkedHashMap<>();
@@ -104,13 +109,15 @@ public class CommentService {
         return n;
     }
 
-    public long add(long itemId, long userId, String kind, String quote, String prefix, String suffix,
-                    Integer blockIndex, Long parentId, String body) {
+    public long add(long itemId, long userId, String entryKind, String kind, String quote,
+                    String prefix, String suffix, Integer blockIndex, Long parentId, String body) {
         Long id = jdbc.queryForObject(
                 "insert into content_comment (item_id, user_id, parent_id, quote, body, "
-                        + "anchor_kind, block_index, prefix, suffix) values (?, ?, ?, ?, ?, ?, ?, ?, ?) returning id",
+                        + "anchor_kind, block_index, prefix, suffix, entry_kind) "
+                        + "values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) returning id",
                 Long.class, itemId, userId, parentId, quote, body,
-                kind == null || kind.isBlank() ? "text" : kind, blockIndex, prefix, suffix);
+                kind == null || kind.isBlank() ? "text" : kind, blockIndex, prefix, suffix,
+                entryKind == null || entryKind.isBlank() ? COMMENT : entryKind);
         return id == null ? 0 : id;
     }
 
@@ -122,10 +129,10 @@ public class CommentService {
         return n > 0;
     }
 
-    public int count(long itemId) {
+    public int count(long itemId, String entryKind) {
         Integer n = jdbc.queryForObject(
-                "select count(*) from content_comment where item_id = ? and deleted_at is null",
-                Integer.class, itemId);
+                "select count(*) from content_comment where item_id = ? and entry_kind = ? and deleted_at is null",
+                Integer.class, itemId, entryKind);
         return n == null ? 0 : n;
     }
 
