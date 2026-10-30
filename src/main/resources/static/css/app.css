@@ -819,6 +819,8 @@ button:hover,
     line-height: 1.75;
     color: var(--fg);
     overflow-wrap: anywhere;
+    /* 注释里常整段贴代码，换行要保留 */
+    white-space: pre-wrap;
 }
 
 .cmt-ops {
@@ -855,13 +857,45 @@ button:hover,
 
 /* 正文里被评论过的那句话：下划线 + 悬停提示 */
 .cmt-mark {
-    border-bottom: 2px solid var(--accent);
+    /* 短虚下划线：表示这句有注释，点开是弹窗（不是整栏评论） */
+    border-bottom: 1px dotted var(--accent);
     cursor: pointer;
-    background: linear-gradient(transparent 62%, var(--accent-soft) 62%);
 }
 
 .cmt-mark:hover {
     background: var(--accent-soft);
+}
+
+/* 点注释后浮出的那一处全部注释 */
+.cmt-pop {
+    position: fixed;
+    z-index: 90;
+    width: min(430px, 92vw);
+    max-height: 62vh;
+    overflow: auto;
+    padding: 0.7rem 0.9rem 0.8rem;
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    box-shadow: 0 14px 36px rgba(0, 0, 0, 0.22);
+}
+
+.cmt-pop-close {
+    position: absolute;
+    top: 0.3rem;
+    right: 0.35rem;
+    font: inherit;
+    font-size: 1rem;
+    line-height: 1;
+    padding: 0.15rem 0.3rem;
+    color: var(--fg-3);
+    background: none;
+    border: 0;
+    cursor: pointer;
+}
+
+.cmt-pop-close:hover {
+    color: var(--danger);
 }
 
 /* ---------- list page ---------- */

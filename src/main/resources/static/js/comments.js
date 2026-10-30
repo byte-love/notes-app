@@ -302,13 +302,56 @@
     // ---------- 已有评论标回正文 ----------
     const threads = [...pane.querySelectorAll('.cmt-thread')];
 
-    const focusThread = (thread) => {
-        if (!thread) return;
-        pane.querySelectorAll('.cmt-thread.on').forEach((el) => el.classList.remove('on'));
-        thread.classList.add('on');
-        thread.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-        thread.animate?.([{ background: 'var(--accent-soft)' }, { background: 'transparent' }], 900);
+    // ---------- 注释弹窗：点正文里的虚下划线，浮出这一处的全部注释 ----------
+    const pop = document.createElement('div');
+    pop.className = 'cmt-pop';
+    pop.hidden = true;
+    document.body.appendChild(pop);
+
+    const closePop = () => {
+        pop.hidden = true;
     };
+
+    const openPop = (thread, anchorEl) => {
+        if (!thread || !anchorEl) return;
+        pop.innerHTML = '';
+        const list = document.createElement('div');
+        list.className = 'cmt-pop-list';
+        // 右栏那些「回复 / 删除」表单不带进弹窗，弹窗只用来读
+        thread.querySelectorAll('.cmt-card').forEach((card) => {
+            const clone = card.cloneNode(true);
+            clone.querySelectorAll('.cmt-ops, .cmt-reply').forEach((el) => el.remove());
+            list.appendChild(clone);
+        });
+        pop.appendChild(list);
+        const close = document.createElement('button');
+        close.type = 'button';
+        close.className = 'cmt-pop-close';
+        close.setAttribute('aria-label', '关闭');
+        close.textContent = '×';
+        close.addEventListener('click', closePop);
+        pop.appendChild(close);
+
+        pop.hidden = false;
+        const a = anchorEl.getBoundingClientRect();
+        const p = pop.getBoundingClientRect();
+        let left = a.left + a.width / 2 - p.width / 2;
+        left = Math.max(10, Math.min(left, window.innerWidth - p.width - 10));
+        let top = a.bottom + 8;
+        if (top + p.height > window.innerHeight - 10) {
+            top = Math.max(10, a.top - p.height - 8);
+        }
+        pop.style.left = `${Math.round(left)}px`;
+        pop.style.top = `${Math.round(top)}px`;
+    };
+
+    document.addEventListener('mousedown', (e) => {
+        if (!pop.hidden && !pop.contains(e.target)) closePop();
+    });
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') closePop();
+    });
+    window.addEventListener('scroll', closePop, { passive: true });
 
     const markText = (thread, loose) => {
         const quote = thread.dataset.quote || '';
@@ -355,7 +398,7 @@
                 } catch (e) {
                     return true;
                 }
-                span.addEventListener('click', () => focusThread(thread));
+                span.addEventListener('click', () => openPop(thread, span));
                 return true;
             }
         }
@@ -369,8 +412,10 @@
             const block = blocks[Number(index)];
             block.classList.add('cmt-block-mark');
             block.addEventListener('click', (e) => {
-                if (e.target.closest('.cmt-block-btn')) return;
-                focusThread(thread);
+                if (e.target.closest('.cmt-block-btn') || e.target.closest('.cmt-pop')) return;
+                const sel = window.getSelection();
+                if (sel && !sel.isCollapsed) return; // 正在选字，别弹窗打断
+                openPop(thread, block);
             });
         } else if (!markText(thread, false)) {
             markText(thread, true);

@@ -44,6 +44,9 @@ import java.util.Set;
 @Controller
 public class PublicController {
 
+    /** 一条评论（含回复）的正文上限。注释里常整段贴代码，500 字不够用。 */
+    private static final int MAX_COMMENT = 2000;
+
     private final ContentItemRepository items;
     private final VisibilityService visibility;
     private final ViewerService viewers;
@@ -311,8 +314,8 @@ public class PublicController {
         if (text.isEmpty()) {
             return "redirect:" + basePath(item.getKind()) + "/" + item.getSlug() + "#comments";
         }
-        if (text.length() > 500) {
-            text = text.substring(0, 500);
+        if (text.length() > MAX_COMMENT) {
+            text = text.substring(0, MAX_COMMENT);
         }
         // 10 秒内只收一条：连点、刷屏都卡在这里，不落库
         if (!commentLimiter.tryAcquire(viewer.userId())) {

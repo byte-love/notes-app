@@ -20,7 +20,7 @@
         <input type="hidden" name="blockIndex" value="">
         <input type="hidden" name="prefix" value="">
         <input type="hidden" name="suffix" value="">
-        <textarea name="body" rows="3" maxlength="500" placeholder="说点什么"></textarea>
+        <textarea name="body" rows="3" maxlength="2000" placeholder="说点什么"></textarea>
         <div class="cmt-form-ops">
             <button type="button" class="cmt-cancel">取消</button>
             <button type="submit" class="cmt-submit">发表</button>
@@ -55,7 +55,7 @@
                         <input type="hidden" name="blockIndex" th:value="${t.blockIndex()}">
                         <input type="hidden" name="prefix" th:value="${t.prefix()}">
                         <input type="hidden" name="suffix" th:value="${t.suffix()}">
-                        <textarea name="body" rows="2" maxlength="500" placeholder="回复一下"></textarea>
+                        <textarea name="body" rows="2" maxlength="2000" placeholder="回复一下"></textarea>
                         <div class="cmt-form-ops">
                             <button type="submit" class="cmt-submit">发表</button>
                         </div>
