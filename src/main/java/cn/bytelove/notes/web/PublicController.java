@@ -25,6 +25,8 @@ import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
@@ -276,7 +278,8 @@ public class PublicController {
         bookmarks.toggle(viewer.userId(), item.getId(), anchor);
         String target = basePath(item.getKind()) + "/" + item.getSlug();
         if (anchor != null && !anchor.isBlank()) {
-            target = target + "#" + anchor;
+            // 标题 id 是按标题文字生成的，可能是中文；原样塞进 Location 会被 Tomcat 丢掉整个头
+            target = target + "#" + URLEncoder.encode(anchor, StandardCharsets.UTF_8).replace("+", "%20");
         }
         return "redirect:" + target;
     }
