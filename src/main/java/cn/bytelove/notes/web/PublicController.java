@@ -25,6 +25,8 @@ import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
@@ -162,7 +164,7 @@ public class PublicController {
         }
 
         model.addAttribute("items", leaves);
-        model.addAttribute("tree", tree.build(all, lockedIds));
+        model.addAttribute("tree", visibleTree(all, lockedIds, null));
         model.addAttribute("starIds", stars.starredIds(viewer.userId()));
         model.addAttribute("bookmarkIds", bookmarks.ids(viewer.userId()));
         model.addAttribute("lastReadId", lastReadId);
@@ -174,6 +176,7 @@ public class PublicController {
         model.addAttribute("blank", true);
         model.addAttribute("pageTitle", pageTitle);
         model.addAttribute("basePath", contextPath() + basePath(kind));
+        model.addAttribute("treeBase", contextPath() + "/api/tree/" + kind.name().toLowerCase(java.util.Locale.ROOT));
         model.addAttribute("tabActive", kind.name().toLowerCase(java.util.Locale.ROOT));
         // 分片请求只回内容那一段，不套整页
         return fragment ? "fragments/list :: groupSections" : "list";
@@ -214,11 +217,12 @@ public class PublicController {
             model.addAttribute("crumbs", tree.breadcrumb(siblings, item));
             model.addAttribute("activeId", item.getId());
         }
-        model.addAttribute("tree", tree.build(siblings, lockedIds));
+        model.addAttribute("tree", visibleTree(siblings, lockedIds, item.getId()));
         model.addAttribute("starIds", stars.starredIds(viewer.userId()));
         model.addAttribute("lockedIds", lockedIds);
         model.addAttribute("lockedCount", lockedIds.size());
         model.addAttribute("basePath", contextPath() + basePath(kind));
+        model.addAttribute("treeBase", contextPath() + "/api/tree/" + kind.name().toLowerCase(java.util.Locale.ROOT));
         model.addAttribute("tabActive", kind.name().toLowerCase(java.util.Locale.ROOT));
 
         model.addAttribute("item", item);
@@ -276,7 +280,8 @@ public class PublicController {
         bookmarks.toggle(viewer.userId(), item.getId(), anchor);
         String target = basePath(item.getKind()) + "/" + item.getSlug();
         if (anchor != null && !anchor.isBlank()) {
-            target = target + "#" + anchor;
+            // 标题 id 是按标题文字生成的，可能是中文；原样塞进 Location 会被 Tomcat 丢掉整个头
+            target = target + "#" + URLEncoder.encode(anchor, StandardCharsets.UTF_8).replace("+", "%20");
         }
         return "redirect:" + target;
     }
@@ -352,8 +357,79 @@ public class PublicController {
     public record ItemGroup(String title, List<ContentItem> items) {
     }
 
+    /** 树超过这么多节点就改成「顶层 + 当前路径」，其余展开时再取。 */
+    private static final int TREE_LAZY_OVER = 60;
+
     /** 列表页一次先给多少条，剩下的滚到底再取。 */
     private static final int BATCH_ITEMS = 40;
+
+    /** 小分区照旧整棵渲染；几百条内容的分区只给顶层和当前这条的路径。 */
+    private List<NoteTreeService.Node> visibleTree(List<ContentItem> all, Set<Long> lockedIds, Long activeId) {
+        List<NoteTreeService.Node> built = tree.build(all, lockedIds);
+        return countNodes(built) > TREE_LAZY_OVER ? tree.pruned(built, activeId) : built;
+    }
+
+    private static int countNodes(List<NoteTreeService.Node> nodes) {
+        int n = 0;
+        for (NoteTreeService.Node node : nodes) {
+            n += 1 + countNodes(node.children());
+        }
+        return n;
+    }
+
+    /** 展开某个分类时补它下面的条目（列表页的树只给了顶层）。走 /api 前缀，避免和 /{kind}/{slug} 抢路由。 */
+    @GetMapping("/api/tree/{kind}")
+    public String treeChildren(@PathVariable String kind,
+                               @RequestParam(name = "parent") String parentSlug,
+                               Model model, Authentication auth) {
+        ContentKind k;
+        try {
+            k = ContentKind.valueOf(kind.toUpperCase(java.util.Locale.ROOT));
+        } catch (IllegalArgumentException e) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND);
+        }
+        Viewer viewer = viewers.current(auth);
+        Set<Long> lockedIds = new LinkedHashSet<>();
+        List<ContentItem> all = filtered(poolForListing(k, viewer), viewer, lockedIds);
+
+        Set<Long> parentIds = new LinkedHashSet<>();
+        for (ContentItem i : all) {
+            if (i.getParentId() != null) {
+                parentIds.add(i.getParentId());
+            }
+        }
+        List<ContentItem> leaves = new ArrayList<>();
+        for (ContentItem i : all) {
+            if (!parentIds.contains(i.getId())) {
+                leaves.add(i);
+            }
+        }
+
+        ContentItem root = null;
+        for (ContentItem i : all) {
+            if (parentSlug.equals(i.getSlug())) {
+                root = i;
+                break;
+            }
+        }
+        if (root == null) {
+            model.addAttribute("nodes", List.of());
+        } else {
+            List<ContentItem> kids = new ArrayList<>();
+            for (ContentItem i : leaves) {
+                if (root.getId().equals(i.getParentId())) {
+                    kids.add(i);
+                }
+            }
+            model.addAttribute("nodes", tree.build(kids, lockedIds));
+        }
+        model.addAttribute("activeId", null);
+        model.addAttribute("basePath", contextPath() + basePath(k));
+        model.addAttribute("treeBase", contextPath() + "/api/tree/" + kind.toLowerCase(java.util.Locale.ROOT));
+        model.addAttribute("starIds", stars.starredIds(viewer.userId()));
+        model.addAttribute("bookmarkIds", bookmarks.ids(viewer.userId()));
+        return "fragments/tree :: nodes";
+    }
 
     /** 按父节点把列表拆成小节，小节顺序跟左侧树一致（sortOrder + 标题）。 */
     private List<ItemGroup> groups(List<ContentItem> all, List<ContentItem> leaves) {

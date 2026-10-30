@@ -33,7 +33,7 @@ public class RecommendService {
     }
 
     /** 推荐栏的一张卡片。count 是这条加它下面所有子孙的条数。 */
-    public record Card(ContentItem item, long count) {
+    public record Card(ContentItemRepository.CardRow item, long count) {
         public boolean isContainer() {
             return count > 1;
         }
@@ -60,21 +60,47 @@ public class RecommendService {
      * 条数按完整子树算——卡片上写 70 条，点「加入我的空间」就真的进来 70 条。
      */
     public List<Card> cards(ContentKind kind, Viewer viewer) {
-        List<ContentItem> pool = all(kind);
+        // 只查需要的列：body 是表里最大的列，算数量和看标题用不到它
+        List<ContentItemRepository.CardRow> pool = items.findCardRows(kind);
         Set<Long> ids = new HashSet<>();
-        for (ContentItem i : pool) {
+        for (ContentItemRepository.CardRow i : pool) {
             ids.add(i.getId());
         }
-        Map<Long, List<Long>> childrenOf = childrenMap(pool);
+        Map<Long, List<Long>> childrenOf = new HashMap<>();
+        for (ContentItemRepository.CardRow i : pool) {
+            if (i.getParentId() != null) {
+                childrenOf.computeIfAbsent(i.getParentId(), k -> new ArrayList<>()).add(i.getId());
+            }
+        }
 
         List<Card> cards = new ArrayList<>();
-        for (ContentItem item : pool) {
+        for (ContentItemRepository.CardRow item : pool) {
             boolean top = item.getParentId() == null || !ids.contains(item.getParentId());
-            if (top && visibility.canRead(item, viewer)) {
-                cards.add(new Card(item, sizeOf(item.getId(), childrenOf)));
+            if (top && canRead(item, viewer)) {
+                Set<Long> seen = new HashSet<>();
+                collect(item.getId(), childrenOf, seen);
+                cards.add(new Card(item, seen.size()));
             }
         }
         return cards;
+    }
+
+    /** 和 VisibilityService.canRead 同一套判断，只是对象换成了投影。 */
+    private boolean canRead(ContentItemRepository.CardRow row, Viewer viewer) {
+        if (viewer.userId() != null && viewer.userId().equals(row.getOwnerId())) {
+            return true;
+        }
+        if (viewer.admin()) {
+            return true;
+        }
+        if (!row.isRecommended()) {
+            return false;
+        }
+        return switch (row.getVisibility()) {
+            case PUBLIC -> true;
+            case MEMBER -> viewer.authenticated();
+            case PRIVATE -> false;
+        };
     }
 
     /**

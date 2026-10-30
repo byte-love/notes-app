@@ -10,6 +10,9 @@
     --accent-2: #8a5a20;
     --danger: #b3261e;
     --tree-guide: #dfdacf;
+    /* 滚动条：滚动时用 active，停手后 JS 会把它插值到 idle */
+    --sb-active: rgba(114, 109, 99, 0.9);
+    --sb-idle: rgba(28, 27, 24, 0.042);
     --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
     --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
         "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
@@ -28,6 +31,8 @@
         --accent-2: #d8a25e;
         --danger: #f07c74;
         --tree-guide: #2b302e;
+        --sb-active: rgba(140, 137, 128, 0.85);
+        --sb-idle: rgba(231, 229, 223, 0.035);
     }
 }
 
@@ -43,6 +48,8 @@ html[data-theme='light'] {
     --accent-2: #8a5a20;
     --danger: #b3261e;
     --tree-guide: #dfdacf;
+    --sb-active: rgba(114, 109, 99, 0.9);
+    --sb-idle: rgba(28, 27, 24, 0.042);
 }
 
 html[data-theme='dark'] {
@@ -57,6 +64,8 @@ html[data-theme='dark'] {
     --accent-2: #d8a25e;
     --danger: #f07c74;
     --tree-guide: #2b302e;
+    --sb-active: rgba(140, 137, 128, 0.85);
+    --sb-idle: rgba(231, 229, 223, 0.035);
 }
 
 html[data-theme='sepia'] {
@@ -71,6 +80,8 @@ html[data-theme='sepia'] {
     --accent-2: #8a5a20;
     --danger: #a82f2f;
     --tree-guide: #d8ccb6;
+    --sb-active: rgba(111, 101, 82, 0.9);
+    --sb-idle: rgba(59, 50, 39, 0.042);
 }
 
 * {
@@ -82,7 +93,18 @@ html {
     color: var(--fg);
     -webkit-text-size-adjust: 100%;
     scrollbar-width: thin;
-    scrollbar-color: var(--line) transparent;
+    scrollbar-color: var(--sb-thumb, var(--line)) transparent;
+}
+
+/* 滚动条：滚动时是实色，停手 3 秒后淡到只剩轮廓（JS 会插值改这个变量） */
+::-webkit-scrollbar-thumb {
+    background: var(--sb-thumb, var(--line));
+    border-radius: 999px;
+    border: 2px solid var(--bg);
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--sb-thumb, var(--fg-3));
 }
 
 /* 滚动条跟随主题，默认的亮色轨道在深色背景下太刺眼 */
@@ -94,16 +116,6 @@ html {
 ::-webkit-scrollbar-track,
 ::-webkit-scrollbar-corner {
     background: transparent;
-}
-
-::-webkit-scrollbar-thumb {
-    background: var(--line);
-    border-radius: 999px;
-    border: 2px solid var(--bg);
-}
-
-::-webkit-scrollbar-thumb:hover {
-    background: var(--fg-3);
 }
 
 ::selection {
@@ -1059,6 +1071,20 @@ button:hover,
     padding-right: 0.4rem;
 }
 
+/* 左右两栏的滚动条跟正文窗口解耦：翻正文时它们不该变亮，
+   只有鼠标移到这一栏上才显出来 */
+.tree-pane,
+.toc,
+.toc-rail {
+    scrollbar-color: var(--sb-idle) transparent;
+}
+
+.tree-pane:hover,
+.toc:hover,
+.toc-rail:hover {
+    scrollbar-color: var(--sb-active) transparent;
+}
+
 .tree,
 .tree ul {
     list-style: none;
@@ -1229,13 +1255,14 @@ button:hover,
     grid-template-columns: minmax(0, 720px);
 }
 
-/* 有树时正文不再单独居中 */
+/* 有树时正文不再单独居中。gap 是正文到右栏的留白（2.4rem→6rem），
+   右栏宽度是 JS 设的固定像素，拖分隔条只改列宽，这个留白一直不变 */
 .with-tree .doc-wrap {
     max-width: none;
     margin: 0;
     padding: 0;
     grid-template-columns: minmax(0, 1fr) 200px;
-    gap: 2.4rem;
+    gap: 6rem;
 }
 
 .with-tree .doc {
@@ -1248,7 +1275,7 @@ button:hover,
 }
 
 .with-tree .doc-wrap.no-toc .doc {
-    max-width: 82ch;
+    max-width: min(82ch, 100%);
 }
 
 .crumbs {
@@ -2581,7 +2608,7 @@ html[data-theme='dark'] .cl-latest {
     scroll-margin-top: 80px;
 }
 
-/* 书签按钮平时就浅浅地露出来（手机上没法悬停），鼠标移上去才变实 */
+/* 书签按钮：和左侧树里的书签标记同一个「缎带」形状，平时浅浅露出来（手机上没法悬停） */
 .head-bookmark {
     display: inline-block;
     width: 9px;
@@ -2589,12 +2616,13 @@ html[data-theme='dark'] .cl-latest {
     margin-left: 0.55rem;
     padding: 0;
     vertical-align: 0.08em;
-    background: transparent;
-    border: 1px solid var(--fg-3);
-    border-radius: 2px;
+    background: var(--fg-3);
+    border: 0;
+    border-radius: 0;
+    clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 72%, 0 100%);
     cursor: pointer;
     opacity: 0.28;
-    transition: opacity 0.12s ease, background 0.12s ease, border-color 0.12s ease;
+    transition: opacity 0.12s ease, background 0.12s ease;
 }
 
 .markdown h2:hover .head-bookmark,
@@ -2605,13 +2633,12 @@ html[data-theme='dark'] .cl-latest {
 
 .head-bookmark:hover {
     opacity: 1;
-    border-color: var(--accent);
+    background: var(--accent);
 }
 
 .head-bookmark.on {
     opacity: 1;
     background: var(--accent);
-    border-color: var(--accent);
 }
 
 /* ---- 拖拽调整左右两栏宽度 ---- */
@@ -2647,10 +2674,13 @@ html[data-theme='dark'] .cl-latest {
     background: var(--fg-3);
 }
 
-/* 详情页：正文列吃剩余宽度，不再卡在 720px，这样拖左栏才真的能改变正文宽度 */
+/* 详情页：正文列吃剩余宽度，不再卡在 720px，这样拖左栏才真的能改变正文宽度。
+   gap 是正文到两侧导航的留白（2rem→5rem）。列宽是 px('var(--tree-w)') + 1fr，
+   分隔条只改列宽，gap 不参与拖拽，所以拖的时候留白不变。 */
 .with-tree.has-tree {
     grid-template-columns: var(--tree-w, 300px) minmax(0, 1fr);
     justify-content: stretch;
+    gap: 5rem;
 }
 
 .with-tree.has-tree.no-tree {
@@ -2665,16 +2695,21 @@ html[data-theme='dark'] .cl-latest {
     }
 }
 
-/* 正文按阅读宽度（68ch）在整屏居中：左边距 = (整宽 - 阅读宽)/2 - 树宽 - 间距，
-   这样树栏和正文一起右移，正文左右留白相等。窄屏放不下时回落到 1.5rem，
-   和原来一样靠左。 */
-.with-tree.has-tree:has(.tree-pane) {
-    padding-left: max(1.5rem, calc((100% - 68ch) / 2 - var(--tree-w, 300px) - 2rem));
+/* 正文在「左树、右目录」之间居中。以前是反算 padding-left = (100% - 68ch)/2 - 树宽 - 间距，
+   结果 padding 和树宽互相抵消：拖左分隔条正文不跟着动，树宽过了阈值又突然开始挤右栏，
+   分隔条看着停在屏幕中间。现在正文自己居中，三栏各管各的宽度。 */
+.with-tree.has-tree .doc {
+    justify-self: center;
 }
 
-/* 没有右侧目录时正文上限是 82ch，居中基准跟着换 */
-.with-tree.has-tree:has(.tree-pane):has(.doc-wrap.no-toc) {
-    padding-left: max(1.5rem, calc((100% - 82ch) / 2 - var(--tree-w, 300px) - 2rem));
+/* 有右栏时正文吃满列宽（不设居中），代码块自己横向滚动，不再顶开列宽；
+   没有右栏（正文没有 ## 标题、右栏是「同分类其他条目」）时仍留 82ch 上限。
+   :has 选的是 .toc / .toc-rail 两种右栏。
+   注意不能只写 max-width:none 再靠 justify-self:center —— 居中会让正文按 min-content 撑开
+   （代码块里最长的行），821~1100 之间会横着溢出半屏。 */
+.with-tree.has-tree .doc-wrap:has(.toc) .doc {
+    max-width: none;
+    justify-self: stretch;
 }
 
 /* ---- 列表页（左目录 + 右条目，没有正文那一栏）----
