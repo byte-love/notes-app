@@ -241,9 +241,11 @@ public class PublicController {
         model.addAttribute("starred", viewer.userId() != null && stars.isStarred(viewer.userId(), item.getId()));
 
         // 右栏换成评论区：整篇评论 + 锚在某句话上的评论（楼中楼在 service 里组好）
-        List<CommentService.Thread> threads = comments.threads(item.getId(), viewer.userId());
+        // 复制出来的副本要跟原版共用同一串评论，所以按「最初的来源条目」做 key
+        long commentKey = commentKeyOf(item);
+        List<CommentService.Thread> threads = comments.threads(commentKey, viewer.userId());
         model.addAttribute("threads", threads);
-        model.addAttribute("commentCount", comments.count(item.getId()));
+        model.addAttribute("commentCount", comments.count(commentKey));
         model.addAttribute("canComment", viewer.userId() != null);
         model.addAttribute("commentSlug", item.getSlug());
         return "detail";
@@ -310,7 +312,7 @@ public class PublicController {
         }
         String clean = commentFilter.mask(text);
         String anchor = (quote == null || quote.isBlank()) ? null : quote.trim();
-        long id = comments.add(item.getId(), viewer.userId(), anchorKind, anchor,
+        long id = comments.add(commentKeyOf(item), viewer.userId(), anchorKind, anchor,
                 trim40(prefix), trim40(suffix), blockIndex, parentId, clean);
         return "redirect:" + basePath(item.getKind()) + "/" + item.getSlug() + "#c" + id;
     }
@@ -572,6 +574,19 @@ public class PublicController {
         throw new ResponseStatusException(HttpStatus.NOT_FOUND);
     }
 
+
+    /** 副本沿 copied_from_id 往上找到最初那条，评论按它归并，所有人看到的是同一串。 */
+    private long commentKeyOf(ContentItem item) {
+        long key = item.getId();
+        Long from = item.getCopiedFromId();
+        int guard = 0;
+        while (from != null && guard++ < 8) {
+            key = from;
+            ContentItem src = items.findById(from).orElse(null);
+            from = src == null ? null : src.getCopiedFromId();
+        }
+        return key;
+    }
 
     /** 403 的两种原因：没登录 / 登录了但这条不归你看。原因挂在 request 上，错误页据此换文案。 */
     public static final String REASON_LOGIN = "login";

@@ -32,7 +32,9 @@
                 <p class="tpl-summary" th:if="${c.item.summary != null}" th:text="${c.item.summary}">摘要</p>
                 <div class="tpl-foot">
                     <span class="tpl-count" th:text="${c.count} + ' 条'">1 条</span>
-                    <form sec:authorize="isAuthenticated()"
+                    <button sec:authorize="isAuthenticated()" type="button" class="btn-small on" disabled
+                            th:if="${joinedIds.contains(c.item.id)}">已加入</button>
+                    <form sec:authorize="isAuthenticated()" th:unless="${joinedIds.contains(c.item.id)}"
                           th:action="@{/explore/copy/{id}(id=${c.item.id})}" method="post" class="inline">
                         <button type="submit" class="btn-small">加入我的空间</button>
                     </form>

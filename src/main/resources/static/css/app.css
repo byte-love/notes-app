@@ -3376,3 +3376,12 @@ html[data-theme='dark'] .cl-latest {
 .item-group.folded .item-group-toggle {
     margin-bottom: 0;
 }
+/* 「已加入」状态：同类按钮，但不可点 */
+.btn-small.on,
+.btn-small[disabled] {
+    color: var(--accent);
+    border-color: var(--accent);
+    background: var(--accent-soft);
+    cursor: default;
+    opacity: 1;
+}

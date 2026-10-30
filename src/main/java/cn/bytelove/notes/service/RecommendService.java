@@ -138,7 +138,20 @@ public class RecommendService {
      * 根挂到顶层，父节点按 id 映射到新复制出来的节点。
      */
     @Transactional
+    /** 这个用户已经复制过哪些模板（copied_from_id），用来把按钮显示成「已加入」。 */
+    public java.util.Set<Long> joined(Long userId) {
+        if (userId == null) {
+            return java.util.Set.of();
+        }
+        return new java.util.HashSet<>(items.findCopiedFromIds(userId));
+    }
+
     public int copyTo(Long userId, Long sourceId) {
+        // 已经加过就别再复制一份，重复点按钮不该长出一堆同样的内容
+        if (items.countByOwnerIdAndCopiedFromId(userId, sourceId) > 0) {
+            return 0;
+        }
+
         ContentItem source = items.findById(sourceId)
                 .filter(ContentItem::isRecommended)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
