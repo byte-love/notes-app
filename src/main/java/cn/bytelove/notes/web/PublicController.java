@@ -284,10 +284,14 @@ public class PublicController {
         return "";
     }
 
-    /** 发表评论：quote 为空是评论整篇，非空是锚在正文里那一句上；parentId 有值就是回复（楼中楼）。 */
+    /** 发表评论：可以对整篇、选中的一段文字、或者整段/整个代码块；parentId 有值就是楼中楼回复。 */
     @PostMapping("/comment/{slug}")
     public String addComment(@PathVariable String slug,
                              @RequestParam(required = false) String quote,
+                             @RequestParam(required = false) String anchorKind,
+                             @RequestParam(required = false) Integer blockIndex,
+                             @RequestParam(required = false) String prefix,
+                             @RequestParam(required = false) String suffix,
                              @RequestParam(required = false) Long parentId,
                              @RequestParam String body,
                              Authentication auth) {
@@ -305,8 +309,18 @@ public class PublicController {
         }
         String clean = commentFilter.mask(text);
         String anchor = (quote == null || quote.isBlank()) ? null : quote.trim();
-        long id = comments.add(item.getId(), viewer.userId(), anchor, parentId, clean);
+        long id = comments.add(item.getId(), viewer.userId(), anchorKind, anchor,
+                trim40(prefix), trim40(suffix), blockIndex, parentId, clean);
         return "redirect:" + basePath(item.getKind()) + "/" + item.getSlug() + "#c" + id;
+    }
+
+    /** 锚点前后文只留四十个字，够消歧了，也别把整篇塞进库。 */
+    private static String trim40(String s) {
+        if (s == null) {
+            return null;
+        }
+        String t = s.trim();
+        return t.length() <= 40 ? t : t.substring(t.length() - 40);
     }
 
     /** 删评论：自己的、或者管理员；软删，楼里其他人的回复保留。 */

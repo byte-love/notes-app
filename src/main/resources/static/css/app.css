@@ -3086,7 +3086,7 @@ html[data-theme='dark'] .cl-latest {
     max-width: min(1000px, 92%);
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
-    gap: 0.8rem;
+    gap: 1.2rem;
 }
 
 /* 每条一块卡片，不再用横线分隔 */
@@ -3138,7 +3138,7 @@ html[data-theme='dark'] .cl-latest {
 
 /* 卡片按分类分小节 */
 .item-group + .item-group {
-    margin-top: 1.8rem;
+    margin-top: 2.6rem;
 }
 
 /* 行内操作按钮统一放右列、纵向对齐，不要跟着标题乱跑 */
@@ -3177,4 +3177,97 @@ html[data-theme='dark'] .cl-latest {
     line-height: 1.45;
     display: block;
     padding: 0.28rem 0.4rem 0.28rem 0.95rem;
+}
+/* 选中文字后浮出的「评论」按钮 */
+.cmt-select-btn {
+    position: absolute;
+    z-index: 40;
+    font: inherit;
+    font-size: 0.78rem;
+    padding: 0.18rem 0.6rem;
+    color: var(--bg);
+    background: var(--accent);
+    border: 0;
+    border-radius: 6px;
+    cursor: pointer;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
+}
+
+/* 每个顶层块左侧的「＋」：悬停才出现，用来评论整段 / 整个代码块 */
+.cmt-block-host {
+    position: relative;
+}
+
+.cmt-block-btn {
+    position: absolute;
+    left: -1.5rem;
+    top: 0.15rem;
+    width: 1.15rem;
+    height: 1.15rem;
+    padding: 0;
+    font-size: 0.72rem;
+    line-height: 1;
+    color: var(--fg-3);
+    background: var(--bg-2);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.12s ease;
+}
+
+.cmt-block-host:hover .cmt-block-btn {
+    opacity: 1;
+}
+
+.cmt-block-btn:hover {
+    color: var(--accent);
+    border-color: var(--accent);
+}
+
+/* 被评论过的整块：左边一条竖线 + 浅底 */
+.cmt-block-mark {
+    border-left: 2px solid var(--accent);
+    padding-left: 0.7rem;
+    margin-left: -0.7rem;
+    cursor: pointer;
+}
+
+/* 发评论时显示「正在评论哪一段」 */
+.cmt-anchor-chip {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.3rem;
+    margin-bottom: 0.4rem;
+    padding: 0.3rem 0.45rem;
+    font-size: 0.76rem;
+    line-height: 1.6;
+    color: var(--fg-2);
+    background: var(--bg-2);
+    border-left: 2px solid var(--accent-2);
+    border-radius: 0 6px 6px 0;
+}
+
+.cmt-anchor-text {
+    min-width: 0;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+}
+
+.cmt-anchor-clear {
+    flex: none;
+    padding: 0 0.2rem;
+    font: inherit;
+    font-size: 0.9rem;
+    line-height: 1;
+    color: var(--fg-3);
+    background: none;
+    border: 0;
+    cursor: pointer;
+}
+
+.cmt-anchor-clear:hover {
+    color: var(--danger);
 }

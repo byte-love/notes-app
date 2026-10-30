@@ -2,7 +2,7 @@
 <html xmlns:th="http://www.thymeleaf.org">
 <body>
 
-<!-- 右栏评论区：整篇评论 + 锚在句子上的评论（楼中楼最多两层，回复别人的回复归到同一层） -->
+<!-- 右栏评论区：可以对整篇、选中的一段文字、或者整段/代码块评论；floor 最多两层 -->
 <aside class="toc cmt-pane" id="comments" th:fragment="pane(slug, threads, commentCount, canComment)">
     <div class="cmt-head">
         <span class="cmt-title">评论</span>
@@ -10,7 +10,15 @@
     </div>
 
     <form th:if="${canComment}" class="cmt-form" th:action="@{/comment/{s}(s=${slug})}" method="post">
+        <div class="cmt-anchor-chip" hidden>
+            <span class="cmt-anchor-text"></span>
+            <button type="button" class="cmt-anchor-clear" aria-label="取消">×</button>
+        </div>
         <input type="hidden" name="quote" value="">
+        <input type="hidden" name="anchorKind" value="">
+        <input type="hidden" name="blockIndex" value="">
+        <input type="hidden" name="prefix" value="">
+        <input type="hidden" name="suffix" value="">
         <textarea name="body" rows="3" maxlength="500" placeholder="说点什么"></textarea>
         <div class="cmt-form-ops">
             <button type="submit" class="cmt-submit">发表</button>
@@ -22,9 +30,10 @@
 
     <div class="cmt-empty" th:if="${#lists.isEmpty(threads)}">还没有评论</div>
 
-    <section class="cmt-thread" th:each="t : ${threads}" th:attr="data-quote=${t.quote()}">
+    <section class="cmt-thread" th:each="t : ${threads}"
+             th:attr="data-kind=${t.kind()},data-quote=${t.quote()},data-block=${t.blockIndex()},data-prefix=${t.prefix()},data-suffix=${t.suffix()}">
         <blockquote class="cmt-quote" th:if="${!t.quote().isEmpty()}">
-            <span th:text="${t.quote()}">被评论的那句话</span>
+            <span th:text="${t.quote()}">被评论的那段文字</span>
         </blockquote>
 
         <div class="cmt-card" th:each="c : ${t.comments()}" th:id="${'c' + c.id()}">
@@ -40,6 +49,10 @@
                     <form th:action="@{/comment/{s}(s=${slug})}" method="post">
                         <input type="hidden" name="parentId" th:value="${c.id()}">
                         <input type="hidden" name="quote" th:value="${t.quote()}">
+                        <input type="hidden" name="anchorKind" th:value="${t.kind()}">
+                        <input type="hidden" name="blockIndex" th:value="${t.blockIndex()}">
+                        <input type="hidden" name="prefix" th:value="${t.prefix()}">
+                        <input type="hidden" name="suffix" th:value="${t.suffix()}">
                         <textarea name="body" rows="2" maxlength="500" placeholder="回复一下"></textarea>
                         <div class="cmt-form-ops">
                             <button type="submit" class="cmt-submit">发表</button>
