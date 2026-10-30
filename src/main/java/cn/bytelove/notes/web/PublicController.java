@@ -4,6 +4,9 @@ import cn.bytelove.notes.domain.ContentItem;
 import cn.bytelove.notes.domain.ContentKind;
 import cn.bytelove.notes.repo.ContentItemRepository;
 import cn.bytelove.notes.service.BookmarkService;
+import cn.bytelove.notes.service.CommentFilter;
+import cn.bytelove.notes.service.CommentRateLimiter;
+import cn.bytelove.notes.service.CommentService;
 import cn.bytelove.notes.service.ContentStarService;
 import cn.bytelove.notes.service.MarkdownRenderer;
 import cn.bytelove.notes.service.ProjectMetaService;
@@ -21,6 +24,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
+import org.springframework.web.context.request.RequestAttributes;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 import org.springframework.web.server.ResponseStatusException;
@@ -49,10 +53,15 @@ public class PublicController {
     private final BookmarkService bookmarks;
     private final MarkdownRenderer markdown;
     private final NoteTreeService tree;
+    private final CommentService comments;
+    private final CommentFilter commentFilter;
+    private final CommentRateLimiter commentLimiter;
 
     public PublicController(ContentItemRepository items, VisibilityService visibility, ViewerService viewers,
                             ContentStarService stars, ProjectMetaService meta, ReadingPositionService positions, BookmarkService bookmarks,
-                            MarkdownRenderer markdown, NoteTreeService tree) {
+                            MarkdownRenderer markdown, NoteTreeService tree,
+                            CommentService comments, CommentFilter commentFilter,
+                            CommentRateLimiter commentLimiter) {
         this.items = items;
         this.visibility = visibility;
         this.viewers = viewers;
@@ -62,6 +71,9 @@ public class PublicController {
         this.bookmarks = bookmarks;
         this.markdown = markdown;
         this.tree = tree;
+        this.comments = comments;
+        this.commentFilter = commentFilter;
+        this.commentLimiter = commentLimiter;
     }
 
     @GetMapping("/")
@@ -231,6 +243,15 @@ public class PublicController {
         // 九成八股正文里没有 ## 标题，右栏会空着；没有目录时改用「同分类的其他条目」填上
         model.addAttribute("rail", railOf(siblings, item, lockedIds));
         model.addAttribute("starred", viewer.userId() != null && stars.isStarred(viewer.userId(), item.getId()));
+
+        // 右栏换成评论区：整篇评论 + 锚在某句话上的评论（楼中楼在 service 里组好）
+        // 复制出来的副本要跟原版共用同一串评论，所以按「最初的来源条目」做 key
+        long commentKey = commentKeyOf(item);
+        List<CommentService.Thread> threads = comments.threads(commentKey, viewer.userId());
+        model.addAttribute("threads", threads);
+        model.addAttribute("commentCount", comments.count(commentKey));
+        model.addAttribute("canComment", viewer.userId() != null);
+        model.addAttribute("commentSlug", item.getSlug());
         return "detail";
     }
 
@@ -268,6 +289,61 @@ public class PublicController {
             positions.rememberProgress(viewer.userId(), item.getKind(), item.getId(), progress);
         }
         return "";
+    }
+
+    /** 发表评论：可以对整篇、选中的一段文字、或者整段/整个代码块；parentId 有值就是楼中楼回复。 */
+    @PostMapping("/comment/{slug}")
+    public String addComment(@PathVariable String slug,
+                             @RequestParam(required = false) String quote,
+                             @RequestParam(required = false) String anchorKind,
+                             @RequestParam(required = false) Integer blockIndex,
+                             @RequestParam(required = false) String prefix,
+                             @RequestParam(required = false) String suffix,
+                             @RequestParam(required = false) Long parentId,
+                             @RequestParam String body,
+                             Authentication auth) {
+        Viewer viewer = viewers.current(auth);
+        if (viewer.userId() == null) {
+            return "redirect:" + contextPath() + "/login";
+        }
+        ContentItem item = resolveAnyKind(slug, viewer);
+        String text = body == null ? "" : body.trim();
+        if (text.isEmpty()) {
+            return "redirect:" + basePath(item.getKind()) + "/" + item.getSlug() + "#comments";
+        }
+        if (text.length() > 500) {
+            text = text.substring(0, 500);
+        }
+        // 10 秒内只收一条：连点、刷屏都卡在这里，不落库
+        if (!commentLimiter.tryAcquire(viewer.userId())) {
+            return "redirect:" + basePath(item.getKind()) + "/" + item.getSlug() + "#comments";
+        }
+        String clean = commentFilter.mask(text);
+        String anchor = (quote == null || quote.isBlank()) ? null : quote.trim();
+        long id = comments.add(commentKeyOf(item), viewer.userId(), anchorKind, anchor,
+                trim40(prefix), trim40(suffix), blockIndex, parentId, clean);
+        return "redirect:" + basePath(item.getKind()) + "/" + item.getSlug() + "#c" + id;
+    }
+
+    /** 锚点前后文只留四十个字，够消歧了，也别把整篇塞进库。 */
+    private static String trim40(String s) {
+        if (s == null) {
+            return null;
+        }
+        String t = s.trim();
+        return t.length() <= 40 ? t : t.substring(t.length() - 40);
+    }
+
+    /** 删评论：自己的、或者管理员；软删，楼里其他人的回复保留。 */
+    @PostMapping("/comment/{slug}/{id}/delete")
+    public String deleteComment(@PathVariable String slug, @PathVariable Long id, Authentication auth) {
+        Viewer viewer = viewers.current(auth);
+        if (viewer.userId() == null) {
+            return "redirect:" + contextPath() + "/login";
+        }
+        ContentItem item = resolveAnyKind(slug, viewer);
+        comments.remove(id, viewer.userId(), viewer.admin());
+        return "redirect:" + basePath(item.getKind()) + "/" + item.getSlug() + "#comments";
     }
 
     /** 手动书签：自己插的旗，想标几处标几处；anchor 为空是整篇，非空是某个标题块。 */
@@ -499,11 +575,38 @@ public class PublicController {
         if (readable.isPresent()) {
             return readable.get();
         }
-        // 内容存在、只是没登录看不了：引导去登录，而不是丢一个 404
-        boolean existsButLocked = candidates.stream().anyMatch(i -> visibility.isLocked(i, viewer));
-        throw new ResponseStatusException(existsButLocked ? HttpStatus.FORBIDDEN : HttpStatus.NOT_FOUND);
+        // 内容存在但看不了：分清楚「没登录」和「登录了但没权限」，文案不一样
+        if (!candidates.isEmpty()) {
+            throw forbidden(viewer.authenticated() ? REASON_PERMISSION : REASON_LOGIN);
+        }
+        throw new ResponseStatusException(HttpStatus.NOT_FOUND);
     }
 
+
+    /** 副本沿 copied_from_id 往上找到最初那条，评论按它归并，所有人看到的是同一串。 */
+    private long commentKeyOf(ContentItem item) {
+        long key = item.getId();
+        Long from = item.getCopiedFromId();
+        int guard = 0;
+        while (from != null && guard++ < 8) {
+            key = from;
+            ContentItem src = items.findById(from).orElse(null);
+            from = src == null ? null : src.getCopiedFromId();
+        }
+        return key;
+    }
+
+    /** 403 的两种原因：没登录 / 登录了但这条不归你看。原因挂在 request 上，错误页据此换文案。 */
+    public static final String REASON_LOGIN = "login";
+    public static final String REASON_PERMISSION = "permission";
+
+    private static ResponseStatusException forbidden(String reason) {
+        var attrs = RequestContextHolder.getRequestAttributes();
+        if (attrs != null) {
+            attrs.setAttribute("errorReason", reason, RequestAttributes.SCOPE_REQUEST);
+        }
+        return new ResponseStatusException(HttpStatus.FORBIDDEN);
+    }
     /** 同上，但不管类型（/star/{slug} 的路径里没有 kind）。 */
     private ContentItem resolveAnyKind(String slug, Viewer viewer) {
         if (viewer.userId() != null) {

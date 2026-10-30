@@ -669,7 +669,187 @@ button:hover,
     color: var(--accent);
 }
 
+/* ---------- 右栏评论区 ---------- */
+.cmt-pane {
+    max-height: calc(100vh - 100px);
+    overflow-y: auto;
+    padding-right: 0.4rem;
+}
+
+.cmt-head {
+    display: flex;
+    align-items: baseline;
+    gap: 0.4rem;
+    margin-bottom: 0.7rem;
+}
+
+.cmt-title {
+    font-size: 0.86rem;
+    font-weight: 600;
+    color: var(--fg);
+}
+
+.cmt-count {
+    font-size: 0.76rem;
+    color: var(--fg-3);
+    font-variant-numeric: tabular-nums;
+}
+
+.cmt-form textarea,
+.cmt-reply textarea {
+    width: 100%;
+    font: inherit;
+    font-size: 0.82rem;
+    line-height: 1.7;
+    color: var(--fg);
+    background: var(--bg-2);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 0.45rem 0.55rem;
+    resize: vertical;
+}
+
+.cmt-form textarea:focus,
+.cmt-reply textarea:focus {
+    outline: none;
+    border-color: var(--accent);
+}
+
+.cmt-form-ops {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.4rem;
+    margin-top: 0.35rem;
+}
+
+.cmt-submit,
+.cmt-del {
+    font: inherit;
+    font-size: 0.8rem;
+    padding: 0.2rem 0.7rem;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.cmt-submit {
+    color: var(--bg);
+    background: var(--accent);
+    border: 1px solid var(--accent);
+}
+
+.cmt-submit:hover {
+    filter: brightness(1.06);
+}
+
+.cmt-del {
+    color: var(--fg-3);
+    background: none;
+    border: 1px solid transparent;
+}
+
+.cmt-del:hover {
+    color: var(--danger);
+    border-color: var(--line);
+}
+
+.cmt-login,
+.cmt-empty {
+    font-size: 0.8rem;
+    color: var(--fg-3);
+    margin: 0.5rem 0 0.9rem;
+}
+
+.cmt-thread {
+    padding: 0.6rem 0;
+    border-top: 1px dashed var(--line);
+}
+
+.cmt-thread.on {
+    background: var(--accent-soft);
+    border-radius: 8px;
+}
+
+.cmt-quote {
+    margin: 0 0 0.5rem;
+    padding: 0.35rem 0.5rem;
+    font-size: 0.78rem;
+    line-height: 1.65;
+    color: var(--fg-2);
+    background: var(--bg-2);
+    border-left: 2px solid var(--accent-2);
+    border-radius: 0 6px 6px 0;
+}
+
+.cmt-card + .cmt-card {
+    margin-top: 0.7rem;
+}
+
+.cmt-meta {
+    display: flex;
+    align-items: baseline;
+    gap: 0.4rem;
+    font-size: 0.74rem;
+    color: var(--fg-3);
+}
+
+.cmt-author {
+    color: var(--fg-2);
+    font-weight: 600;
+}
+
+.cmt-text {
+    margin: 0.2rem 0 0;
+    font-size: 0.82rem;
+    line-height: 1.75;
+    color: var(--fg);
+    overflow-wrap: anywhere;
+}
+
+.cmt-ops {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin-top: 0.15rem;
+}
+
+.cmt-reply summary {
+    font-size: 0.74rem;
+    color: var(--fg-3);
+    cursor: pointer;
+    list-style: none;
+}
+
+.cmt-reply summary::-webkit-details-marker {
+    display: none;
+}
+
+.cmt-reply summary:hover {
+    color: var(--accent);
+}
+
+.cmt-reply[open] summary {
+    margin-bottom: 0.35rem;
+}
+
+.cmt-replies {
+    margin-top: 0.5rem;
+    padding-left: 0.7rem;
+    border-left: 2px solid var(--line);
+}
+
+/* 正文里被评论过的那句话：下划线 + 悬停提示 */
+.cmt-mark {
+    border-bottom: 2px solid var(--accent);
+    cursor: pointer;
+    background: linear-gradient(transparent 62%, var(--accent-soft) 62%);
+}
+
+.cmt-mark:hover {
+    background: var(--accent-soft);
+}
+
 /* ---------- list page ---------- */
+
 .page-head {
     display: flex;
     align-items: baseline;
@@ -1402,7 +1582,7 @@ button:hover,
     max-width: none;
     margin: 0;
     padding: 0;
-    grid-template-columns: minmax(0, 1fr) 12%;
+    grid-template-columns: minmax(0, 1fr) 320px;
     gap: 9rem;
 }
 
@@ -1410,7 +1590,7 @@ button:hover,
     max-width: 68ch;
 }
 
-/* 没有目录（正文没有 ## 标题）时，右侧那 12% 的目录列不该继续占位 */
+/* 右栏（评论区）宽度由 JS 控制，这里只是兜底 */
 .with-tree .doc-wrap.no-toc {
     grid-template-columns: minmax(0, 1fr);
 }
@@ -2513,6 +2693,46 @@ html[data-read-size='lg'] .markdown {
     font-size: 0.74rem;
 }
 
+/* 同一天发了多个版本：日期下面竖着列版本号 */
+.cl-versions {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.22rem;
+}
+
+/* 卡片里按版本分块：块与块之间一条虚线隔开，版本号当小标题 */
+.cl-ver + .cl-ver {
+    margin-top: 1.2rem;
+    padding-top: 1.1rem;
+    border-top: 1px dashed var(--line);
+}
+
+.cl-ver-head {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0 0 0.7rem;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--fg);
+    letter-spacing: -0.01em;
+}
+
+.cl-ver-head .cl-version {
+    flex: none;
+    color: var(--accent);
+    border-color: var(--accent);
+}
+
+/* 卡片头的版本号（同一天多个版本时才有） */
+.cl-card-head .cl-version {
+    flex: none;
+    color: var(--accent);
+    border-color: var(--accent);
+    font-weight: 600;
+}
+
 /* 右边卡片 */
 .cl-card {
     margin-bottom: 1.6rem;
@@ -2598,7 +2818,8 @@ html[data-theme='dark'] .cl-latest {
     margin-top: 1.1rem;
 }
 
-.cl-section h3 {
+.cl-section h3,
+.cl-section h4 {
     margin: 0 0 0.45rem;
     font-size: 0.86rem;
     font-weight: 600;
@@ -2866,7 +3087,7 @@ html[data-theme='dark'] .cl-latest {
     max-width: min(1000px, 92%);
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
-    gap: 0.8rem;
+    gap: 1.2rem;
 }
 
 /* 每条一块卡片，不再用横线分隔 */
@@ -2918,7 +3139,7 @@ html[data-theme='dark'] .cl-latest {
 
 /* 卡片按分类分小节 */
 .item-group + .item-group {
-    margin-top: 1.8rem;
+    margin-top: 2.6rem;
 }
 
 /* 行内操作按钮统一放右列、纵向对齐，不要跟着标题乱跑 */
@@ -2957,4 +3178,246 @@ html[data-theme='dark'] .cl-latest {
     line-height: 1.45;
     display: block;
     padding: 0.28rem 0.4rem 0.28rem 0.95rem;
+}
+/* 选中文字后浮出的工具条（仿飞书：选中 -> 浮出选项 -> 点评论） */
+.cmt-tool {
+    position: absolute;
+    z-index: 60;
+    display: flex;
+    gap: 0.2rem;
+    padding: 0.2rem;
+    background: var(--bg-2);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.22);
+}
+
+.cmt-tool button {
+    font: inherit;
+    font-size: 0.8rem;
+    padding: 0.22rem 0.7rem;
+    color: var(--fg);
+    background: none;
+    border: 0;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.cmt-tool button:hover {
+    color: var(--accent);
+    background: var(--bg);
+}
+
+/* 评论框默认收起，选中文字点了「评论」才出现 */
+.cmt-form[hidden] {
+    display: none;
+}
+
+.cmt-cancel {
+    font: inherit;
+    font-size: 0.8rem;
+    padding: 0.2rem 0.6rem;
+    color: var(--fg-3);
+    background: none;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.cmt-cancel:hover {
+    color: var(--fg);
+}
+
+/* 右栏头部那个「＋」：评论整篇 */
+.cmt-new {
+    margin-left: auto;
+    width: 1.3rem;
+    height: 1.3rem;
+    padding: 0;
+    font: inherit;
+    font-size: 0.9rem;
+    line-height: 1;
+    color: var(--fg-3);
+    background: var(--bg-2);
+    border: 1px solid var(--line);
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+.cmt-new:hover {
+    color: var(--accent);
+    border-color: var(--accent);
+}
+
+/* 每个顶层块左侧的「＋」：悬停才出现，用来评论整段 / 整个代码块 */
+.cmt-block-host {
+    position: relative;
+}
+
+.cmt-block-btn {
+    position: absolute;
+    left: -1.5rem;
+    top: 0.15rem;
+    width: 1.15rem;
+    height: 1.15rem;
+    padding: 0;
+    font-size: 0.72rem;
+    line-height: 1;
+    color: var(--fg-3);
+    background: var(--bg-2);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.12s ease;
+}
+
+.cmt-block-host:hover .cmt-block-btn {
+    opacity: 1;
+}
+
+.cmt-block-btn:hover {
+    color: var(--accent);
+    border-color: var(--accent);
+}
+
+/* 被评论过的整块：左边一条竖线 + 浅底 */
+.cmt-block-mark {
+    border-left: 2px solid var(--accent);
+    padding-left: 0.7rem;
+    margin-left: -0.7rem;
+    cursor: pointer;
+}
+
+/* 发评论时显示「正在评论哪一段」 */
+.cmt-anchor-chip {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.3rem;
+    margin-bottom: 0.4rem;
+    padding: 0.3rem 0.45rem;
+    font-size: 0.76rem;
+    line-height: 1.6;
+    color: var(--fg-2);
+    background: var(--bg-2);
+    border-left: 2px solid var(--accent-2);
+    border-radius: 0 6px 6px 0;
+}
+
+.cmt-anchor-text {
+    min-width: 0;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+}
+
+.cmt-anchor-clear {
+    flex: none;
+    padding: 0 0.2rem;
+    font: inherit;
+    font-size: 0.9rem;
+    line-height: 1;
+    color: var(--fg-3);
+    background: none;
+    border: 0;
+    cursor: pointer;
+}
+
+.cmt-anchor-clear:hover {
+    color: var(--danger);
+}
+/* 分类标题做成可点的折叠条：左边小三角 + 标题 + 条数 */
+.item-group-toggle {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    width: 100%;
+    margin: 0 0 0.8rem;
+    padding: 0;
+    font: inherit;
+    text-align: left;
+    color: inherit;
+    background: none;
+    border: 0;
+    cursor: pointer;
+}
+
+.item-group-caret {
+    width: 0;
+    height: 0;
+    border-left: 5px solid var(--fg-3);
+    border-top: 4px solid transparent;
+    border-bottom: 4px solid transparent;
+    transform: rotate(90deg);
+    transition: transform 0.12s ease;
+    flex: none;
+}
+
+.item-group.folded .item-group-caret {
+    transform: rotate(0deg);
+}
+
+.item-group-toggle:hover .item-group-title {
+    text-decoration: underline;
+    text-underline-offset: 3px;
+}
+
+.item-group-count {
+    font-size: 0.76rem;
+    color: var(--fg-3);
+    font-variant-numeric: tabular-nums;
+}
+
+.item-group.folded .item-list {
+    display: none;
+}
+
+.item-group.folded .item-group-toggle {
+    margin-bottom: 0;
+}
+/* 「已加入」状态：同类按钮，但不可点 */
+.btn-small.on,
+.btn-small[disabled] {
+    color: var(--accent);
+    border-color: var(--accent);
+    background: var(--accent-soft);
+    cursor: default;
+    opacity: 1;
+}
+/* 更新日志里「修复 / 优化」这类小节默认折叠 */
+.cl-fold {
+    margin-top: 0.5rem;
+}
+
+.cl-fold summary {
+    cursor: pointer;
+    list-style: none;
+    font-size: 0.84rem;
+    font-weight: 600;
+    color: var(--fg-3);
+    padding: 0.25rem 0;
+}
+
+.cl-fold summary::-webkit-details-marker {
+    display: none;
+}
+
+.cl-fold summary::before {
+    content: "▸";
+    margin-right: 0.4rem;
+    display: inline-block;
+    transition: transform 0.12s ease;
+}
+
+.cl-fold[open] summary::before {
+    transform: rotate(90deg);
+}
+
+.cl-fold summary:hover {
+    color: var(--accent);
+}
+
+.cl-fold ul {
+    margin-top: 0.3rem;
 }

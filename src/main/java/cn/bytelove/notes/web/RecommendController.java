@@ -69,6 +69,7 @@ public class RecommendController {
         model.addAttribute("kinds", List.of(ContentKind.NOTE, ContentKind.BAGU,
                 ContentKind.ALGO, ContentKind.PROJECT));
         model.addAttribute("copied", copied);
+        model.addAttribute("joinedIds", recommend.joined(viewer.userId()));
         model.addAttribute("tabActive", "explore");
         return "explore";
     }

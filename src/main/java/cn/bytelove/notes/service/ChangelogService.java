@@ -44,6 +44,20 @@ public class ChangelogService {
         }
     }
 
+    /** 一天一卡片：同一天发几个版本都收在这张卡里（参考 Nuxt UI 的 changelog 层次） */
+    public record Day(LocalDate releasedOn, List<Release> releases) {
+    }
+
+    public List<Day> days() {
+        Map<LocalDate, List<Release>> byDay = new LinkedHashMap<>();
+        for (Release r : releases()) {
+            byDay.computeIfAbsent(r.releasedOn(), d -> new ArrayList<>()).add(r);
+        }
+        List<Day> out = new ArrayList<>(byDay.size());
+        byDay.forEach((d, rs) -> out.add(new Day(d, rs)));
+        return out;
+    }
+
     public List<Release> releases() {
         Map<String, Map<String, List<Item>>> grouped = new LinkedHashMap<>();
         Map<String, Release> meta = new LinkedHashMap<>();

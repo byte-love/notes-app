@@ -64,4 +64,11 @@ public interface ContentItemRepository
     long countByOwnerId(Long ownerId);
 
     long countByOwnerIdAndKind(Long ownerId, ContentKind kind);
+
+    long countByOwnerIdAndCopiedFromId(Long ownerId, Long copiedFromId);
+
+    @org.springframework.data.jpa.repository.Query(
+            "select i.copiedFromId from ContentItem i where i.ownerId = ?1 "
+                    + "and i.copiedFromId is not null and i.deletedAt is null")
+    java.util.List<Long> findCopiedFromIds(Long ownerId);
 }
