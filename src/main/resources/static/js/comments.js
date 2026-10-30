@@ -13,7 +13,29 @@
     const blocks = [...article.children];
     const canComment = !!form;
 
+    // 输入框里正对着的那段引文：选中的原文要高亮留着，用户才知道自己在评论哪一段，
+    // 所以不能用「清掉选区」来收起工具条，改成记住这段引文、对同一段不再弹工具条
+    let openWith = '';
+
     const isNarrow = () => window.matchMedia('(max-width: 820px)').matches;
+
+    // 正在评论的那段原文要高亮着。原生选区一旦把光标点进输入框就没了，
+    // 所以再用 CSS Custom Highlight 画一层底（Edge/Chrome 105+、Safari 17+），不支持就算了
+    const paintAnchor = (range) => {
+        if (!range || !window.CSS || !CSS.highlights || typeof Highlight === 'undefined') return;
+        try {
+            CSS.highlights.set('cmt-anchor', new Highlight(range));
+        } catch (e) {
+            // 老浏览器：只剩原生选区那一层高亮
+        }
+    };
+    const unpaintAnchor = () => {
+        if (window.CSS && CSS.highlights) {
+            try {
+                CSS.highlights.delete('cmt-anchor');
+            } catch (e) {}
+        }
+    };
 
     // ---------- 打开 / 关闭输入框 ----------
     const openForm = (anchor) => {
@@ -32,6 +54,11 @@
             chip.hidden = !anchor.quote;
         }
         form.hidden = false;
+        if (anchor.range) {
+            paintAnchor(anchor.range);
+        } else {
+            unpaintAnchor();
+        }
         if (isNarrow()) {
             // 窄屏右栏在正文下方，直接滚过去
             pane.scrollIntoView({ block: 'start', behavior: 'smooth' });
@@ -51,6 +78,11 @@
         });
         if (chip) chip.hidden = true;
         if (textarea) textarea.value = '';
+        // 取消就把选中高亮也一起收掉
+        openWith = '';
+        unpaintAnchor();
+        const sel = window.getSelection();
+        sel && sel.removeAllRanges();
     };
 
     if (form) {
@@ -150,6 +182,11 @@
             hideTool();
             return;
         }
+        // 输入框已经对着这一段了，就别再弹工具条（选区要留着当高亮）
+        if (openWith && form && !form.hidden && text === openWith) {
+            hideTool();
+            return;
+        }
         const range = sel.getRangeAt(0);
         const rect = range.getBoundingClientRect();
         if (!rect || (!rect.width && !rect.height)) {
@@ -176,20 +213,25 @@
         const block = index >= 0 ? blocks[index] : null;
         const blockText = textOf(block);
         const at = blockText.indexOf(quote);
-        // 先把工具条和选区一起收掉，再开输入框：焦点挪进 textarea 会再触发一次 selectionchange，
-        // 留着旧选区的话 showTool 会把工具条又画回来
+        const range = lastRange ? lastRange.cloneRange() : null;
+        // 只收工具条，不动选区：那段字要一直高亮着，用户才知道自己在评论哪一段。
+        // 工具条不会因为 focus 挪进 textarea 再弹出来——showTool 里认 openWith 这一段
         hideTool();
-        const sel = window.getSelection();
-        sel && sel.removeAllRanges();
         lastQuote = '';
         lastRange = null;
-        if (!quote) return;
+        if (!quote) {
+            openWith = '';
+            unpaintAnchor();
+            return;
+        }
+        openWith = quote;
         openForm({
             kind: 'text',
             quote,
             prefix: at > 0 ? blockText.slice(Math.max(0, at - 20), at) : '',
             suffix: at >= 0 ? blockText.slice(at + quote.length, at + quote.length + 20) : '',
             block: index,
+            range,
         });
     });
 
@@ -242,7 +284,15 @@
             btn.addEventListener('click', (e) => {
                 e.stopPropagation();
                 hideTool();
-                openForm({ kind: 'block', quote: textOf(block).slice(0, 120), block: index });
+                // 整段评论也把这一段的底铺上，跟选中文字时一样能看出评论的是哪一段
+                let range = null;
+                try {
+                    range = document.createRange();
+                    range.selectNodeContents(block);
+                } catch (err) {
+                    range = null;
+                }
+                openForm({ kind: 'block', quote: textOf(block).slice(0, 120), block: index, range });
             });
             block.classList.add('cmt-block-host');
             block.appendChild(btn);

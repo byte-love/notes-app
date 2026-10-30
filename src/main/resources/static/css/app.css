@@ -1,3 +1,9 @@
+/* 正在评论的那段原文：光标点进输入框后原生选区就没了，这里用 Custom Highlight 再铺一层底 */
+::highlight(cmt-anchor) {
+    background-color: var(--accent-soft);
+    color: inherit;
+}
+
 /* hidden 属性要真的不显示：下面不少组件自带 display: flex，会把浏览器默认的
    [hidden] { display: none } 盖掉（工具条「评论」、引文小框就这么赖着不走） */
 [hidden] {
