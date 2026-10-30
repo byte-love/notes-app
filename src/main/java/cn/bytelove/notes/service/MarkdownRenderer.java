@@ -200,13 +200,19 @@ public class MarkdownRenderer {
         if (s.isEmpty()) {
             return false;
         }
+        // 分隔线、Markdown 标题都不算代码行
+        if (s.matches("^[-=*_]{3,}$") || s.matches("^#{1,6}\\s.*")) {
+            return false;
+        }
         if (s.startsWith("//") || s.startsWith("#") || s.startsWith("--")
                 || s.startsWith("/*") || s.startsWith("@")) {
             return true;
         }
-        // 结尾的中文句号不算内容（贴进来的 SQL 常被这么结尾）
-        s = s.replaceAll("[\\s；;。.]+$", "");
-        if (s.isEmpty() || s.length() > 200 || CJK.matcher(s).find()) {
+        // 结尾的中文标点、字符串字面量里的中文都不算「这段是中文散文」，
+        // 所以先去掉再判断，避免把 System.out.println("最终结果：" + i); 判成正文
+        String probe = s.replaceAll("\"(?:[^\"\\\\]|\\\\.)*\"|'(?:[^'\\\\]|\\\\.)*'", "\"\"")
+                .replaceAll("[\\s；;。.]+$", "");
+        if (probe.isEmpty() || probe.length() > 200 || CJK.matcher(probe).find()) {
             return false;
         }
         return s.indexOf(';') >= 0 || s.indexOf('{') >= 0 || s.indexOf('}') >= 0
