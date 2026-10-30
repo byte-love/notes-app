@@ -3280,7 +3280,8 @@ html[data-theme='dark'] .cl-latest {
     display: none;
 }
 
-.cmt-cancel {
+.cmt-cancel,
+.ann-cancel {
     font: inherit;
     font-size: 0.8rem;
     padding: 0.2rem 0.6rem;
@@ -3291,7 +3292,8 @@ html[data-theme='dark'] .cl-latest {
     cursor: pointer;
 }
 
-.cmt-cancel:hover {
+.cmt-cancel:hover,
+.ann-cancel:hover {
     color: var(--fg);
 }
 
