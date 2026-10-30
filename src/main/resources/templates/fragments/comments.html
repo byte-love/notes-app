@@ -7,9 +7,10 @@
     <div class="cmt-head">
         <span class="cmt-title">评论</span>
         <span class="cmt-count" th:if="${commentCount > 0}" th:text="${commentCount}">0</span>
+        <button th:if="${canComment}" type="button" class="cmt-new" aria-label="评论整篇" title="评论整篇">＋</button>
     </div>
 
-    <form th:if="${canComment}" class="cmt-form" th:action="@{/comment/{s}(s=${slug})}" method="post">
+    <form th:if="${canComment}" class="cmt-form" hidden th:action="@{/comment/{s}(s=${slug})}" method="post">
         <div class="cmt-anchor-chip" hidden>
             <span class="cmt-anchor-text"></span>
             <button type="button" class="cmt-anchor-clear" aria-label="取消">×</button>
@@ -21,6 +22,7 @@
         <input type="hidden" name="suffix" value="">
         <textarea name="body" rows="3" maxlength="500" placeholder="说点什么"></textarea>
         <div class="cmt-form-ops">
+            <button type="button" class="cmt-cancel">取消</button>
             <button type="submit" class="cmt-submit">发表</button>
         </div>
     </form>

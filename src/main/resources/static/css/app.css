@@ -718,6 +718,7 @@ button:hover,
 .cmt-form-ops {
     display: flex;
     justify-content: flex-end;
+    gap: 0.4rem;
     margin-top: 0.35rem;
 }
 
@@ -3178,19 +3179,74 @@ html[data-theme='dark'] .cl-latest {
     display: block;
     padding: 0.28rem 0.4rem 0.28rem 0.95rem;
 }
-/* 选中文字后浮出的「评论」按钮 */
-.cmt-select-btn {
+/* 选中文字后浮出的工具条（仿飞书：选中 -> 浮出选项 -> 点评论） */
+.cmt-tool {
     position: absolute;
-    z-index: 40;
+    z-index: 60;
+    display: flex;
+    gap: 0.2rem;
+    padding: 0.2rem;
+    background: var(--bg-2);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.22);
+}
+
+.cmt-tool button {
     font: inherit;
-    font-size: 0.78rem;
-    padding: 0.18rem 0.6rem;
-    color: var(--bg);
-    background: var(--accent);
+    font-size: 0.8rem;
+    padding: 0.22rem 0.7rem;
+    color: var(--fg);
+    background: none;
     border: 0;
     border-radius: 6px;
     cursor: pointer;
-    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
+}
+
+.cmt-tool button:hover {
+    color: var(--accent);
+    background: var(--bg);
+}
+
+/* 评论框默认收起，选中文字点了「评论」才出现 */
+.cmt-form[hidden] {
+    display: none;
+}
+
+.cmt-cancel {
+    font: inherit;
+    font-size: 0.8rem;
+    padding: 0.2rem 0.6rem;
+    color: var(--fg-3);
+    background: none;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.cmt-cancel:hover {
+    color: var(--fg);
+}
+
+/* 右栏头部那个「＋」：评论整篇 */
+.cmt-new {
+    margin-left: auto;
+    width: 1.3rem;
+    height: 1.3rem;
+    padding: 0;
+    font: inherit;
+    font-size: 0.9rem;
+    line-height: 1;
+    color: var(--fg-3);
+    background: var(--bg-2);
+    border: 1px solid var(--line);
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+.cmt-new:hover {
+    color: var(--accent);
+    border-color: var(--accent);
 }
 
 /* 每个顶层块左侧的「＋」：悬停才出现，用来评论整段 / 整个代码块 */

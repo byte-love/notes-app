@@ -1,133 +1,170 @@
-// 评论锚点：可以对「选中一段文字」或「整段 / 整个代码块」发评论
+// 评论：选中文字 -> 浮出工具条 -> 点「评论」-> 右栏才展开输入框
 // 定位参考 Hypothesis 的 TextQuoteSelector（原文 + 前后文）与 PositionSelector（块序号）
 (() => {
     const pane = document.getElementById('comments');
     const article = document.querySelector('.markdown');
     const form = pane && pane.querySelector('.cmt-form');
-    const canComment = !!form;
+    if (!pane || !article) return;
 
     const textarea = form && form.querySelector('textarea[name="body"]');
     const field = (name) => (form ? form.querySelector(`[name="${name}"]`) : null);
     const chip = form && form.querySelector('.cmt-anchor-chip');
     const chipText = chip && chip.querySelector('.cmt-anchor-text');
-    const blocks = article ? [...article.children] : [];
+    const blocks = [...article.children];
+    const canComment = !!form;
 
-    // ---------- 锚点状态 ----------
-    const setAnchor = (anchor) => {
+    const isNarrow = () => window.matchMedia('(max-width: 820px)').matches;
+
+    // ---------- 打开 / 关闭输入框 ----------
+    const openForm = (anchor) => {
         if (!form) return;
-        field('quote').value = anchor.quote || '';
-        field('anchorKind').value = anchor.kind || '';
-        field('blockIndex').value = anchor.block == null ? '' : String(anchor.block);
-        field('prefix').value = anchor.prefix || '';
-        field('suffix').value = anchor.suffix || '';
+        const set = (name, value) => {
+            const el = field(name);
+            if (el) el.value = value == null ? '' : String(value);
+        };
+        set('quote', anchor.quote);
+        set('anchorKind', anchor.kind);
+        set('blockIndex', anchor.block);
+        set('prefix', anchor.prefix);
+        set('suffix', anchor.suffix);
         if (chip && chipText) {
             chipText.textContent = anchor.quote ? anchor.quote.slice(0, 80) : '';
             chip.hidden = !anchor.quote;
         }
-        pane.scrollTo({ top: 0, behavior: 'smooth' });
-        textarea && textarea.focus();
+        form.hidden = false;
+        if (isNarrow()) {
+            // 窄屏右栏在正文下方，直接滚过去
+            pane.scrollIntoView({ block: 'start', behavior: 'smooth' });
+            setTimeout(() => textarea && textarea.focus(), 260);
+        } else {
+            pane.scrollTo({ top: 0, behavior: 'smooth' });
+            textarea && textarea.focus();
+        }
     };
 
-    const clearAnchor = () => {
+    const closeForm = () => {
         if (!form) return;
+        form.hidden = true;
         ['quote', 'anchorKind', 'blockIndex', 'prefix', 'suffix'].forEach((n) => {
             const el = field(n);
             if (el) el.value = '';
         });
         if (chip) chip.hidden = true;
+        if (textarea) textarea.value = '';
     };
 
     if (form) {
+        const cancel = form.querySelector('.cmt-cancel');
+        cancel && cancel.addEventListener('click', closeForm);
         const clearBtn = form.querySelector('.cmt-anchor-clear');
-        clearBtn && clearBtn.addEventListener('click', clearAnchor);
+        clearBtn && clearBtn.addEventListener('click', () => {
+            ['quote', 'anchorKind', 'blockIndex', 'prefix', 'suffix'].forEach((n) => {
+                const el = field(n);
+                if (el) el.value = '';
+            });
+            if (chip) chip.hidden = true;
+        });
         form.addEventListener('submit', () => {
-            // 没选锚点就是评论整篇
             if (!field('anchorKind').value) field('anchorKind').value = 'text';
         });
+        // 右栏头部的 ＋：评论整篇
+        const newBtn = pane.querySelector('.cmt-new');
+        newBtn && newBtn.addEventListener('click', () => openForm({ kind: 'text', quote: '' }));
     }
 
-    // ---------- 选中文字 -> 浮出「评论」按钮 ----------
-    if (canComment && article) {
-        const btn = document.createElement('button');
-        btn.type = 'button';
-        btn.className = 'cmt-select-btn';
-        btn.textContent = '评论';
-        btn.hidden = true;
-        document.body.appendChild(btn);
+    // ---------- 选中文字后的浮动工具条 ----------
+    let lastRange = null;
+    let lastQuote = '';
 
-        let lastRange = null;
-        let lastQuote = '';
+    const tool = document.createElement('div');
+    tool.className = 'cmt-tool';
+    tool.hidden = true;
+    const toolBtn = document.createElement('button');
+    toolBtn.type = 'button';
+    toolBtn.textContent = '评论';
+    tool.appendChild(toolBtn);
+    document.body.appendChild(tool);
 
-        const blockOf = (node) => {
-            for (let el = node.nodeType === 1 ? node : node.parentElement; el; el = el.parentElement) {
-                if (el.parentElement === article) return blocks.indexOf(el);
-            }
-            return -1;
-        };
+    const hideTool = () => {
+        tool.hidden = true;
+    };
 
-        const hideBtn = () => {
-            btn.hidden = true;
-        };
+    // 点工具条不能把选区弄没
+    tool.addEventListener('mousedown', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+    });
+    tool.addEventListener('touchstart', (e) => {
+        e.stopPropagation();
+    }, { passive: true });
 
-        // 点按钮这一下会先把选区清空，引文就丢了；所以拦住 mousedown，用记下来的那份
-        btn.addEventListener('mousedown', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
+    const blockOf = (node) => {
+        for (let el = node.nodeType === 1 ? node : node.parentElement; el; el = el.parentElement) {
+            if (el.parentElement === article) return blocks.indexOf(el);
+        }
+        return -1;
+    };
+
+    const showTool = () => {
+        if (!canComment) return;
+        const sel = window.getSelection();
+        if (!sel || sel.isCollapsed || !sel.rangeCount) {
+            hideTool();
+            return;
+        }
+        const text = sel.toString().trim();
+        if (!text || !article.contains(sel.anchorNode)) {
+            hideTool();
+            return;
+        }
+        const range = sel.getRangeAt(0);
+        const rect = range.getBoundingClientRect();
+        if (!rect || (!rect.width && !rect.height)) {
+            hideTool();
+            return;
+        }
+        lastRange = range.cloneRange();
+        lastQuote = text;
+        tool.hidden = false;
+        const top = rect.top + window.scrollY - tool.offsetHeight - 8;
+        tool.style.top = `${Math.max(8, top)}px`;
+        tool.style.left = `${Math.max(10, rect.left + window.scrollX + rect.width / 2 - tool.offsetWidth / 2)}px`;
+    };
+
+    // 桌面：selectionchange + mouseup；手机：长按选中后 touchend 再兜一次
+    document.addEventListener('selectionchange', showTool);
+    article.addEventListener('mouseup', () => setTimeout(showTool, 0));
+    article.addEventListener('touchend', () => setTimeout(showTool, 260));
+    article.addEventListener('keyup', showTool);
+
+    toolBtn.addEventListener('click', () => {
+        const quote = lastQuote || (window.getSelection() ? window.getSelection().toString().trim() : '');
+        if (!quote) return;
+        const index = lastRange ? blockOf(lastRange.startContainer) : -1;
+        const block = index >= 0 ? blocks[index] : null;
+        const blockText = block ? block.textContent || '' : '';
+        const at = blockText.indexOf(quote);
+        openForm({
+            kind: 'text',
+            quote,
+            prefix: at > 0 ? blockText.slice(Math.max(0, at - 20), at) : '',
+            suffix: at >= 0 ? blockText.slice(at + quote.length, at + quote.length + 20) : '',
+            block: index,
         });
+        hideTool();
+        const sel = window.getSelection();
+        sel && sel.removeAllRanges();
+    });
 
-        const showBtn = () => {
-            const sel = window.getSelection();
-            if (!sel || sel.isCollapsed || !sel.rangeCount) {
-                hideBtn();
-                return;
-            }
-            const text = sel.toString().trim();
-            if (!text || !article.contains(sel.anchorNode)) {
-                hideBtn();
-                return;
-            }
-            const range = sel.getRangeAt(0);
-            const rect = range.getBoundingClientRect();
-            if (!rect || (!rect.width && !rect.height)) {
-                hideBtn();
-                return;
-            }
-            lastRange = range.cloneRange();
-            lastQuote = text;
-            btn.hidden = false;
-            btn.style.top = `${Math.min(window.innerHeight - 44, rect.bottom + window.scrollY + 6)}px`;
-            btn.style.left = `${Math.max(12, rect.left + window.scrollX - 6)}px`;
-        };
+    document.addEventListener('mousedown', (e) => {
+        if (!tool.contains(e.target)) hideTool();
+    });
+    document.addEventListener('touchstart', (e) => {
+        if (!tool.contains(e.target)) hideTool();
+    }, { passive: true });
 
-        // selectionchange 有时机不稳的情况，鼠标抬起/按键再兜一次
-        document.addEventListener('selectionchange', showBtn);
-        article.addEventListener('mouseup', () => setTimeout(showBtn, 0));
-        article.addEventListener('keyup', showBtn);
-
-        btn.addEventListener('click', () => {
-            const quote = lastQuote || (window.getSelection() ? window.getSelection().toString().trim() : '');
-            if (!quote) return;
-            const index = lastRange ? blockOf(lastRange.startContainer) : -1;
-            const block = index >= 0 ? blocks[index] : null;
-            const blockText = block ? block.textContent || '' : '';
-            const at = blockText.indexOf(quote);
-            const prefix = at > 0 ? blockText.slice(Math.max(0, at - 20), at) : '';
-            const suffix = at >= 0 ? blockText.slice(at + quote.length, at + quote.length + 20) : '';
-            setAnchor({ kind: 'text', quote, prefix, suffix, block: index });
-            hideBtn();
-        });
-
-        // 点到别处就收起按钮
-        document.addEventListener('mousedown', (e) => {
-            if (e.target !== btn) hideBtn();
-        });
-    }
-
-    // ---------- 整块评论：每个顶层块左侧一个 ＋ ----------
-    if (canComment && article) {
-        const commentsOnBlock = (index, text) => {
-            setAnchor({ kind: 'block', quote: text.slice(0, 120), prefix: '', suffix: '', block: index });
-        };
+    // ---------- 整段 / 代码块左侧的 ＋ ----------
+    if (canComment) {
         blocks.forEach((block, index) => {
             if (!block.textContent || !block.textContent.trim()) return;
             const btn = document.createElement('button');
@@ -137,15 +174,15 @@
             btn.title = '评论这一段';
             btn.addEventListener('click', (e) => {
                 e.stopPropagation();
-                commentsOnBlock(index, block.textContent || '');
+                openForm({ kind: 'block', quote: (block.textContent || '').slice(0, 120), block: index });
             });
             block.classList.add('cmt-block-host');
             block.appendChild(btn);
         });
     }
 
-    // ---------- 把已存在的评论标回正文 ----------
-    const threads = pane ? [...pane.querySelectorAll('.cmt-thread')] : [];
+    // ---------- 已有评论标回正文 ----------
+    const threads = [...pane.querySelectorAll('.cmt-thread')];
 
     const focusThread = (thread) => {
         if (!thread) return;
@@ -155,20 +192,12 @@
         thread.animate?.([{ background: 'var(--accent-soft)' }, { background: 'transparent' }], 900);
     };
 
-    const threadOf = (kind, index, quote) => threads.find((t) =>
-        t.dataset.kind === kind
-        && (t.dataset.block || '') === (index == null ? '' : String(index))
-        && (t.dataset.quote || '') === (quote || ''))
-        || threads.find((t) => (t.dataset.quote || '') === quote);
-
-    /** 在正文里找到 quote（用前后文消歧），包成可点的下划线 */
     const markText = (thread, loose) => {
         const quote = thread.dataset.quote || '';
-        if (!quote || !article) return;
+        if (!quote) return true;
         const prefix = loose ? '' : (thread.dataset.prefix || '');
         const suffix = loose ? '' : (thread.dataset.suffix || '');
 
-        // 把候选块的文本节点串起来找
         const walker = document.createTreeWalker(article, NodeFilter.SHOW_TEXT, {
             acceptNode(node) {
                 if (!node.nodeValue) return NodeFilter.FILTER_REJECT;
@@ -206,12 +235,13 @@
                 try {
                     range.surroundContents(span);
                 } catch (e) {
-                    return;
+                    return true;
                 }
                 span.addEventListener('click', () => focusThread(thread));
-                return;
+                return true;
             }
         }
+        return false;
     };
 
     threads.forEach((thread) => {
@@ -224,8 +254,8 @@
                 if (e.target.closest('.cmt-block-btn')) return;
                 focusThread(thread);
             });
-        } else {
-            if (!markText(thread, false)) markText(thread, true);
+        } else if (!markText(thread, false)) {
+            markText(thread, true);
         }
     });
 })();
