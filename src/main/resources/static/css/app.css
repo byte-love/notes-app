@@ -10,6 +10,8 @@
     --accent-2: #8a5a20;
     --danger: #b3261e;
     --tree-guide: #dfdacf;
+    /* 仿飞书的提示块底色（暖米色），和强调色的赭石搭 */
+    --callout-bg: #fdf4e6;
     /* 滚动条：滚动时用 active，停手后 JS 会把它插值到 idle */
     --sb-active: rgba(114, 109, 99, 0.9);
     --sb-idle: rgba(28, 27, 24, 0.042);
@@ -31,6 +33,7 @@
         --accent-2: #d8a25e;
         --danger: #f07c74;
         --tree-guide: #2b302e;
+        --callout-bg: #251f18;
         --sb-active: rgba(140, 137, 128, 0.85);
         --sb-idle: rgba(231, 229, 223, 0.035);
     }
@@ -64,6 +67,7 @@ html[data-theme='dark'] {
     --accent-2: #d8a25e;
     --danger: #f07c74;
     --tree-guide: #2b302e;
+    --callout-bg: #251f18;
     --sb-active: rgba(140, 137, 128, 0.85);
     --sb-idle: rgba(231, 229, 223, 0.035);
 }
@@ -80,6 +84,7 @@ html[data-theme='sepia'] {
     --accent-2: #8a5a20;
     --danger: #a82f2f;
     --tree-guide: #d8ccb6;
+    --callout-bg: #f8eedb;
     --sb-active: rgba(111, 101, 82, 0.9);
     --sb-idle: rgba(59, 50, 39, 0.042);
 }
@@ -928,12 +933,33 @@ button:hover,
     padding-left: 1.6rem;
 }
 
+/* 列表符号给点颜色：有序号的用强调色，无序号的用灰点，二级列表再换一档
+   （仿飞书那种「编号有颜色、正文是黑的」的层次，色值用本站的松绿 / 赭石） */
+.markdown ol > li::marker {
+    color: var(--accent);
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+}
+
+.markdown ul > li::marker {
+    color: var(--fg-3);
+}
+
+.markdown ol ol > li::marker {
+    color: var(--accent-2);
+}
+
+.markdown ul ul > li::marker {
+    color: var(--fg-3);
+}
+
 .markdown li + li {
     margin-top: 0.3rem;
 }
 
 .markdown strong {
     font-weight: 600;
+    color: var(--accent-2);
 }
 
 .markdown hr {
@@ -956,8 +982,8 @@ button:hover,
 .markdown code {
     font-size: 0.86em;
     background: var(--bg-2);
-    border: 1px solid var(--line);
-    padding: 0.08em 0.35em;
+    border: 0;
+    padding: 0.1em 0.38em;
     border-radius: 5px;
 }
 
@@ -1004,17 +1030,23 @@ button:hover,
     font-size: 0.86em;
 }
 
+/* 引用块当提示块用（仿飞书的 highlight block）：暖米底 + 赭石左边条 + 圆角，正文回到正常色 */
 .markdown blockquote {
     margin: 0 0 1.2rem;
-    padding: 0.8rem 1.1rem;
-    border-left: 3px solid var(--accent);
-    border-radius: 0 8px 8px 0;
-    background: var(--accent-soft);
-    color: var(--fg-2);
+    padding: 0.85rem 1.15rem;
+    border-left: 3px solid var(--accent-2);
+    border-radius: 10px;
+    background: var(--callout-bg);
+    color: var(--fg);
 }
 
 .markdown blockquote p:last-child {
     margin-bottom: 0;
+}
+
+.markdown blockquote ol > li::marker,
+.markdown blockquote ul > li::marker {
+    color: var(--accent-2);
 }
 
 .markdown table {
@@ -1024,6 +1056,7 @@ button:hover,
     font-size: 0.9rem;
     display: block;
     overflow-x: auto;
+    border-radius: 8px;
 }
 
 .markdown th,
@@ -1037,6 +1070,11 @@ button:hover,
 .markdown th {
     background: var(--bg-2);
     font-weight: 600;
+}
+
+/* 表格隔行浅底，长表格不至于看串行 */
+.markdown tbody tr:nth-child(even) td {
+    background: var(--bg-2);
 }
 
 @media (max-width: 900px) {
