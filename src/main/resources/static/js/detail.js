@@ -155,7 +155,7 @@
         if (!tree || !docWrap) return;
 
         const MIN_TREE = 140, MAX_TREE = 520;
-        const MIN_TOC = 150, MAX_TOC = 380;
+        const MIN_TOC = 110, MAX_TOC = 380;
 
         const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
         const read = (k, dflt) => {
@@ -168,9 +168,11 @@
             try { localStorage.setItem(k, String(v)); } catch (e) {}
         };
 
-        let treeW = read('layout:tree2', 300);
+        // 默认宽度：树 210px、右栏 140px（原来是 300/200，太占地方）。
+        // key 跟着换，老用户存在 localStorage 里的旧宽度不再盖掉新默认值
+        let treeW = read('layout:tree3', 210);
         // 右栏固定像素：拖左栏时它只是被推着走，宽度不变
-        let tocW = read('layout:toc3', 200);
+        let tocW = read('layout:toc4', 140);
 
         // <=820 是单列堆叠、<=1100 没有右侧目录，这两种宽度下列宽交给 CSS 媒体查询；
         // 内联样式一旦盖上去，手机上正文会被挤成 0 宽
@@ -231,7 +233,7 @@
         const leftBar = makeSplitter(wrap, (dx) => {
             treeW = clamp(treeW + dx, MIN_TREE, MAX_TREE);
             applyTree();
-        }, () => save('layout:tree2', Math.round(treeW)));
+        }, () => save('layout:tree3', Math.round(treeW)));
 
         // 右：本页目录的左边缘（只改右栏自己的宽度）
         let rightBar = null;
@@ -239,7 +241,7 @@
             rightBar = makeSplitter(docWrap, (dx) => {
                 tocW = clamp(tocW - dx, MIN_TOC, MAX_TOC);
                 applyToc();
-            }, () => save('layout:toc3', Math.round(tocW)));
+            }, () => save('layout:toc4', Math.round(tocW)));
         }
 
         const layout = () => {
