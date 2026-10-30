@@ -155,6 +155,12 @@ sudo /opt/deploy/sync-db.sh    # 正式库整库覆盖到测试库
   原因由 `PublicController.forbidden(reason)` 挂在 request 的 `errorReason` 上，`AppErrorController` 据此换文案
 - 更新日志**一天一个版本**（不是一次改动一个版本），当天的新增功能写在「新增功能」小节；
   修复 / 优化 / 清理收进「修复与优化」小节，页面上默认折叠（`details.cl-fold`）
+- 版本号按改动量加：很少 → 末位 +1（`1.0.1`），较多 → 中间位 +1（`1.1.0`），全新版本才 `2.0.0`；
+  同一天只用同一个版本号
+- `ChangelogService.releases()` 的分组键是 **`released_on + version + title`**：同一天同一个版本的行
+  `title` 必须一致，后补条目时 `title` 留空会在页面上多出一个同名版本块（2026-10-30 出现过一天两个 v1.1.0）。
+  补条目要么照抄标题，要么插完跑一次
+  `update changelog_entry set title = '...' where version = '...' and coalesce(title,'') = ''`
 - **改完要看响应时间**：`bash /opt/deploy/measure.sh dev`（服务器上跑，5 个主页面各热身 6 次再采 40 次，
   报 p50/p95 和 TTFB；源码 `deploy/measure.sh`）。2026-10-30 基线：p50 25~82ms，p95 ≤ 111ms
 - `app.sh` 部署完会自己把 4 个列表页 + 一篇正文各打 5 遍**预热**——JVM 刚起来头十几次请求是解释执行的，
