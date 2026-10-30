@@ -2513,6 +2513,38 @@ html[data-read-size='lg'] .markdown {
     font-size: 0.74rem;
 }
 
+/* 同一天发了多个版本：日期下面竖着列版本号 */
+.cl-versions {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.22rem;
+}
+
+/* 卡片里按版本分块：块与块之间一条虚线隔开，版本号当小标题 */
+.cl-ver + .cl-ver {
+    margin-top: 1.2rem;
+    padding-top: 1.1rem;
+    border-top: 1px dashed var(--line);
+}
+
+.cl-ver-head {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0 0 0.7rem;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--fg);
+    letter-spacing: -0.01em;
+}
+
+.cl-ver-head .cl-version {
+    flex: none;
+    color: var(--accent);
+    border-color: var(--accent);
+}
+
 /* 右边卡片 */
 .cl-card {
     margin-bottom: 1.6rem;
@@ -2598,7 +2630,8 @@ html[data-theme='dark'] .cl-latest {
     margin-top: 1.1rem;
 }
 
-.cl-section h3 {
+.cl-section h3,
+.cl-section h4 {
     margin: 0 0 0.45rem;
     font-size: 0.86rem;
     font-weight: 600;

@@ -11,34 +11,45 @@
     </div>
 
     <div class="cl-timeline">
-        <article class="cl-item" th:each="r, st : ${releases}">
+        <!-- 一天一张卡：同一天发的几个版本收在卡里，按版本分块（单版本的日子不显示版本行） -->
+        <article class="cl-item" th:each="d, st : ${days}">
             <div class="cl-rail">
                 <span class="cl-dot"></span>
-                <span class="cl-version" th:if="${r.version() != null}" th:text="${'v' + r.version()}">v4.1</span>
-                <time th:text="${#temporals.format(r.releasedOn(), 'yyyy-MM-dd')}">2026-10-29</time>
+                <time th:text="${#temporals.format(d.releasedOn(), 'yyyy-MM-dd')}">2026-10-29</time>
+                <span class="cl-versions">
+                    <span class="cl-version" th:each="r : ${d.releases()}"
+                          th:if="${r.version() != null}" th:text="${'v' + r.version()}">v4.1</span>
+                </span>
             </div>
 
             <div class="cl-card" th:classappend="${!st.first} ? 'collapsed'"
-                 th:attr="data-key=${#temporals.format(r.releasedOn(), 'yyyyMMdd') + '-' + (r.version() != null ? r.version() : 'x')}">
+                 th:attr="data-key=${#temporals.format(d.releasedOn(), 'yyyyMMdd')}">
                 <button type="button" class="cl-card-head">
-                    <h2 th:text="${r.title()}">这次更新叫什么</h2>
+                    <h2 th:text="${d.releases().get(0).title()}">这次更新叫什么</h2>
                     <span class="cl-latest" th:if="${st.first}">当前版本</span>
                     <span class="cl-caret" aria-hidden="true"></span>
                 </button>
 
                 <div class="cl-body">
-                    <section class="cl-section" th:each="s : ${r.sections()}">
-                        <h3 th:if="${s.name() != null}" th:text="${s.name()}">小节名</h3>
-                        <ul class="cl-points">
-                            <li th:each="i : ${s.items()}" th:utext="${i.html()}">要点</li>
-                        </ul>
-                    </section>
+                    <div class="cl-ver" th:each="r : ${d.releases()}">
+                        <h3 class="cl-ver-head" th:if="${#lists.size(d.releases()) > 1}">
+                            <span class="cl-version" th:if="${r.version() != null}" th:text="${'v' + r.version()}">v1.1.2</span>
+                            <span th:text="${r.title()}">这版做了什么</span>
+                        </h3>
+
+                        <section class="cl-section" th:each="s : ${r.sections()}">
+                            <h4 th:if="${s.name() != null}" th:text="${s.name()}">小节名</h4>
+                            <ul class="cl-points">
+                                <li th:each="i : ${s.items()}" th:utext="${i.html()}">要点</li>
+                            </ul>
+                        </section>
+                    </div>
                 </div>
             </div>
         </article>
     </div>
 
-    <p class="empty" th:if="${#lists.isEmpty(releases)}">还没有更新记录</p>
+    <p class="empty" th:if="${#lists.isEmpty(days)}">还没有更新记录</p>
 </main>
 
 <script>

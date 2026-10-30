@@ -29,6 +29,7 @@ public class ChangelogController {
 
     @GetMapping("/changelog")
     public String changelog(Model model) {
+        model.addAttribute("days", changelog.days());
         model.addAttribute("releases", changelog.releases());
         model.addAttribute("tabActive", "updates");
         return "changelog";
