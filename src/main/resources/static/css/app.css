@@ -1074,11 +1074,13 @@ button:hover,
 /* 左右两栏的滚动条跟正文窗口解耦：翻正文时它们不该变亮，
    只有鼠标移到这一栏上才显出来 */
 .tree-pane,
+.toc,
 .toc-rail {
     scrollbar-color: var(--sb-idle) transparent;
 }
 
 .tree-pane:hover,
+.toc:hover,
 .toc-rail:hover {
     scrollbar-color: var(--sb-active) transparent;
 }
