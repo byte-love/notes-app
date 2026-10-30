@@ -376,7 +376,7 @@ public class PublicController {
     }
 
     /** 展开某个分类时补它下面的条目（列表页的树只给了顶层）。 */
-    @GetMapping("/tree/{kind}")
+    @GetMapping("/{kind}/tree")
     public String treeChildren(@PathVariable String kind,
                                @RequestParam(name = "parent") String parentSlug,
                                Model model, Authentication auth) {
