@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+
+<!-- 管理列表的表格行：整页渲染和「滚到底再取一批」的分片请求共用这一段 -->
+<th:block th:fragment="rows">
+    <tr th:each="r : ${rows}"><td class="cell-id" th:text="${r.id}">1</td><td th:text="${r.kind}">笔记</td><td><code th:text="${r.slug}">slug</code></td><td class="cell-title" th:text="${r.title}">标题</td><td><span class="badge" th:text="${r.visibility}">公开</span></td><td th:text="${r.updated}">2026-01-01 00:00</td><td class="actions"><div class="row-actions"><a th:attr="href=${ctx + '/admin/' + r.id + '/edit'}">编辑</a><button type="submit" form="row-del" th:attr="formaction=${ctx + '/admin/' + r.id + '/delete'}" class="link-button danger" onclick="return confirm('确认删除？删掉的内容会在回收站保留 30 天。');">删除</button></div></td></tr>
+
+    <!-- 滚到这里就取下一批；没有下一批了就不再渲染这个点 -->
+    <tr class="admin-more" id="admin-more" th:if="${nextFrom != null}"
+        th:attr="data-base=${baseUrl},data-from=${nextFrom}"><td colspan="7"></td></tr>
+</th:block>
+
+</body>
+</html>

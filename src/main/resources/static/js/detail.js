@@ -155,7 +155,7 @@
         if (!tree || !docWrap) return;
 
         const MIN_TREE = 140, MAX_TREE = 520;
-        const MIN_TOC = 150, MAX_TOC = 380;
+        const MIN_TOC = 110, MAX_TOC = 380;
 
         const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
         const read = (k, dflt) => {
@@ -168,9 +168,14 @@
             try { localStorage.setItem(k, String(v)); } catch (e) {}
         };
 
-        let treeW = read('layout:tree2', 300);
+        // 默认宽度按视口比例：树 19%、右栏 12%（按用户给的截图量的比例，
+        // 换算成 1300px 窗口就是 约 247px / 156px）。窄屏/超宽屏用括号里上下限兜住。
+        // key 跟着换，老用户存在 localStorage 里的旧宽度不再盖掉新默认值
+        const byViewport = (ratio, lo, hi) =>
+            Math.round(Math.min(hi, Math.max(lo, window.innerWidth * ratio)));
+        let treeW = read('layout:tree4', byViewport(0.19, 160, 380));
         // 右栏固定像素：拖左栏时它只是被推着走，宽度不变
-        let tocW = read('layout:toc3', 200);
+        let tocW = read('layout:toc5', byViewport(0.12, 120, 300));
 
         // <=820 是单列堆叠、<=1100 没有右侧目录，这两种宽度下列宽交给 CSS 媒体查询；
         // 内联样式一旦盖上去，手机上正文会被挤成 0 宽
@@ -231,7 +236,7 @@
         const leftBar = makeSplitter(wrap, (dx) => {
             treeW = clamp(treeW + dx, MIN_TREE, MAX_TREE);
             applyTree();
-        }, () => save('layout:tree2', Math.round(treeW)));
+        }, () => save('layout:tree4', Math.round(treeW)));
 
         // 右：本页目录的左边缘（只改右栏自己的宽度）
         let rightBar = null;
@@ -239,7 +244,7 @@
             rightBar = makeSplitter(docWrap, (dx) => {
                 tocW = clamp(tocW - dx, MIN_TOC, MAX_TOC);
                 applyToc();
-            }, () => save('layout:toc3', Math.round(tocW)));
+            }, () => save('layout:toc5', Math.round(tocW)));
         }
 
         const layout = () => {
