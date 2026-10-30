@@ -204,7 +204,9 @@ public class MarkdownRenderer {
                 || s.startsWith("/*") || s.startsWith("@")) {
             return true;
         }
-        if (s.length() > 200 || CJK.matcher(s).find()) {
+        // 结尾的中文句号不算内容（贴进来的 SQL 常被这么结尾）
+        s = s.replaceAll("[\\s；;。.]+$", "");
+        if (s.isEmpty() || s.length() > 200 || CJK.matcher(s).find()) {
             return false;
         }
         return s.indexOf(';') >= 0 || s.indexOf('{') >= 0 || s.indexOf('}') >= 0
