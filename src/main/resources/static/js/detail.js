@@ -275,6 +275,33 @@
         document.addEventListener('touchend', layout);
     })();
 
+// 左侧目录：把当前这条滚进可见区；挡住它的分组顺手展开（和点按钮一样记住状态）
+(() => {
+    const pane = document.querySelector('.tree-pane');
+    if (!pane) return;
+    const active = pane.querySelector('a.on');
+    if (!active) return;
+
+    for (let li = active.closest('li'); li; li = li.parentElement ? li.parentElement.closest('li') : null) {
+        if (!li.classList.contains('folded')) continue;
+        li.classList.remove('folded');
+        const btn = li.querySelector(':scope > .tree-group');
+        if (btn && btn.dataset.key) {
+            try { localStorage.setItem('tree-fold:' + btn.dataset.key, '0'); } catch (e) {}
+        }
+    }
+
+    // 展开之后布局要重算，等一帧再滚
+    requestAnimationFrame(() => {
+        const pr = pane.getBoundingClientRect();
+        const ar = active.getBoundingClientRect();
+        if (!ar.height) return;
+        if (ar.top < pr.top || ar.bottom > pr.bottom) {
+            pane.scrollTop += ar.top - pr.top - (pr.height - ar.height) / 2;
+        }
+    });
+})();
+
 // 阅读进度：离开页面时把「滚到全文的百分之几」记到服务端，
 // 下次打开同一条就滚回去（短于一屏的文章比例恒为 0，滚不滚都一样）
 (() => {

@@ -2581,7 +2581,7 @@ html[data-theme='dark'] .cl-latest {
     scroll-margin-top: 80px;
 }
 
-/* 书签按钮平时就浅浅地露出来（手机上没法悬停），鼠标移上去才变实 */
+/* 书签按钮：和左侧树里的书签标记同一个「缎带」形状，平时浅浅露出来（手机上没法悬停） */
 .head-bookmark {
     display: inline-block;
     width: 9px;
@@ -2589,12 +2589,13 @@ html[data-theme='dark'] .cl-latest {
     margin-left: 0.55rem;
     padding: 0;
     vertical-align: 0.08em;
-    background: transparent;
-    border: 1px solid var(--fg-3);
-    border-radius: 2px;
+    background: var(--fg-3);
+    border: 0;
+    border-radius: 0;
+    clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 72%, 0 100%);
     cursor: pointer;
     opacity: 0.28;
-    transition: opacity 0.12s ease, background 0.12s ease, border-color 0.12s ease;
+    transition: opacity 0.12s ease, background 0.12s ease;
 }
 
 .markdown h2:hover .head-bookmark,
@@ -2605,13 +2606,12 @@ html[data-theme='dark'] .cl-latest {
 
 .head-bookmark:hover {
     opacity: 1;
-    border-color: var(--accent);
+    background: var(--accent);
 }
 
 .head-bookmark.on {
     opacity: 1;
     background: var(--accent);
-    border-color: var(--accent);
 }
 
 /* ---- 拖拽调整左右两栏宽度 ---- */
