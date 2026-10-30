@@ -144,10 +144,20 @@ sudo /opt/deploy/sync-db.sh    # 正式库整库覆盖到测试库
 - 静态资源带 `?v=` 版本号 + `Cache-Control: max-age=31536000`，nginx 开了 `gzip_types`（css/js）；
   nginx 到应用是长连接（`upstream ... keepalive` + `Connection ""`）
   **改了 css/js 必须同时升 `?v=`**，否则强缓存让浏览器永远跑老代码（2026-10-30 踩过：评论改了 4 版用户一直看不到）
-- 评论是 `content_comment(item_id, user_id, parent_id, quote, body, anchor_kind, block_index, prefix, suffix)`：
+- 评论是 `content_comment(item_id, user_id, parent_id, quote, body, anchor_kind, block_index, prefix, suffix, entry_kind)`：
   锚点两种粒度——`text`（选中文字，存原文 + 前后各 20 字）和 `block`（整段 / 代码块，存正文顶层块序号）；
   楼中楼用 `parent_id`，渲染最多两层。**评论按「最初来源条目」归并**：复制出来的副本沿 `copied_from_id`
   往上找根节点，所有人看同一串评论（否则每份副本各聊各的）
+- **评论和注释是同一张表的两条线，靠 `entry_kind` 区分**（V22 加的列）：
+  - `COMMENT`：右栏评论区，整篇评 / 选中文字评 / 楼中楼，进 `#comments`
+  - `ANNOTATION`：正文里**短虚下划线**（`.ann-mark`，`1px dotted`），点开是 `.ann-pop` 弹窗——列这一处全部注释，
+    也能接着写。数据渲染在 `#annotations`（hidden）里当数据源，表单 `.ann-form` 带 `entryKind=ANNOTATION`
+  - 选中文字后工具条给两个按钮「评论」「注释」，走 `comments.js` 里各自的 handler；两种标记互不嵌套
+    （`markText` 的 walker 同时跳过 `.cmt-mark` 和 `.ann-mark`）
+  - 服务端 `addComment` 收 `entryKind`：注释必须带 `quote`（没有落点画不出下划线，直接忽略）
+  - 两条线共用 10 秒一条的限流、脏话挡板、2000 字上限
+- 术语浮窗是另一套（tooltip）：`.markdown .gl[data-tip]` + `detail.js` 的 `.gl-tip`，鼠标悬停显示、灰色长虚线，
+  跟注释的松绿点线不是一回事
 - 「加入我的空间」是**幂等**的：`copyTo` 先查 `(owner_id, copied_from_id)` 有没有复制过，有就返回 0；
   页面上已加入的卡片显示「已加入」。重复复制产生的脏数据用
   `partition by owner_id, copied_from_id` 保留最小 id 清掉
