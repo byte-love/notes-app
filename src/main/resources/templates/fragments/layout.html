@@ -21,48 +21,48 @@
             } catch (e) {}
         })();
     </script>
-    <link rel="stylesheet" th:href="@{/css/app.css(v=53)}">
+    <link rel="stylesheet" th:href="@{/css/app.css(v=54)}">
 </head>
 <body>
 
-<!-- 返回：有浏览历史就回上一页，没有就按传进来的 href 走 -->
+<!-- 杩斿洖锛氭湁娴忚鍘嗗彶灏卞洖涓婁竴椤碉紝娌℃湁灏辨寜浼犺繘鏉ョ殑 href 璧?-->
 <a th:fragment="back(href)" class="back-link" th:href="${href}"
-   onclick="if (history.length > 1) { history.back(); return false; }">返回</a>
+   onclick="if (history.length > 1) { history.back(); return false; }">杩斿洖</a>
 
 <header th:fragment="nav" class="site-header">
     <div class="header-inner">
-        <nav class="tabs" aria-label="站点分区">
+        <nav class="tabs" aria-label="绔欑偣鍒嗗尯">
             <a class="tab" th:href="@{/projects}"
-               th:classappend="${tabActive == 'project'} ? 'is-active'">项目</a>
+               th:classappend="${tabActive == 'project'} ? 'is-active'">椤圭洰</a>
             <a class="tab" th:href="@{/notes}"
-               th:classappend="${tabActive == 'note'} ? 'is-active'">笔记</a>
+               th:classappend="${tabActive == 'note'} ? 'is-active'">绗旇</a>
             <a class="tab" th:href="@{/bagu}"
-               th:classappend="${tabActive == 'bagu'} ? 'is-active'">八股</a>
+               th:classappend="${tabActive == 'bagu'} ? 'is-active'">鍏偂</a>
             <a class="tab" th:href="@{/algo}"
-               th:classappend="${tabActive == 'algo'} ? 'is-active'">算法</a>
+               th:classappend="${tabActive == 'algo'} ? 'is-active'">绠楁硶</a>
             <a class="tab" th:href="@{/explore}"
-               th:classappend="${tabActive == 'explore'} ? 'is-active'">推荐</a>
+               th:classappend="${tabActive == 'explore'} ? 'is-active'">鎺ㄨ崘</a>
             <a class="tab" th:href="@{/changelog}"
-               th:classappend="${tabActive == 'updates'} ? 'is-active'">更新日志</a>
+               th:classappend="${tabActive == 'updates'} ? 'is-active'">鏇存柊鏃ュ織</a>
         </nav>
         <div class="header-tools">
-            <a sec:authorize="isAuthenticated()" th:href="@{/admin}">管理</a>
+            <a sec:authorize="isAuthenticated()" th:href="@{/admin}">绠＄悊</a>
             <a sec:authorize="isAuthenticated()" th:if="${navUser != null}"
                th:href="@{/me}" class="user-entry" th:title="${navUser.name()}">
                 <span class="user-dot" th:style="|--h:${navUser.hue()}|"
                       th:text="${navUser.initial()}">U</span>
-                <span class="user-name" th:text="${navUser.name()}">用户名</span>
+                <span class="user-name" th:text="${navUser.name()}">鐢ㄦ埛鍚?/span>
             </a>
-            <a sec:authorize="!isAuthenticated()" th:if="${registerEnabled}" th:href="@{/register}">注册</a>
-            <a sec:authorize="!isAuthenticated()" th:href="@{/login}">登录</a>
-            <button class="theme-toggle" type="button" aria-label="切换深浅色">☀</button>
+            <a sec:authorize="!isAuthenticated()" th:if="${registerEnabled}" th:href="@{/register}">娉ㄥ唽</a>
+            <a sec:authorize="!isAuthenticated()" th:href="@{/login}">鐧诲綍</a>
+            <button class="theme-toggle" type="button" aria-label="鍒囨崲娣辨祬鑹?>鈽€</button>
         </div>
     </div>
 </header>
 
 <th:block th:fragment="foot">
 <script>
-    // 自制下拉：原生 select 的弹层是系统画的，改不动样式，所以自己实现一个
+    // 鑷埗涓嬫媺锛氬師鐢?select 鐨勫脊灞傛槸绯荤粺鐢荤殑锛屾敼涓嶅姩鏍峰紡锛屾墍浠ヨ嚜宸卞疄鐜颁竴涓?
     (() => {
         const selects = [...document.querySelectorAll('.select')];
         if (!selects.length) return;
@@ -140,7 +140,7 @@
 </script>
 
 <script>
-    // 表单里行末那个问号：点一下在旁边弹出说明
+    // 琛ㄥ崟閲岃鏈偅涓棶鍙凤細鐐逛竴涓嬪湪鏃佽竟寮瑰嚭璇存槑
     (() => {
         const triggers = document.querySelectorAll('.help[data-help]');
         if (!triggers.length) return;
@@ -197,7 +197,7 @@
         if (!btn) return;
         const mq = window.matchMedia('(prefers-color-scheme: dark)');
         const current = () => document.documentElement.dataset.theme || (mq.matches ? 'dark' : 'light');
-        const sync = () => { btn.textContent = current() === 'dark' ? '☀' : '☾'; };
+        const sync = () => { btn.textContent = current() === 'dark' ? '鈽€' : '鈽?; };
         sync();
         btn.addEventListener('click', () => {
             const next = current() === 'dark' ? 'light' : 'dark';
@@ -209,12 +209,12 @@
 </script>
 
 <script>
-    // 树的分组折叠状态记在 localStorage，下次进来自动恢复
+    // 鏍戠殑鍒嗙粍鎶樺彔鐘舵€佽鍦?localStorage锛屼笅娆¤繘鏉ヨ嚜鍔ㄦ仮澶?
     (() => {
         const buttons = document.querySelectorAll('.tree-group[data-key]');
         if (!buttons.length) return;
 
-        // 折叠状态记在 localStorage；data-lazy 的节点子列表还没渲染，第一次展开时去取
+        // 鎶樺彔鐘舵€佽鍦?localStorage锛沝ata-lazy 鐨勮妭鐐瑰瓙鍒楄〃杩樻病娓叉煋锛岀涓€娆″睍寮€鏃跺幓鍙?
         const bind = (btn) => {
             const li = btn.closest('li');
             if (!li || btn.dataset.bound === '1') return;
@@ -234,7 +234,7 @@
                             li.querySelectorAll('.tree-group[data-key]').forEach(bind);
                         }
                     } catch (e) {
-                        /* 取不到就只是展开不了，不影响别的 */
+                        /* 鍙栦笉鍒板氨鍙槸灞曞紑涓嶄簡锛屼笉褰卞搷鍒殑 */
                     }
                     delete btn.dataset.lazy;
                     delete btn.dataset.loading;
@@ -254,10 +254,10 @@
 </script>
 
 <script>
-    // 滚动条：滚动时是实色，停手 3 秒后慢慢淡到只剩一圈轮廓。
-    // scrollbar-color 不能用 CSS 过渡，所以这里自己插值写 --sb-thumb。
-    // 颜色只在启动时读一次（滚动里反复 getComputedStyle 会强制重算样式，滑起来发涩），
-    // 切主题时再重读。
+    // 婊氬姩鏉★細婊氬姩鏃舵槸瀹炶壊锛屽仠鎵?3 绉掑悗鎱㈡參娣″埌鍙墿涓€鍦堣疆寤撱€?
+    // scrollbar-color 涓嶈兘鐢?CSS 杩囨浮锛屾墍浠ヨ繖閲岃嚜宸辨彃鍊煎啓 --sb-thumb銆?
+    // 棰滆壊鍙湪鍚姩鏃惰涓€娆★紙婊氬姩閲屽弽澶?getComputedStyle 浼氬己鍒堕噸绠楁牱寮忥紝婊戣捣鏉ュ彂娑╋級锛?
+    // 鍒囦富棰樻椂鍐嶉噸璇汇€?
     (() => {
         const root = document.documentElement;
 
@@ -297,7 +297,7 @@
             const start = performance.now();
             const step = (now) => {
                 const t = Math.min(1, (now - start) / ms);
-                const k = 1 - Math.pow(1 - t, 3); // 先快后慢
+                const k = 1 - Math.pow(1 - t, 3); // 鍏堝揩鍚庢參
                 apply([
                     from[0] + (target[0] - from[0]) * k,
                     from[1] + (target[1] - from[1]) * k,
@@ -329,7 +329,7 @@
         window.addEventListener('wheel', onScroll, { passive: true });
         window.addEventListener('touchmove', onScroll, { passive: true });
 
-        // 切主题后重新读一遍颜色
+        // 鍒囦富棰樺悗閲嶆柊璇讳竴閬嶉鑹?
         new MutationObserver(() => {
             load();
             apply(shown === 'active' ? active : idle);

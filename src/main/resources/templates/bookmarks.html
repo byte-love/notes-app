@@ -16,13 +16,9 @@
         <li th:each="i, st : ${items}">
             <div class="item-main">
                 <a class="item-title"
-                   th:href="${basePathOf.apply(i.kind) + '/' + i.slug
-                        + (anchors[st.index] != '' ? '#' + anchors[st.index]
-                           : (progresses[st.index] != '' ? '#pos=' + progresses[st.index] : ''))}"
+                   th:href="${basePathOf.apply(i.kind) + '/' + i.slug + (anchors[st.index] == '' ? '' : '#' + anchors[st.index])}"
                    th:text="${i.title}">标题</a>
                 <span class="cl-chip" th:if="${anchors[st.index] != ''}" th:text="${'#' + anchors[st.index]}">#位置</span>
-                <span class="cl-chip" th:if="${anchors[st.index] == '' and progressLabels[st.index] != ''}"
-                      th:text="${progressLabels[st.index]}">50%</span>
             </div>
         </li>
     </ul>

@@ -318,24 +318,14 @@
         return max > 40 ? Math.min(1, Math.max(0, window.scrollY / max)) : 0;
     };
 
-    // 书签链接带 #pos=0.42 时按比例跳回去；带别的锚点（#某个标题）就听锚点的，别抢
-    const posMatch = /^#pos=([0-9.]+)$/.exec(location.hash || '');
-    const saved = posMatch ? parseFloat(posMatch[1]) : parseFloat(box.dataset.resume || '0');
-    const shouldRestore = saved > 0.002 && (posMatch || !location.hash);
-    if (shouldRestore) {
+    // 带 #锚点 进来时听锚点的，别抢
+    const saved = parseFloat(box.dataset.resume || '0');
+    if (saved > 0.02 && !location.hash) {
         const back = () => window.scrollTo(0, Math.round(saved * scrollable()));
         requestAnimationFrame(back);
         // 图片/字体加载完高度会变，load 之后再校正一次
         window.addEventListener('load', back);
     }
-
-    // 「加书签」时把当前滚动位置一起提交，点了就能落回这一行
-    document.querySelectorAll('form.bookmark-form').forEach((form) => {
-        form.addEventListener('submit', () => {
-            const input = form.querySelector('input[name="progress"]');
-            if (input) input.value = ratio().toFixed(4);
-        });
-    });
 
     let last = saved;
     const save = () => {
