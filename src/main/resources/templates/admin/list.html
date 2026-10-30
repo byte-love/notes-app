@@ -63,25 +63,14 @@
             </tr>
             </thead>
             <tbody>
-            <tr th:each="i : ${items}">
-                <td class="cell-id" th:text="${i.id}">1</td>
-                <td th:text="${i.kind.label}">笔记</td>
-                <td><code th:text="${i.slug}" th:title="${i.slug}">slug</code></td>
-                <td class="cell-title" th:text="${i.title}">标题</td>
-                <td><span class="badge" th:text="${i.visibility.label}">公开</span></td>
-                <td th:text="${#temporals.format(i.updatedAt, 'yyyy-MM-dd HH:mm')}">2026-01-01 00:00</td>
-                <td class="actions">
-                    <div class="row-actions">
-                        <a th:href="@{/admin/{id}/edit(id=${i.id})}">编辑</a>
-                        <form th:action="@{/admin/{id}/delete(id=${i.id})}" method="post" class="inline"
-                              onsubmit="return confirm('确认删除？删掉的内容会在回收站保留 30 天。');">
-                            <button type="submit" class="link-button danger">删除</button>
-                        </form>
-                    </div>
-                </td>
-            </tr>
+            <!-- 每行压成一行输出：313 行时缩进空白能占到一百多 KB -->
+            <tr th:each="i : ${items}"><td class="cell-id" th:text="${i.id}">1</td><td th:text="${i.kind.label}">笔记</td><td><code th:text="${i.slug}">slug</code></td><td class="cell-title" th:text="${i.title}">标题</td><td><span class="badge" th:text="${i.visibility.label}">公开</span></td><td th:text="${#temporals.format(i.updatedAt, 'yyyy-MM-dd HH:mm')}">2026-01-01 00:00</td><td class="actions"><div class="row-actions"><a th:href="@{/admin/{id}/edit(id=${i.id})}">编辑</a><button type="submit" form="row-del" th:formaction="@{/admin/{id}/delete(id=${i.id})}" class="link-button danger" onclick="return confirm('确认删除？删掉的内容会在回收站保留 30 天。');">删除</button></div></td></tr>
             </tbody>
         </table>
+        <!-- 删除按钮共用一个表单：以前每行一个 <form> + 一份 CSRF token，313 行多出 40KB -->
+        <form id="row-del" th:action="@{/admin/0/delete}" method="post" hidden>
+            <input type="hidden" name="_csrf" th:value="${_csrf.token}">
+        </form>
     </div>
 
     <p class="empty" th:if="${#lists.isEmpty(items)}">
