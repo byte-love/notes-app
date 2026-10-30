@@ -24,9 +24,16 @@ public class AppErrorController implements ErrorController {
         boolean needLogin = false;
         switch (status) {
             case 403 -> {
-                heading = "这条内容需要登录";
-                hint = "它只对登录用户开放。登录之后再回来就能看到。";
-                needLogin = true;
+                // 未登录 / 登录了但这条不归你看，是两回事，文案不能一样
+                Object reason = request.getAttribute("errorReason");
+                if (PublicController.REASON_PERMISSION.equals(reason)) {
+                    heading = "这条内容只有作者本人能看";
+                    hint = "别人的内容要作者标了推荐才公开；自己的内容不受这个限制。";
+                } else {
+                    heading = "这条内容需要登录";
+                    hint = "它只对登录用户开放。登录之后再回来就能看到。";
+                    needLogin = true;
+                }
             }
             case 404 -> {
                 heading = "页面不存在";

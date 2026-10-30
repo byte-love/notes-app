@@ -23,6 +23,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
+import org.springframework.web.context.request.RequestAttributes;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 import org.springframework.web.server.ResponseStatusException;
@@ -564,11 +565,25 @@ public class PublicController {
         if (readable.isPresent()) {
             return readable.get();
         }
-        // 内容存在、只是没登录看不了：引导去登录，而不是丢一个 404
-        boolean existsButLocked = candidates.stream().anyMatch(i -> visibility.isLocked(i, viewer));
-        throw new ResponseStatusException(existsButLocked ? HttpStatus.FORBIDDEN : HttpStatus.NOT_FOUND);
+        // 内容存在但看不了：分清楚「没登录」和「登录了但没权限」，文案不一样
+        if (!candidates.isEmpty()) {
+            throw forbidden(viewer.authenticated() ? REASON_PERMISSION : REASON_LOGIN);
+        }
+        throw new ResponseStatusException(HttpStatus.NOT_FOUND);
     }
 
+
+    /** 403 的两种原因：没登录 / 登录了但这条不归你看。原因挂在 request 上，错误页据此换文案。 */
+    public static final String REASON_LOGIN = "login";
+    public static final String REASON_PERMISSION = "permission";
+
+    private static ResponseStatusException forbidden(String reason) {
+        var attrs = RequestContextHolder.getRequestAttributes();
+        if (attrs != null) {
+            attrs.setAttribute("errorReason", reason, RequestAttributes.SCOPE_REQUEST);
+        }
+        return new ResponseStatusException(HttpStatus.FORBIDDEN);
+    }
     /** 同上，但不管类型（/star/{slug} 的路径里没有 kind）。 */
     private ContentItem resolveAnyKind(String slug, Viewer viewer) {
         if (viewer.userId() != null) {
