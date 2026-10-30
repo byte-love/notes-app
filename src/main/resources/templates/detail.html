@@ -12,7 +12,7 @@
         <ul th:replace="~{fragments/tree :: nodes(${tree})}"></ul>
     </aside>
 
-    <main class="doc-wrap">
+    <main class="doc-wrap no-toc">
         <article class="doc">
             <a th:replace="~{fragments/layout :: back(${basePath})}"></a>
 
@@ -44,13 +44,13 @@
             <div class="markdown" th:utext="${html}"
                  th:attr="data-slug=${item.slug},data-anchors=${bookmarkAnchorCsv},data-resume=${resumeProgress}"></div>
         </article>
-
-        <!-- 右栏是评论区：整篇评论 + 对正文里带下划线句子的评论 -->
-        <aside th:replace="~{fragments/comments :: pane(${commentSlug}, ${threads}, ${commentCount}, ${canComment})}"></aside>
     </main>
 </div>
 
-    <script th:src="@{/js/comments.js(v=11)}"></script>
+<!-- 注释的数据和输入框都在这一块里（不占版面），点正文里的短虚下划线由 comments.js 搬进弹窗 -->
+<div th:replace="~{fragments/comments :: data(${commentSlug}, ${threads}, ${canComment})}"></div>
+
+    <script th:src="@{/js/comments.js(v=12)}"></script>
     <script th:src="@{/js/code.js(v=1)}"></script>
     <script th:src="@{/js/detail.js(v=8)}"></script>
 
