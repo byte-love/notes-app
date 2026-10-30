@@ -256,17 +256,18 @@
 <script>
     // 滚动条：滚动时是实色，停手 3 秒后慢慢淡到只剩一圈轮廓。
     // scrollbar-color 不能用 CSS 过渡，所以这里自己插值写 --sb-thumb。
+    // 颜色只在启动时读一次（滚动里反复 getComputedStyle 会强制重算样式，滑起来发涩），
+    // 切主题时再重读。
     (() => {
         const root = document.documentElement;
-        const color = (name, fallback) => (getComputedStyle(root).getPropertyValue(name) || '').trim() || fallback;
 
         const parse = (value) => {
-            const rgb = value.match(/rgba?\(([^)]+)\)/);
+            const rgb = (value || '').match(/rgba?\(([^)]+)\)/);
             if (rgb) {
                 const p = rgb[1].split(',').map((x) => parseFloat(x));
                 return [p[0] || 0, p[1] || 0, p[2] || 0, p.length > 3 ? p[3] : 1];
             }
-            let hex = value.replace('#', '').trim();
+            let hex = (value || '').replace('#', '').trim();
             if (hex.length === 3) hex = hex.split('').map((x) => x + x).join('');
             return [
                 parseInt(hex.slice(0, 2), 16) || 0,
@@ -276,14 +277,23 @@
             ];
         };
 
+        const read = (name, fallback) => parse((getComputedStyle(root).getPropertyValue(name) || '').trim() || fallback);
+
+        let active;
+        let idle;
+
         const apply = (c) => root.style.setProperty('--sb-thumb', `rgba(${Math.round(c[0])}, ${Math.round(c[1])}, ${Math.round(c[2])}, ${c[3].toFixed(3)})`);
+        const load = () => {
+            active = read('--sb-active', 'rgba(120,120,120,0.9)');
+            idle = read('--sb-idle', 'rgba(120,120,120,0.12)');
+        };
 
         let frame = 0;
         let idleTimer = 0;
 
         const fadeTo = (target, ms) => {
             cancelAnimationFrame(frame);
-            const from = parse(getComputedStyle(root).getPropertyValue('--sb-thumb') || color('--sb-idle', '#808080'));
+            const from = idle.slice();
             const start = performance.now();
             const step = (now) => {
                 const t = Math.min(1, (now - start) / ms);
@@ -299,18 +309,31 @@
             frame = requestAnimationFrame(step);
         };
 
+        let shown = null;
         const onScroll = () => {
-            cancelAnimationFrame(frame);
-            apply(parse(color('--sb-active', '#888')));
+            if (shown !== 'active') {
+                cancelAnimationFrame(frame);
+                apply(active);
+                shown = 'active';
+            }
             clearTimeout(idleTimer);
-            idleTimer = setTimeout(() => fadeTo(parse(color('--sb-idle', '#888888')), 700), 3000);
+            idleTimer = setTimeout(() => {
+                shown = 'idle';
+                fadeTo(idle, 700);
+            }, 3000);
         };
 
-        // 刚打开页面先给淡的，滚动过才变实
-        apply(parse(color('--sb-idle', '#888888')));
+        load();
+        apply(idle);
         window.addEventListener('scroll', onScroll, { passive: true });
         window.addEventListener('wheel', onScroll, { passive: true });
         window.addEventListener('touchmove', onScroll, { passive: true });
+
+        // 切主题后重新读一遍颜色
+        new MutationObserver(() => {
+            load();
+            apply(shown === 'active' ? active : idle);
+        }).observe(root, { attributes: true, attributeFilter: ['data-theme'] });
     })();
 </script>
 </th:block>

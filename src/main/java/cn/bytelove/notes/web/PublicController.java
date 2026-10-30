@@ -297,6 +297,7 @@ public class PublicController {
         List<ContentItem> all = new ArrayList<>();
         List<String> anchors = new ArrayList<>();
         List<String> progresses = new ArrayList<>();
+        List<String> progressLabels = new ArrayList<>();
         for (BookmarkService.Spot spot : bookmarks.spots(viewer.userId())) {
             ContentItem item = items.findById(spot.itemId()).orElse(null);
             if (item == null || !visibility.canRead(item, viewer)) {
@@ -304,13 +305,14 @@ public class PublicController {
             }
             all.add(item);
             anchors.add(spot.anchor());
-            progresses.add(spot.progress() > 0.005
-                    ? String.format(java.util.Locale.ROOT, "%.4f", Math.min(1, spot.progress()))
-                    : "");
+            boolean hasPos = spot.progress() > 0.005;
+            progresses.add(hasPos ? String.format(java.util.Locale.ROOT, "%.4f", Math.min(1, spot.progress())) : "");
+            progressLabels.add(hasPos ? Math.round(spot.progress() * 100) + "%" : "");
         }
         model.addAttribute("items", all);
         model.addAttribute("anchors", anchors);
         model.addAttribute("progresses", progresses);
+        model.addAttribute("progressLabels", progressLabels);
         model.addAttribute("basePathOf", basePathOf());
         model.addAttribute("tabActive", "memo");
         return "bookmarks";
