@@ -152,11 +152,11 @@
         || threads.find((t) => (t.dataset.quote || '') === quote);
 
     /** 在正文里找到 quote（用前后文消歧），包成可点的下划线 */
-    const markText = (thread) => {
+    const markText = (thread, loose) => {
         const quote = thread.dataset.quote || '';
         if (!quote || !article) return;
-        const prefix = thread.dataset.prefix || '';
-        const suffix = thread.dataset.suffix || '';
+        const prefix = loose ? '' : (thread.dataset.prefix || '');
+        const suffix = loose ? '' : (thread.dataset.suffix || '');
 
         // 把候选块的文本节点串起来找
         const walker = document.createTreeWalker(article, NodeFilter.SHOW_TEXT, {
@@ -215,7 +215,7 @@
                 focusThread(thread);
             });
         } else {
-            markText(thread);
+            if (!markText(thread, false)) markText(thread, true);
         }
     });
 })();
