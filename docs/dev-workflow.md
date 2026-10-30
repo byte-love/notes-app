@@ -13,6 +13,10 @@
 | 代码目录 | `/opt/apps/notes-app` | `/opt/apps/notes-app-test` |
 | 分支 | `main` | `dev` |
 
+> 2026-10-30 起 `/` **不再展示静态作品集**，nginx 里加了 `location = /` 直接 302 到 `/app/`
+> （`/index.html`、`/en/` 同理）。静态文件还留在 `/srv/sites/lab` 和 `lab-dev`，要恢复就把
+> `sites-available/00-test`、`01-dev` 里那 4 行 `location = ...` 删掉再 reload。
+
 测试库是正式库的副本，随便改、随便删，搞坏了用下面的「恢复数据库」重来。
 
 ## 账号
@@ -132,7 +136,13 @@ sudo /opt/deploy/sync-db.sh    # 正式库整库覆盖到测试库
 - 收藏夹是 `content_star(user_id, item_id)`，不是内容上的一个布尔值——标记属于「谁标的」
 - 书签是 `content_bookmark(user_id, item_id, anchor)`：`anchor` 为空是整篇，非空是正文里某个标题
   （标题 id 由标题文字生成，见 `MarkdownRenderer.slugOf`；以前用 h1/h2 序位号，插标题会错位）
-- 「上次看到」是 `reading_position(user_id, kind, item_id)`：每个分区只记一条，打开详情页自动写
+- 「上次看到」是 `reading_position(user_id, kind, item_id, progress)`：每个分区只记一条，打开详情页自动写；
+  `progress` 是 0~1 的滚动比例，离开页面时由 `sendBeacon` 上报，下次打开按比例滚回去（短于一屏时为 0，不跳）
+- 列表页（笔记/八股/算法/项目）**分批加载**：服务端按分类整组切约 40 条，滚到底再用
+  `?from=N&fragment=true` 取下一批；左侧树超过 60 个节点时只渲染顶层 + 当前路径，展开时调
+  `/api/tree/{kind}?parent=<slug>` 补子节点
+- 静态资源带 `?v=` 版本号 + `Cache-Control: max-age=31536000`，nginx 开了 `gzip_types`（css/js）；
+  nginx 到应用是长连接（`upstream ... keepalive` + `Connection ""`）
 - `/admin` 现在登录就能进，默认只看到自己的；管理员额外能看到全部
 - 更新日志（`/changelog`）是手写的发版说明，存在 `changelog_entry`，只有管理员能写
 - 缩略图和更新日志里没有「内容动态」那个页面了（2026-10-29 去掉）
@@ -174,5 +184,18 @@ grep 命中就退出，`tee` 收到 SIGPIPE，整个管道退出码变成 141，
 **健康检查别用 nginx 的状态码**：应用没起来时 nginx 返回 502，而 502 不等于「连接失败」，
 脚本里 `[ "$code" != "000" ]` 会立刻误判为已就绪。要么直连 `127.0.0.1:8082` 等 200，
 要么显式排除 502/504。重启一次大概要 30 秒。
+
+**PowerShell 改含中文的模板会整篇变乱码，全站 500**：2026-10-30 我用 `Get-Content -Raw | Set-Content`
+改 `fragments/layout.html` 里的一个版本号，Windows PowerShell 5.1 把 UTF-8 当 GBK 读，写回去整篇
+变成 `鍒囨崲娣辨祬鑹?`，Thymeleaf 解析报 `Incomplete structure`，`/app/login` 都变 500。
+**改模板/Java/CSS 一律用编辑器或 `edit` 工具**；非要用脚本就得显式 `[System.IO.File]::ReadAllText(path, UTF8)`
+读、`UTF8Encoding($false)` 写，改完 `grep` 一遍中文确认没坏。
+
+**`scrollbar-color` 是继承属性，别把「滚动中」做成全局状态**：挂在 `html` 上的滚动条颜色会被所有
+`overflow: auto` 的子容器继承，翻正文时左侧目录、右侧大纲的滚动条会一起被点亮（看着像它们自己在动）。
+要分栏控制就在各栏上单独写 `scrollbar-color`。
+
+**别在 scroll 事件里调 `getComputedStyle`**：每帧读一次会强制同步样式重算，滚动起来发涩。
+颜色在启动时读一次、切主题时重读就够。
 
 
