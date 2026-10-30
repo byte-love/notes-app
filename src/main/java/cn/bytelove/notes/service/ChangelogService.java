@@ -49,7 +49,7 @@ public class ChangelogService {
         Map<String, Release> meta = new LinkedHashMap<>();
 
         jdbc.query("select id, version, released_on, title, section, content from changelog_entry "
-                        + "order by released_on desc, title, sort_order, id",
+                        + "order by released_on desc, version desc nulls last, title, sort_order, id",
                 rs -> {
                     LocalDate day = rs.getDate("released_on").toLocalDate();
                     String version = rs.getString("version");
