@@ -99,7 +99,7 @@ public class MarkdownRenderer {
         if (markdown == null || markdown.isBlank()) {
             return "";
         }
-        Node document = parser.parse(stripFrontMatter(markdown));
+        Node document = parser.parse(fenceBareCode(stripFrontMatter(markdown)));
         wrapGlossary(document);
 
         Map<Heading, String> ids = assignHeadingIds(document);
@@ -118,6 +118,174 @@ public class MarkdownRenderer {
                 .attributeProviderFactory(context -> headingIds)
                 .build();
         return renderer.render(document);
+    }
+
+    /**
+     * 笔记里手写/粘贴的代码常常没加围栏：有的是一行 SQL 裸贴在正文里，有的是整段 Java
+     * 被拆成「一行一个段落」还带了列表符号（以前的导入流程留下的）。
+     * 这里在渲染前把它们收进代码块——判据放得很窄，避免把中文正文误判成代码：
+     * 一行代码 = 去掉列表符号后不含中文、长度 ≤200、含 ; { } ( ) = 之一，
+     * 或者以 // # -- 开头（注释里可以带中文）。连续 ≥3 行才算一段代码。
+     */
+    private static final java.util.regex.Pattern BARE_SQL = java.util.regex.Pattern.compile(
+            "^(select|update|insert|delete|create|alter|drop|with|truncate)\\b",
+            java.util.regex.Pattern.CASE_INSENSITIVE);
+
+    private static final java.util.regex.Pattern CJK = java.util.regex.Pattern.compile(
+            "[\\u4e00-\\u9fff\\u3000-\\u303f\\uff00-\\uffef]");
+
+    private static final java.util.regex.Pattern BULLET =
+            java.util.regex.Pattern.compile("^\\s*[-*+]\\s+");
+
+    static String fenceBareCode(String markdown) {
+        String[] lines = markdown.split("\n", -1);
+        StringBuilder out = new StringBuilder(markdown.length() + 64);
+        boolean inFence = false;
+        int i = 0;
+        while (i < lines.length) {
+            String trimmed = lines[i].trim();
+            if (trimmed.startsWith("```")) {
+                inFence = !inFence;
+                out.append(lines[i]).append('\n');
+                i++;
+                continue;
+            }
+            if (inFence || !codeish(trimmed)) {
+                out.append(lines[i]).append('\n');
+                i++;
+                continue;
+            }
+
+            // 从这一行开始攒「连续代码行」，中间的空行允许跳过
+            List<String> run = new ArrayList<>();
+            int j = i;
+            while (j < lines.length) {
+                String next = lines[j].trim();
+                if (next.isEmpty()) {
+                    j++;
+                    continue;
+                }
+                if (next.startsWith("```") || !codeish(next)) {
+                    break;
+                }
+                run.add(stripBullet(lines[j]));
+                j++;
+            }
+
+            if (run.size() >= 3) {
+                // 这些行是从段落里拼出来的，本身没有缩进，按大括号重排一下才看得懂层次
+                String joined = String.join("\n", reindent(run));
+                out.append("```").append(guessLang(joined)).append('\n')
+                        .append(joined).append("\n```\n");
+                i = j;
+            } else if (run.size() == 1 && isBareSql(run.get(0))) {
+                out.append("```\n").append(run.get(0)).append("\n```\n");
+                i = j;
+            } else {
+                out.append(lines[i]).append('\n');
+                i++;
+            }
+        }
+        return out.toString();
+    }
+
+    /**
+     * 按大括号给拼出来的代码重排缩进（4 空格一层）。
+     * 以 {@code }} 开头的行先退一级再输出；lua 的 then/do 当开括号、end 当闭括号。
+     */
+    static List<String> reindent(List<String> lines) {
+        List<String> out = new ArrayList<>(lines.size());
+        int level = 0;
+        for (String raw : lines) {
+            String t = raw.trim();
+            if (t.isEmpty()) {
+                out.add("");
+                continue;
+            }
+            boolean closerStart = t.startsWith("}") || t.equals("end") || t.startsWith("end ");
+            if (closerStart) {
+                level = Math.max(0, level - 1);
+            }
+            out.add("    ".repeat(level) + t);
+
+            int net = count(t, '{') - count(t, '}');
+            if (closerStart) {
+                net += 1; // 开头那个闭括号已经退过了，别重复算
+            }
+            if (t.endsWith(" then") || t.endsWith(" do") || t.equals("then") || t.equals("do")) {
+                net += 1;
+            }
+            level = Math.max(0, level + net);
+        }
+        return out;
+    }
+
+    private static int count(String s, char c) {
+        int n = 0;
+        for (int i = 0; i < s.length(); i++) {
+            if (s.charAt(i) == c) {
+                n++;
+            }
+        }
+        return n;
+    }
+
+    private static String stripBullet(String line) {
+        return BULLET.matcher(line).replaceFirst("");
+    }
+
+    private static boolean codeish(String trimmed) {
+        if (trimmed.isEmpty()) {
+            return false;
+        }
+        String s = stripBullet(trimmed).trim();
+        if (s.isEmpty()) {
+            return false;
+        }
+        // 分隔线、Markdown 标题都不算代码行
+        if (s.matches("^[-=*_]{3,}$") || s.matches("^#{1,6}\\s.*")) {
+            return false;
+        }
+        if (s.startsWith("//") || s.startsWith("#") || s.startsWith("--")
+                || s.startsWith("/*") || s.startsWith("@")) {
+            return true;
+        }
+        // 结尾的中文标点、字符串字面量里的中文都不算「这段是中文散文」，
+        // 所以先去掉再判断，避免把 System.out.println("最终结果：" + i); 判成正文
+        String probe = s.replaceAll("\"(?:[^\"\\\\]|\\\\.)*\"|'(?:[^'\\\\]|\\\\.)*'", "\"\"")
+                .replaceAll("[\\s；;。.]+$", "");
+        if (probe.isEmpty() || probe.length() > 200 || CJK.matcher(probe).find()) {
+            return false;
+        }
+        return s.indexOf(';') >= 0 || s.indexOf('{') >= 0 || s.indexOf('}') >= 0
+                || s.indexOf('(') >= 0 || s.indexOf(')') >= 0 || s.indexOf('=') >= 0;
+    }
+
+    private static boolean isBareSql(String line) {
+        String body = line.replaceAll("[\\s；;。.]+$", "");
+        if (body.isEmpty() || CJK.matcher(body).find() || !BARE_SQL.matcher(body).find()
+                || !body.contains(" ")) {
+            return false;
+        }
+        String lower = body.toLowerCase(java.util.Locale.ROOT);
+        return lower.contains(" where ") || lower.contains(" set ") || lower.contains(" from ")
+                || lower.contains(" values ") || lower.contains(" join ");
+    }
+
+    private static String guessLang(String joined) {
+        String l = joined.toLowerCase(java.util.Locale.ROOT);
+        if (l.contains("class ") || l.contains("public ") || l.contains("void ")
+                || l.contains("system.out") || l.contains("new thread")) {
+            return "java";
+        }
+        if (l.contains("redis.call") || l.contains("local ")) {
+            return "lua";
+        }
+        if (l.contains("select ") || l.contains("update ") || l.contains("insert ")
+                || l.contains("delete from")) {
+            return "sql";
+        }
+        return "";
     }
 
     /** 只收 h2/h3，h1 是文章标题本身，放进目录没有意义。 */
