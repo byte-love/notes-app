@@ -176,6 +176,7 @@ public class PublicController {
         model.addAttribute("blank", true);
         model.addAttribute("pageTitle", pageTitle);
         model.addAttribute("basePath", contextPath() + basePath(kind));
+        model.addAttribute("treeBase", contextPath() + "/api/tree/" + kind.name().toLowerCase(java.util.Locale.ROOT));
         model.addAttribute("tabActive", kind.name().toLowerCase(java.util.Locale.ROOT));
         // 分片请求只回内容那一段，不套整页
         return fragment ? "fragments/list :: groupSections" : "list";
@@ -221,6 +222,7 @@ public class PublicController {
         model.addAttribute("lockedIds", lockedIds);
         model.addAttribute("lockedCount", lockedIds.size());
         model.addAttribute("basePath", contextPath() + basePath(kind));
+        model.addAttribute("treeBase", contextPath() + "/api/tree/" + kind.name().toLowerCase(java.util.Locale.ROOT));
         model.addAttribute("tabActive", kind.name().toLowerCase(java.util.Locale.ROOT));
 
         model.addAttribute("item", item);
@@ -375,8 +377,8 @@ public class PublicController {
         return n;
     }
 
-    /** 展开某个分类时补它下面的条目（列表页的树只给了顶层）。 */
-    @GetMapping("/{kind}/tree")
+    /** 展开某个分类时补它下面的条目（列表页的树只给了顶层）。走 /api 前缀，避免和 /{kind}/{slug} 抢路由。 */
+    @GetMapping("/api/tree/{kind}")
     public String treeChildren(@PathVariable String kind,
                                @RequestParam(name = "parent") String parentSlug,
                                Model model, Authentication auth) {
@@ -423,6 +425,7 @@ public class PublicController {
         }
         model.addAttribute("activeId", null);
         model.addAttribute("basePath", contextPath() + basePath(k));
+        model.addAttribute("treeBase", contextPath() + "/api/tree/" + kind.toLowerCase(java.util.Locale.ROOT));
         model.addAttribute("starIds", stars.starredIds(viewer.userId()));
         model.addAttribute("bookmarkIds", bookmarks.ids(viewer.userId()));
         return "fragments/tree :: nodes";

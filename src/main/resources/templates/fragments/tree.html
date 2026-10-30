@@ -4,7 +4,7 @@
 <ul th:fragment="nodes(nodes)" class="tree">
     <li th:each="n : ${nodes}" th:classappend="${n.hasChildren()} ? 'has-kids' : ''">
         <button th:if="${n.hasChildren() or n.lazy()}" type="button" class="tree-group"
-                th:attr="data-key=${n.item.slug},data-lazy=${n.lazy()} ? ${basePath + '/tree?parent=' + n.item.slug} : null"
+                th:attr="data-key=${n.item.slug},data-lazy=${n.lazy()} ? ${treeBase + '?parent=' + n.item.slug} : null"
                 th:text="${n.item.title}"
                 th:classappend="${activeId != null and activeId == n.item.id} ? 'on'"></button>
         <a th:unless="${n.hasChildren() or n.locked()}"
