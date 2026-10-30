@@ -99,7 +99,7 @@ public class MarkdownRenderer {
         if (markdown == null || markdown.isBlank()) {
             return "";
         }
-        Node document = parser.parse(stripFrontMatter(markdown));
+        Node document = parser.parse(fenceBareSql(stripFrontMatter(markdown)));
         wrapGlossary(document);
 
         Map<Heading, String> ids = assignHeadingIds(document);
@@ -118,6 +118,59 @@ public class MarkdownRenderer {
                 .attributeProviderFactory(context -> headingIds)
                 .build();
         return renderer.render(document);
+    }
+
+    /**
+     * 笔记里手写的 SQL 常常没加代码围栏，渲染出来和正文长得一模一样。
+     * 这里把「单独成段、整行是 SQL」的行自动包进代码块——判据放得很窄：
+     * 单行、前后都是空行、≤400 字、去掉结尾标点后不含中文、以 SQL 关键字开头，
+     * 并且带 where/set/from/values/join 之一，避免把普通句子误判成代码。
+     */
+    private static final java.util.regex.Pattern BARE_SQL = java.util.regex.Pattern.compile(
+            "^(select|update|insert|delete|create|alter|drop|with|truncate)\\b",
+            java.util.regex.Pattern.CASE_INSENSITIVE);
+
+    private static final java.util.regex.Pattern CJK = java.util.regex.Pattern.compile(
+            "[\\u4e00-\\u9fff\\u3000-\\u303f\\uff00-\\uffef]");
+
+    static String fenceBareSql(String markdown) {
+        String[] lines = markdown.split("\n", -1);
+        StringBuilder out = new StringBuilder(markdown.length() + 32);
+        boolean inFence = false;
+        for (int i = 0; i < lines.length; i++) {
+            String line = lines[i];
+            String trimmed = line.trim();
+            if (trimmed.startsWith("```")) {
+                inFence = !inFence;
+                out.append(line).append('\n');
+                continue;
+            }
+            boolean aloneBefore = i == 0 || lines[i - 1].isBlank();
+            boolean aloneAfter = i == lines.length - 1 || lines[i + 1].isBlank();
+            if (!inFence && aloneBefore && aloneAfter && looksLikeSql(trimmed)) {
+                out.append("```\n").append(trimmed).append("\n```\n");
+                continue;
+            }
+            out.append(line).append('\n');
+        }
+        return out.toString();
+    }
+
+    private static boolean looksLikeSql(String line) {
+        if (line.isEmpty() || line.length() > 400) {
+            return false;
+        }
+        // 先去掉结尾的中文句号/分号，再做中文判断（否则结尾的「。」会被当成中文）
+        String body = line.replaceAll("[\\s；;。.]+$", "");
+        if (body.isEmpty() || CJK.matcher(body).find()) {
+            return false;
+        }
+        if (!BARE_SQL.matcher(body).find() || !body.contains(" ")) {
+            return false;
+        }
+        String lower = body.toLowerCase(java.util.Locale.ROOT);
+        return lower.contains(" where ") || lower.contains(" set ") || lower.contains(" from ")
+                || lower.contains(" values ") || lower.contains(" join ");
     }
 
     /** 只收 h2/h3，h1 是文章标题本身，放进目录没有意义。 */

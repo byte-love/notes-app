@@ -980,11 +980,14 @@ button:hover,
     text-underline-offset: 2px;
 }
 
+/* 行内代码：等宽字体 + 强调色，和正文一眼分得开（以前既没等宽也没上色，SQL、字段名和普通文字长得一样） */
 .markdown code {
+    font-family: var(--mono);
     font-size: 0.86em;
+    color: var(--accent);
     background: var(--bg-2);
     border: 0;
-    padding: 0.1em 0.38em;
+    padding: 0.1em 0.4em;
     border-radius: 5px;
 }
 
@@ -1014,21 +1017,25 @@ button:hover,
     opacity: 1;
 }
 
+/* 代码块：等宽 + 左侧色条，和正文、表格都能分开 */
 .markdown pre {
     background: var(--bg-2);
     border: 1px solid var(--line);
+    border-left: 3px solid var(--accent);
     border-radius: 8px;
-    padding: 1rem 1.1rem;
+    padding: 0.95rem 1.1rem;
     overflow-x: auto;
-    line-height: 1.58;
+    line-height: 1.6;
     margin: 0 0 1.2rem;
 }
 
 .markdown pre code {
+    font-family: var(--mono);
     background: none;
     border: 0;
     padding: 0;
     font-size: 0.86em;
+    color: var(--fg);
 }
 
 /* 引用块当提示块用（仿飞书的 highlight block）：暖米底 + 赭石左边条 + 圆角，正文回到正常色 */
