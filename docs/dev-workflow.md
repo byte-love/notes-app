@@ -143,6 +143,18 @@ sudo /opt/deploy/sync-db.sh    # 正式库整库覆盖到测试库
   `/api/tree/{kind}?parent=<slug>` 补子节点
 - 静态资源带 `?v=` 版本号 + `Cache-Control: max-age=31536000`，nginx 开了 `gzip_types`（css/js）；
   nginx 到应用是长连接（`upstream ... keepalive` + `Connection ""`）
+  **改了 css/js 必须同时升 `?v=`**，否则强缓存让浏览器永远跑老代码（2026-10-30 踩过：评论改了 4 版用户一直看不到）
+- 评论是 `content_comment(item_id, user_id, parent_id, quote, body, anchor_kind, block_index, prefix, suffix)`：
+  锚点两种粒度——`text`（选中文字，存原文 + 前后各 20 字）和 `block`（整段 / 代码块，存正文顶层块序号）；
+  楼中楼用 `parent_id`，渲染最多两层。**评论按「最初来源条目」归并**：复制出来的副本沿 `copied_from_id`
+  往上找根节点，所有人看同一串评论（否则每份副本各聊各的）
+- 「加入我的空间」是**幂等**的：`copyTo` 先查 `(owner_id, copied_from_id)` 有没有复制过，有就返回 0；
+  页面上已加入的卡片显示「已加入」。重复复制产生的脏数据用
+  `partition by owner_id, copied_from_id` 保留最小 id 清掉
+- 403 分两种原因：没登录（提示「需要登录」）和登录了但没权限（提示「只有作者本人能看」）。
+  原因由 `PublicController.forbidden(reason)` 挂在 request 的 `errorReason` 上，`AppErrorController` 据此换文案
+- 更新日志**一天一个版本**（不是一次改动一个版本），当天的新增功能写在「新增功能」小节；
+  修复 / 优化 / 清理收进「修复与优化」小节，页面上默认折叠（`details.cl-fold`）
 - **改完要看响应时间**：`bash /opt/deploy/measure.sh dev`（服务器上跑，5 个主页面各热身 6 次再采 40 次，
   报 p50/p95 和 TTFB；源码 `deploy/measure.sh`）。2026-10-30 基线：p50 25~82ms，p95 ≤ 111ms
 - `app.sh` 部署完会自己把 4 个列表页 + 一篇正文各打 5 遍**预热**——JVM 刚起来头十几次请求是解释执行的，
