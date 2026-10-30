@@ -40,6 +40,7 @@
 }
 
 html[data-theme='light'] {
+    --callout-bg: #fdf4e6;
     --fg: #1c1b18;
     --fg-2: #57534b;
     --fg-3: #726d63;
