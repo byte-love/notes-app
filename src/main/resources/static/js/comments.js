@@ -1,25 +1,25 @@
-// 注释：正文里有注释的地方画一条短虚下划线，点开是弹窗——弹窗里读这一处的全部注释，也能接着写。
-// 选中文字 / 点段落左边的 ＋ 也是打开同一个弹窗，只是把引文和块序号先填好。
+// 评论：选中文字 -> 浮出工具条 -> 点「评论」-> 右栏才展开输入框
 // 定位参考 Hypothesis 的 TextQuoteSelector（原文 + 前后文）与 PositionSelector（块序号）
 (() => {
-    const data = document.getElementById('comments');
+    const pane = document.getElementById('comments');
     const article = document.querySelector('.markdown');
-    if (!data || !article) return;
+    const form = pane && pane.querySelector('.cmt-form');
+    if (!pane || !article) return;
 
-    const form = data.querySelector('.cmt-form');
-    const loginHint = data.querySelector('.cmt-login');
     const textarea = form && form.querySelector('textarea[name="body"]');
     const field = (name) => (form ? form.querySelector(`[name="${name}"]`) : null);
+    const chip = form && form.querySelector('.cmt-anchor-chip');
+    const chipText = chip && chip.querySelector('.cmt-anchor-text');
     const blocks = [...article.children];
     const canComment = !!form;
 
-    // 弹窗当前对着哪段引文：那段原文要一直高亮着，所以不能用「清掉选区」来收起工具条，
-    // 改成记住这段引文，对同一段不再弹工具条
+    // 输入框里正对着的那段引文：选中的原文要高亮留着，用户才知道自己在评论哪一段，
+    // 所以不能用「清掉选区」来收起工具条，改成记住这段引文、对同一段不再弹工具条
     let openWith = '';
 
     const isNarrow = () => window.matchMedia('(max-width: 820px)').matches;
 
-    // 正在注释的那段原文要高亮着。原生选区一旦把光标点进输入框就没了，
+    // 正在评论的那段原文要高亮着。原生选区一旦把光标点进输入框就没了，
     // 所以再用 CSS Custom Highlight 画一层底（Edge/Chrome 105+、Safari 17+），不支持就算了
     const paintAnchor = (range) => {
         if (!range || !window.CSS || !CSS.highlights || typeof Highlight === 'undefined') return;
@@ -37,118 +37,73 @@
         }
     };
 
-    // ---------- 弹窗 ----------
-    const pop = document.createElement('div');
-    pop.className = 'cmt-pop';
-    pop.hidden = true;
-    document.body.appendChild(pop);
-
-    const list = document.createElement('div');
-    list.className = 'cmt-pop-list';
-    pop.appendChild(list);
-    if (form) {
-        form.hidden = false;
-        pop.appendChild(form);
-    }
-    if (loginHint) {
-        loginHint.hidden = canComment;
-        pop.appendChild(loginHint);
-    }
-
-    const place = (rect) => {
-        const r = rect || { left: 40, top: 120, width: 0, bottom: 140, height: 0 };
-        pop.hidden = false;
-        const p = pop.getBoundingClientRect();
-        let left = r.left + r.width / 2 - p.width / 2;
-        left = Math.max(10, Math.min(left, window.innerWidth - p.width - 10));
-        let top = (r.bottom || 0) + 8;
-        if (top + p.height > window.innerHeight - 10) {
-            top = Math.max(10, (r.top || 0) - p.height - 8);
-        }
-        pop.style.left = `${Math.round(left)}px`;
-        pop.style.top = `${Math.round(top)}px`;
-    };
-
-    const setFields = (a) => {
+    // ---------- 打开 / 关闭输入框 ----------
+    const openForm = (anchor) => {
         if (!form) return;
-        const put = (name, value) => {
+        const set = (name, value) => {
             const el = field(name);
             if (el) el.value = value == null ? '' : String(value);
         };
-        put('quote', a.quote);
-        put('anchorKind', a.kind);
-        put('blockIndex', a.block);
-        put('prefix', a.prefix);
-        put('suffix', a.suffix);
-    };
-
-    /** anchor: {quote, kind, block, prefix, suffix, range}；rect: 弹窗贴着的位置；thread: 这一处已有的注释 */
-    const openPop = (anchor, rect, thread) => {
-        list.textContent = '';
-        if (thread) {
-            thread.querySelectorAll('.cmt-card').forEach((card) => {
-                const clone = card.cloneNode(true);
-                // 弹窗里不给「回复」入口，其余（自己写的删除）保留
-                clone.querySelectorAll('.cmt-reply').forEach((el) => el.remove());
-                list.appendChild(clone);
-            });
+        set('quote', anchor.quote);
+        set('anchorKind', anchor.kind);
+        set('blockIndex', anchor.block);
+        set('prefix', anchor.prefix);
+        set('suffix', anchor.suffix);
+        if (chip && chipText) {
+            chipText.textContent = anchor.quote ? anchor.quote.slice(0, 80) : '';
+            chip.hidden = !anchor.quote;
         }
-        setFields(anchor);
-        if (textarea) textarea.value = '';
-        openWith = anchor.quote || '';
-        place(rect);
+        form.hidden = false;
         if (anchor.range) {
             paintAnchor(anchor.range);
         } else {
             unpaintAnchor();
         }
-        if (textarea) {
-            setTimeout(() => textarea.focus(), isNarrow() ? 60 : 0);
+        if (isNarrow()) {
+            // 窄屏右栏在正文下方，直接滚过去
+            pane.scrollIntoView({ block: 'start', behavior: 'smooth' });
+            setTimeout(() => textarea && textarea.focus(), 260);
+        } else {
+            pane.scrollTo({ top: 0, behavior: 'smooth' });
+            textarea && textarea.focus();
         }
     };
 
-    const closePop = () => {
-        pop.hidden = true;
-        openWith = '';
-        setFields({});
+    const closeForm = () => {
+        if (!form) return;
+        form.hidden = true;
+        ['quote', 'anchorKind', 'blockIndex', 'prefix', 'suffix'].forEach((n) => {
+            const el = field(n);
+            if (el) el.value = '';
+        });
+        if (chip) chip.hidden = true;
         if (textarea) textarea.value = '';
+        // 取消就把选中高亮也一起收掉
+        openWith = '';
         unpaintAnchor();
         const sel = window.getSelection();
         sel && sel.removeAllRanges();
     };
 
-    const closeBtn = document.createElement('button');
-    closeBtn.type = 'button';
-    closeBtn.className = 'cmt-pop-close';
-    closeBtn.setAttribute('aria-label', '关闭');
-    closeBtn.textContent = '×';
-    closeBtn.addEventListener('click', closePop);
-    pop.appendChild(closeBtn);
-
     if (form) {
         const cancel = form.querySelector('.cmt-cancel');
-        cancel && cancel.addEventListener('click', closePop);
+        cancel && cancel.addEventListener('click', closeForm);
+        // 引文框右上角的 × 等于取消：连输入框一起收起来，不只是把引文清掉
+        const clearBtn = form.querySelector('.cmt-anchor-clear');
+        clearBtn && clearBtn.addEventListener('click', closeForm);
         form.addEventListener('submit', () => {
             if (!field('anchorKind').value) field('anchorKind').value = 'text';
         });
+        // 右栏头部的 ＋：评论整篇
+        const newBtn = pane.querySelector('.cmt-new');
+        newBtn && newBtn.addEventListener('click', () => openForm({ kind: 'text', quote: '' }));
     }
-
-    document.addEventListener('mousedown', (e) => {
-        if (pop.hidden || pop.contains(e.target)) return;
-        // 点正文里的下划线不在这里关，交给它自己的 click 换内容
-        if (e.target.closest && e.target.closest('.cmt-mark, .cmt-block-mark')) return;
-        closePop();
-    });
-    document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape') closePop();
-    });
-    window.addEventListener('scroll', closePop, { passive: true });
 
     // ---------- 发完一条后 10 秒内不让再发 ----------
     // 服务端同样按 10 秒拦一次；这里只是别让人把字打完再被丢掉
     const COOLDOWN = 10000;
     const LAST_KEY = 'cmt:last';
-    const submitButtons = [...document.querySelectorAll('.cmt-submit')];
+    const submitButtons = [...pane.querySelectorAll('.cmt-submit')];
     const lastPost = () => {
         try {
             return Number(window.localStorage.getItem(LAST_KEY) || 0);
@@ -166,7 +121,7 @@
     };
     const left = COOLDOWN - (Date.now() - lastPost());
     if (left > 0) lockSubmit(left);
-    document.addEventListener('submit', () => {
+    pane.addEventListener('submit', () => {
         try {
             window.localStorage.setItem(LAST_KEY, String(Date.now()));
         } catch (e) {
@@ -183,7 +138,7 @@
     tool.hidden = true;
     const toolBtn = document.createElement('button');
     toolBtn.type = 'button';
-    toolBtn.textContent = '注释';
+    toolBtn.textContent = '评论';
     tool.appendChild(toolBtn);
     document.body.appendChild(tool);
 
@@ -227,8 +182,8 @@
             hideTool();
             return;
         }
-        // 弹窗已经对着这一段了，就别再弹工具条（选区要留着当高亮）
-        if (openWith && !pop.hidden && text === openWith) {
+        // 输入框已经对着这一段了，就别再弹工具条（选区要留着当高亮）
+        if (openWith && form && !form.hidden && text === openWith) {
             hideTool();
             return;
         }
@@ -259,21 +214,25 @@
         const blockText = textOf(block);
         const at = blockText.indexOf(quote);
         const range = lastRange ? lastRange.cloneRange() : null;
-        const rect = range ? range.getBoundingClientRect() : null;
-        // 只收工具条，不动选区：那段字要一直高亮着，用户才知道自己在注释哪一段。
-        // 工具条不会因为 focus 挪进输入框再弹出来——showTool 里认 openWith 这一段
+        // 只收工具条，不动选区：那段字要一直高亮着，用户才知道自己在评论哪一段。
+        // 工具条不会因为 focus 挪进 textarea 再弹出来——showTool 里认 openWith 这一段
         hideTool();
         lastQuote = '';
         lastRange = null;
-        if (!quote) return;
-        openPop({
+        if (!quote) {
+            openWith = '';
+            unpaintAnchor();
+            return;
+        }
+        openWith = quote;
+        openForm({
             kind: 'text',
             quote,
             prefix: at > 0 ? blockText.slice(Math.max(0, at - 20), at) : '',
             suffix: at >= 0 ? blockText.slice(at + quote.length, at + quote.length + 20) : '',
             block: index,
             range,
-        }, rect);
+        });
     });
 
     // 点空白处要把工具条和选区一起收掉。
@@ -283,7 +242,7 @@
     const selected = () => (window.getSelection() ? window.getSelection().toString() : '');
 
     const onDown = (e) => {
-        if (tool.contains(e.target) || pop.contains(e.target)) return;
+        if (tool.contains(e.target)) return;
         down = { x: e.clientX || 0, y: e.clientY || 0, text: selected() };
         hideTool();
     };
@@ -321,10 +280,11 @@
             btn.type = 'button';
             btn.className = 'cmt-block-btn';
             btn.textContent = '＋';
-            btn.title = '注释这一段';
+            btn.title = '评论这一段';
             btn.addEventListener('click', (e) => {
                 e.stopPropagation();
                 hideTool();
+                // 整段评论也把这一段的底铺上，跟选中文字时一样能看出评论的是哪一段
                 let range = null;
                 try {
                     range = document.createRange();
@@ -332,28 +292,23 @@
                 } catch (err) {
                     range = null;
                 }
-                openPop({
-                    kind: 'block',
-                    quote: textOf(block).slice(0, 120),
-                    block: index,
-                    range,
-                }, block.getBoundingClientRect());
+                openForm({ kind: 'block', quote: textOf(block).slice(0, 120), block: index, range });
             });
             block.classList.add('cmt-block-host');
             block.appendChild(btn);
         });
     }
 
-    // ---------- 已有注释标回正文 ----------
-    const threads = [...data.querySelectorAll('.cmt-thread')];
+    // ---------- 已有评论标回正文 ----------
+    const threads = [...pane.querySelectorAll('.cmt-thread')];
 
-    const anchorOf = (thread) => ({
-        kind: thread.dataset.kind || 'text',
-        quote: thread.dataset.quote || '',
-        block: thread.dataset.block,
-        prefix: thread.dataset.prefix || '',
-        suffix: thread.dataset.suffix || '',
-    });
+    const focusThread = (thread) => {
+        if (!thread) return;
+        pane.querySelectorAll('.cmt-thread.on').forEach((el) => el.classList.remove('on'));
+        thread.classList.add('on');
+        thread.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+        thread.animate?.([{ background: 'var(--accent-soft)' }, { background: 'transparent' }], 900);
+    };
 
     const markText = (thread, loose) => {
         const quote = thread.dataset.quote || '';
@@ -394,19 +349,13 @@
                 range.setEnd(node, at + quote.length);
                 const span = document.createElement('span');
                 span.className = 'cmt-mark';
-                span.title = '有注释';
+                span.title = '有评论';
                 try {
                     range.surroundContents(span);
                 } catch (e) {
                     return true;
                 }
-                span.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    const r = span.getBoundingClientRect();
-                    const a = anchorOf(thread);
-                    a.range = null;
-                    openPop(a, r, thread);
-                });
+                span.addEventListener('click', () => focusThread(thread));
                 return true;
             }
         }
@@ -420,19 +369,8 @@
             const block = blocks[Number(index)];
             block.classList.add('cmt-block-mark');
             block.addEventListener('click', (e) => {
-                if (e.target.closest('.cmt-block-btn') || e.target.closest('.cmt-pop')) return;
-                const sel = window.getSelection();
-                if (sel && !sel.isCollapsed) return; // 正在选字，别弹窗打断
-                const a = anchorOf(thread);
-                let range = null;
-                try {
-                    range = document.createRange();
-                    range.selectNodeContents(block);
-                } catch (err) {
-                    range = null;
-                }
-                a.range = range;
-                openPop(a, block.getBoundingClientRect(), thread);
+                if (e.target.closest('.cmt-block-btn')) return;
+                focusThread(thread);
             });
         } else if (!markText(thread, false)) {
             markText(thread, true);

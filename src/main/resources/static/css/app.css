@@ -685,7 +685,32 @@ button:hover,
     color: var(--accent);
 }
 
-/* ---------- 注释：正文里的短虚下划线 + 弹窗 ---------- */
+/* ---------- 右栏评论区 ---------- */
+.cmt-pane {
+    max-height: calc(100vh - 100px);
+    overflow-y: auto;
+    padding-right: 0.4rem;
+}
+
+.cmt-head {
+    display: flex;
+    align-items: baseline;
+    gap: 0.4rem;
+    margin-bottom: 0.7rem;
+}
+
+.cmt-title {
+    font-size: 0.86rem;
+    font-weight: 600;
+    color: var(--fg);
+}
+
+.cmt-count {
+    font-size: 0.76rem;
+    color: var(--fg-3);
+    font-variant-numeric: tabular-nums;
+}
+
 .cmt-form textarea,
 .cmt-reply textarea {
     width: 100%;
@@ -743,10 +768,11 @@ button:hover,
     border-color: var(--line);
 }
 
-.cmt-login {
+.cmt-login,
+.cmt-empty {
     font-size: 0.8rem;
     color: var(--fg-3);
-    margin: 0.6rem 0 0.2rem;
+    margin: 0.5rem 0 0.9rem;
 }
 
 .cmt-thread {
@@ -793,8 +819,6 @@ button:hover,
     line-height: 1.75;
     color: var(--fg);
     overflow-wrap: anywhere;
-    /* 注释里常整段贴代码，换行要保留 */
-    white-space: pre-wrap;
 }
 
 .cmt-ops {
@@ -831,45 +855,13 @@ button:hover,
 
 /* 正文里被评论过的那句话：下划线 + 悬停提示 */
 .cmt-mark {
-    /* 短虚下划线：表示这句有注释，点开是弹窗（不是整栏评论） */
-    border-bottom: 1px dotted var(--accent);
+    border-bottom: 2px solid var(--accent);
     cursor: pointer;
+    background: linear-gradient(transparent 62%, var(--accent-soft) 62%);
 }
 
 .cmt-mark:hover {
     background: var(--accent-soft);
-}
-
-/* 点注释后浮出的那一处全部注释 */
-.cmt-pop {
-    position: fixed;
-    z-index: 90;
-    width: min(430px, 92vw);
-    max-height: 62vh;
-    overflow: auto;
-    padding: 0.7rem 0.9rem 0.8rem;
-    background: var(--bg);
-    border: 1px solid var(--line);
-    border-radius: 10px;
-    box-shadow: 0 14px 36px rgba(0, 0, 0, 0.22);
-}
-
-.cmt-pop-close {
-    position: absolute;
-    top: 0.3rem;
-    right: 0.35rem;
-    font: inherit;
-    font-size: 1rem;
-    line-height: 1;
-    padding: 0.15rem 0.3rem;
-    color: var(--fg-3);
-    background: none;
-    border: 0;
-    cursor: pointer;
-}
-
-.cmt-pop-close:hover {
-    color: var(--danger);
 }
 
 /* ---------- list page ---------- */
@@ -3252,7 +3244,28 @@ html[data-theme='dark'] .cl-latest {
     color: var(--fg);
 }
 
-/* 每个顶层块左侧的「＋」：悬停才出现，用来注释整段 / 整个代码块 */
+/* 右栏头部那个「＋」：评论整篇 */
+.cmt-new {
+    margin-left: auto;
+    width: 1.3rem;
+    height: 1.3rem;
+    padding: 0;
+    font: inherit;
+    font-size: 0.9rem;
+    line-height: 1;
+    color: var(--fg-3);
+    background: var(--bg-2);
+    border: 1px solid var(--line);
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+.cmt-new:hover {
+    color: var(--accent);
+    border-color: var(--accent);
+}
+
+/* 每个顶层块左侧的「＋」：悬停才出现，用来评论整段 / 整个代码块 */
 .cmt-block-host {
     position: relative;
 }
@@ -3292,6 +3305,44 @@ html[data-theme='dark'] .cl-latest {
     cursor: pointer;
 }
 
+/* 发评论时显示「正在评论哪一段」 */
+.cmt-anchor-chip {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.3rem;
+    margin-bottom: 0.4rem;
+    padding: 0.3rem 0.45rem;
+    font-size: 0.76rem;
+    line-height: 1.6;
+    color: var(--fg-2);
+    background: var(--bg-2);
+    border-left: 2px solid var(--accent-2);
+    border-radius: 0 6px 6px 0;
+}
+
+.cmt-anchor-text {
+    min-width: 0;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+}
+
+.cmt-anchor-clear {
+    flex: none;
+    padding: 0 0.2rem;
+    font: inherit;
+    font-size: 0.9rem;
+    line-height: 1;
+    color: var(--fg-3);
+    background: none;
+    border: 0;
+    cursor: pointer;
+}
+
+.cmt-anchor-clear:hover {
+    color: var(--danger);
+}
 /* 分类标题做成可点的折叠条：左边小三角 + 标题 + 条数 */
 .item-group-toggle {
     display: flex;

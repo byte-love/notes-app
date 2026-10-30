@@ -144,16 +144,10 @@ sudo /opt/deploy/sync-db.sh    # 正式库整库覆盖到测试库
 - 静态资源带 `?v=` 版本号 + `Cache-Control: max-age=31536000`，nginx 开了 `gzip_types`（css/js）；
   nginx 到应用是长连接（`upstream ... keepalive` + `Connection ""`）
   **改了 css/js 必须同时升 `?v=`**，否则强缓存让浏览器永远跑老代码（2026-10-30 踩过：评论改了 4 版用户一直看不到）
-- 注释（原「评论」，2026-10-30 并入）是 `content_comment(item_id, user_id, parent_id, quote, body, anchor_kind, block_index, prefix, suffix)`：
+- 评论是 `content_comment(item_id, user_id, parent_id, quote, body, anchor_kind, block_index, prefix, suffix)`：
   锚点两种粒度——`text`（选中文字，存原文 + 前后各 20 字）和 `block`（整段 / 代码块，存正文顶层块序号）；
-  楼中楼用 `parent_id`，渲染最多两层。**注释按「最初来源条目」归并**：复制出来的副本沿 `copied_from_id`
-  往上找根节点，所有人看同一串注释（否则每份副本各聊各的）
-- **没有右栏评论区了**：`/app` 正文页 = 左树 + 正文两栏。注释数据渲染在 `#comments`（`<div class="cmt-data" hidden>`）
-  里当数据源，`comments.js` 读它给正文打短虚下划线（`1px dotted var(--accent)`），点开是 `.cmt-pop` 弹窗——
-  弹窗里既有该处的全部注释，也有写新注释的表单（表单也是从 `#comments` 里搬进弹窗的，CSRF 由 Thymeleaf 渲染）。
-  服务端 `addComment` 现在**要求带 quote**：没引文的提交直接忽略（没有落点，收下也显示不出来）
-- 术语浮窗（tooltip）是另一套：`.markdown .gl[data-tip]` + `detail.js` 的 `.gl-tip`，鼠标悬停显示，
-  灰色长虚线；别和注释的松绿点线混了
+  楼中楼用 `parent_id`，渲染最多两层。**评论按「最初来源条目」归并**：复制出来的副本沿 `copied_from_id`
+  往上找根节点，所有人看同一串评论（否则每份副本各聊各的）
 - 「加入我的空间」是**幂等**的：`copyTo` 先查 `(owner_id, copied_from_id)` 有没有复制过，有就返回 0；
   页面上已加入的卡片显示「已加入」。重复复制产生的脏数据用
   `partition by owner_id, copied_from_id` 保留最小 id 清掉

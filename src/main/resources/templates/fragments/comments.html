@@ -2,29 +2,40 @@
 <html xmlns:th="http://www.thymeleaf.org">
 <body>
 
-<!-- 注释：正文里的短虚下划线、以及每处的全部注释都在这里，由 comments.js 搬进弹窗。
-     这一块不占版面（hidden），页面左边是树、右边是正文。 -->
-<div class="cmt-data" id="comments" hidden th:fragment="data(slug, threads, canComment)">
+<!-- 右栏评论区：可以对整篇、选中的一段文字、或者整段/代码块评论；floor 最多两层 -->
+<aside class="toc cmt-pane" id="comments" th:fragment="pane(slug, threads, commentCount, canComment)">
+    <div class="cmt-head">
+        <span class="cmt-title">评论</span>
+        <span class="cmt-count" th:if="${commentCount > 0}" th:text="${commentCount}">0</span>
+        <button th:if="${canComment}" type="button" class="cmt-new" aria-label="评论整篇" title="评论整篇">＋</button>
+    </div>
+
     <form th:if="${canComment}" class="cmt-form" hidden th:action="@{/comment/{s}(s=${slug})}" method="post">
+        <div class="cmt-anchor-chip" hidden>
+            <span class="cmt-anchor-text"></span>
+            <button type="button" class="cmt-anchor-clear" aria-label="取消">×</button>
+        </div>
         <input type="hidden" name="quote" value="">
         <input type="hidden" name="anchorKind" value="">
         <input type="hidden" name="blockIndex" value="">
         <input type="hidden" name="prefix" value="">
         <input type="hidden" name="suffix" value="">
-        <textarea name="body" rows="4" maxlength="2000" placeholder="说点什么"></textarea>
+        <textarea name="body" rows="3" maxlength="500" placeholder="说点什么"></textarea>
         <div class="cmt-form-ops">
             <button type="button" class="cmt-cancel">取消</button>
             <button type="submit" class="cmt-submit">发表</button>
         </div>
     </form>
     <p class="cmt-login" th:unless="${canComment}">
-        <a th:href="@{/login}">登录</a> 后可以注释
+        <a th:href="@{/login}">登录</a> 后可以评论
     </p>
+
+    <div class="cmt-empty" th:if="${#lists.isEmpty(threads)}">还没有评论</div>
 
     <section class="cmt-thread" th:each="t : ${threads}"
              th:attr="data-kind=${t.kind()},data-quote=${t.quote()},data-block=${t.blockIndex()},data-prefix=${t.prefix()},data-suffix=${t.suffix()}">
         <blockquote class="cmt-quote" th:if="${!t.quote().isEmpty()}">
-            <span th:text="${t.quote()}">被注释的那段文字</span>
+            <span th:text="${t.quote()}">被评论的那段文字</span>
         </blockquote>
 
         <div class="cmt-card" th:each="c : ${t.comments()}" th:id="${'c' + c.id()}">
@@ -32,7 +43,7 @@
                 <span class="cmt-author" th:text="${c.author()}">某人</span>
                 <time th:text="${#temporals.format(c.createdAt(), 'MM-dd HH:mm')}">01-01 00:00</time>
             </div>
-            <p class="cmt-text" th:text="${c.body()}">注释内容</p>
+            <p class="cmt-text" th:text="${c.body()}">评论内容</p>
 
             <div class="cmt-ops">
                 <details th:if="${canComment}" class="cmt-reply">
@@ -44,7 +55,7 @@
                         <input type="hidden" name="blockIndex" th:value="${t.blockIndex()}">
                         <input type="hidden" name="prefix" th:value="${t.prefix()}">
                         <input type="hidden" name="suffix" th:value="${t.suffix()}">
-                        <textarea name="body" rows="2" maxlength="2000" placeholder="回复一下"></textarea>
+                        <textarea name="body" rows="2" maxlength="500" placeholder="回复一下"></textarea>
                         <div class="cmt-form-ops">
                             <button type="submit" class="cmt-submit">发表</button>
                         </div>
@@ -62,7 +73,7 @@
                         <span class="cmt-author" th:text="${r.author()}">某人</span>
                         <time th:text="${#temporals.format(r.createdAt(), 'MM-dd HH:mm')}">01-01 00:00</time>
                     </div>
-                    <p class="cmt-text" th:text="${r.body()}">注释内容</p>
+                    <p class="cmt-text" th:text="${r.body()}">回复内容</p>
                     <div class="cmt-ops">
                         <form th:if="${r.mine()}" th:action="@{/comment/{s}/{id}/delete(s=${slug},id=${r.id()})}"
                               method="post" class="inline">
@@ -73,7 +84,7 @@
             </div>
         </div>
     </section>
-</div>
+</aside>
 
 </body>
 </html>
