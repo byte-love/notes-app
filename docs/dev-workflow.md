@@ -156,6 +156,9 @@ sudo /opt/deploy/sync-db.sh    # 正式库整库覆盖到测试库
     （`markText` 的 walker 同时跳过 `.cmt-mark` 和 `.ann-mark`）
   - 服务端 `addComment` 收 `entryKind`：注释必须带 `quote`（没有落点画不出下划线，直接忽略）
   - 两条线共用 10 秒一条的限流、脏话挡板、2000 字上限
+  - **写什么进哪条线**：评论只写「对这一段有疑问 / 一点小见解」这种短的；长解释、补充、贴代码走注释。
+    2026-10-30 已经把当时所有 `COMMENT` 行改成了 `ANNOTATION`
+    （`update content_comment set entry_kind='ANNOTATION' where entry_kind='COMMENT'`），因为那些内容全是长解释
 - 术语浮窗是另一套（tooltip）：`.markdown .gl[data-tip]` + `detail.js` 的 `.gl-tip`，鼠标悬停显示、灰色长虚线，
   跟注释的松绿点线不是一回事
 - 「加入我的空间」是**幂等**的：`copyTo` 先查 `(owner_id, copied_from_id)` 有没有复制过，有就返回 0；
