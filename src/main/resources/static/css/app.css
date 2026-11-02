@@ -3513,7 +3513,7 @@ html[data-theme='dark'] .cl-latest {
    参考 shadcn 的 Card Collapsible（标题 + 计数徽标 + 可折叠内容）与 GitHub topics 的卡片网格。 */
 .group-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(min(320px, 100%), 1fr));
     gap: 0.6rem;
     /* 和里面条目列同一个宽度上限，否则条带比下面的卡片宽出一圈 */
     max-width: min(1160px, 96%);
@@ -3531,15 +3531,31 @@ html[data-theme='dark'] .cl-latest {
     flex-direction: column;
 }
 
+/* 收起的卡片排成两行：上面是三角 + 标题，下面是条数。
+   和条目卡片同一套骨架（标题在上、信息在下），一眼能看出这是「一张卡」而不是一条空条带。 */
 .group-grid > .item-group.folded > .item-group-toggle {
     flex: 1;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-content: center;
+    row-gap: 0.55rem;
     padding: 0.85rem 1rem;
     border-radius: 14px;
 }
 
-/* 卡片里空间大，计数给得比条带上大一点，右侧不至于空着 */
+.group-grid > .item-group.folded .item-group-caret {
+    grid-area: 1 / 1;
+}
+
+.group-grid > .item-group.folded .item-group-title {
+    grid-area: 1 / 2;
+}
+
 .group-grid > .item-group.folded .item-group-count {
-    padding: 0.14rem 0.58rem;
+    grid-area: 2 / 2;
+    justify-self: start;
+    margin-left: 0;
+    padding: 0.12rem 0.55rem;
     font-size: 0.74rem;
 }
 
