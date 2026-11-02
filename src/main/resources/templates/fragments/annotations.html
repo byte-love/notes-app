@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+
+<!-- 注释：正文里短虚下划线的那一层。数据不占版面，comments.js 读它给正文打标记、并在弹窗里列出来。
+     和右栏评论共用一张表，靠 entry_kind 区分，两条线各自独立。 -->
+<div class="ann-data" id="annotations" hidden th:fragment="data(slug, annotations, canComment)">
+    <form th:if="${canComment}" class="ann-form" hidden th:action="@{/comment/{s}(s=${slug})}" method="post">
+        <input type="hidden" name="entryKind" value="ANNOTATION">
+        <input type="hidden" name="quote" value="">
+        <input type="hidden" name="anchorKind" value="">
+        <input type="hidden" name="blockIndex" value="">
+        <input type="hidden" name="prefix" value="">
+        <input type="hidden" name="suffix" value="">
+        <textarea name="body" rows="4" maxlength="2000" placeholder="说点什么"></textarea>
+        <div class="cmt-form-ops">
+            <button type="button" class="ann-cancel">取消</button>
+            <button type="submit" class="cmt-submit">发表</button>
+        </div>
+    </form>
+
+    <section class="ann-thread" th:each="t : ${annotations}"
+             th:attr="data-kind=${t.kind()},data-quote=${t.quote()},data-block=${t.blockIndex()},data-prefix=${t.prefix()},data-suffix=${t.suffix()}">
+        <div class="cmt-card" th:each="c : ${t.comments()}" th:id="${'a' + c.id()}">
+            <div class="cmt-meta">
+                <span class="cmt-author" th:text="${c.author()}">某人</span>
+                <time th:text="${#temporals.format(c.createdAt(), 'MM-dd HH:mm')}">01-01 00:00</time>
+            </div>
+            <p class="cmt-text" th:text="${c.body()}">注释内容</p>
+            <div class="cmt-ops">
+                <form th:if="${c.mine()}" th:action="@{/comment/{s}/{id}/delete(s=${slug},id=${c.id()})}"
+                      method="post" class="inline">
+                    <button type="submit" class="cmt-del">删除</button>
+                </form>
+            </div>
+        </div>
+    </section>
+</div>
+
+</body>
+</html>

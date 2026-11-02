@@ -1,3 +1,19 @@
+/* 正在评论的那段原文：光标点进输入框后原生选区就没了，这里用 Custom Highlight 再铺一层底。
+   底色 + 下划线，跟「已有评论」的 .cmt-mark 同一套视觉语言，但整段铺满，一眼能看出在评哪句 */
+::highlight(cmt-anchor) {
+    background-color: var(--accent-soft);
+    color: inherit;
+    text-decoration: underline;
+    text-decoration-color: var(--accent);
+    text-decoration-thickness: 2px;
+}
+
+/* hidden 属性要真的不显示：下面不少组件自带 display: flex，会把浏览器默认的
+   [hidden] { display: none } 盖掉（工具条「评论」、引文小框就这么赖着不走） */
+[hidden] {
+    display: none !important;
+}
+
 :root {
     --fg: #1c1b18;
     --fg-2: #57534b;
@@ -696,6 +712,7 @@ button:hover,
 }
 
 .cmt-form textarea,
+.ann-form textarea,
 .cmt-reply textarea {
     width: 100%;
     font: inherit;
@@ -710,6 +727,7 @@ button:hover,
 }
 
 .cmt-form textarea:focus,
+.ann-form textarea:focus,
 .cmt-reply textarea:focus {
     outline: none;
     border-color: var(--accent);
@@ -803,6 +821,8 @@ button:hover,
     line-height: 1.75;
     color: var(--fg);
     overflow-wrap: anywhere;
+    /* 注释里常整段贴代码，换行要保留 */
+    white-space: pre-wrap;
 }
 
 .cmt-ops {
@@ -846,6 +866,61 @@ button:hover,
 
 .cmt-mark:hover {
     background: var(--accent-soft);
+}
+
+/* 正文里被注释过的那句话：短虚下划线，点开是弹窗（跟评论的实线区分开） */
+.ann-mark {
+    border-bottom: 1px dotted var(--accent);
+    cursor: pointer;
+}
+
+.ann-mark:hover {
+    background: var(--accent-soft);
+}
+
+/* 整段 / 代码块上的注释：左边一条点线 */
+.ann-block-mark {
+    border-left: 1px dotted var(--accent);
+    padding-left: 0.7rem;
+    margin-left: -0.7rem;
+    cursor: pointer;
+}
+
+/* 注释弹窗：这一处的全部注释 + 写新注释的框 */
+.ann-pop {
+    position: fixed;
+    z-index: 90;
+    width: min(430px, 92vw);
+    max-height: 64vh;
+    overflow: auto;
+    padding: 0.7rem 0.9rem 0.8rem;
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    box-shadow: 0 14px 36px rgba(0, 0, 0, 0.22);
+}
+
+.ann-pop-close {
+    position: absolute;
+    top: 0.3rem;
+    right: 0.35rem;
+    font: inherit;
+    font-size: 1rem;
+    line-height: 1;
+    padding: 0.15rem 0.3rem;
+    color: var(--fg-3);
+    background: none;
+    border: 0;
+    cursor: pointer;
+}
+
+.ann-pop-close:hover {
+    color: var(--danger);
+}
+
+/* 数据容器不占版面 */
+.ann-data {
+    display: none;
 }
 
 /* ---------- list page ---------- */
@@ -3213,7 +3288,8 @@ html[data-theme='dark'] .cl-latest {
     display: none;
 }
 
-.cmt-cancel {
+.cmt-cancel,
+.ann-cancel {
     font: inherit;
     font-size: 0.8rem;
     padding: 0.2rem 0.6rem;
@@ -3224,7 +3300,8 @@ html[data-theme='dark'] .cl-latest {
     cursor: pointer;
 }
 
-.cmt-cancel:hover {
+.cmt-cancel:hover,
+.ann-cancel:hover {
     color: var(--fg);
 }
 

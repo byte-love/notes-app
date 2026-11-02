@@ -144,10 +144,23 @@ sudo /opt/deploy/sync-db.sh    # 正式库整库覆盖到测试库
 - 静态资源带 `?v=` 版本号 + `Cache-Control: max-age=31536000`，nginx 开了 `gzip_types`（css/js）；
   nginx 到应用是长连接（`upstream ... keepalive` + `Connection ""`）
   **改了 css/js 必须同时升 `?v=`**，否则强缓存让浏览器永远跑老代码（2026-10-30 踩过：评论改了 4 版用户一直看不到）
-- 评论是 `content_comment(item_id, user_id, parent_id, quote, body, anchor_kind, block_index, prefix, suffix)`：
+- 评论是 `content_comment(item_id, user_id, parent_id, quote, body, anchor_kind, block_index, prefix, suffix, entry_kind)`：
   锚点两种粒度——`text`（选中文字，存原文 + 前后各 20 字）和 `block`（整段 / 代码块，存正文顶层块序号）；
   楼中楼用 `parent_id`，渲染最多两层。**评论按「最初来源条目」归并**：复制出来的副本沿 `copied_from_id`
   往上找根节点，所有人看同一串评论（否则每份副本各聊各的）
+- **评论和注释是同一张表的两条线，靠 `entry_kind` 区分**（V22 加的列）：
+  - `COMMENT`：右栏评论区，整篇评 / 选中文字评 / 楼中楼，进 `#comments`
+  - `ANNOTATION`：正文里**短虚下划线**（`.ann-mark`，`1px dotted`），点开是 `.ann-pop` 弹窗——列这一处全部注释，
+    也能接着写。数据渲染在 `#annotations`（hidden）里当数据源，表单 `.ann-form` 带 `entryKind=ANNOTATION`
+  - 选中文字后工具条给两个按钮「评论」「注释」，走 `comments.js` 里各自的 handler；两种标记互不嵌套
+    （`markText` 的 walker 同时跳过 `.cmt-mark` 和 `.ann-mark`）
+  - 服务端 `addComment` 收 `entryKind`：注释必须带 `quote`（没有落点画不出下划线，直接忽略）
+  - 两条线共用 10 秒一条的限流、脏话挡板、2000 字上限
+  - **写什么进哪条线**：评论只写「对这一段有疑问 / 一点小见解」这种短的；长解释、补充、贴代码走注释。
+    2026-10-30 已经把当时所有 `COMMENT` 行改成了 `ANNOTATION`
+    （`update content_comment set entry_kind='ANNOTATION' where entry_kind='COMMENT'`），因为那些内容全是长解释
+- 术语浮窗是另一套（tooltip）：`.markdown .gl[data-tip]` + `detail.js` 的 `.gl-tip`，鼠标悬停显示、灰色长虚线，
+  跟注释的松绿点线不是一回事
 - 「加入我的空间」是**幂等**的：`copyTo` 先查 `(owner_id, copied_from_id)` 有没有复制过，有就返回 0；
   页面上已加入的卡片显示「已加入」。重复复制产生的脏数据用
   `partition by owner_id, copied_from_id` 保留最小 id 清掉
@@ -155,6 +168,20 @@ sudo /opt/deploy/sync-db.sh    # 正式库整库覆盖到测试库
   原因由 `PublicController.forbidden(reason)` 挂在 request 的 `errorReason` 上，`AppErrorController` 据此换文案
 - 更新日志**一天一个版本**（不是一次改动一个版本），当天的新增功能写在「新增功能」小节；
   修复 / 优化 / 清理收进「修复与优化」小节，页面上默认折叠（`details.cl-fold`）
+- 版本号按改动量加：很少 → 末位 +1（`1.0.1`），较多 → 中间位 +1（`1.1.0`），全新版本才 `2.0.0`；
+  同一天只用同一个版本号
+- `ChangelogService.releases()` 的分组键是 **`released_on + version + title`**：同一天同一个版本的行
+  `title` 必须一致，后补条目时 `title` 留空会在页面上多出一个同名版本块（2026-10-30 出现过一天两个 v1.1.0）。
+  补条目要么照抄标题，要么插完跑一次
+  `update changelog_entry set title = '...' where version = '...' and coalesce(title,'') = ''`
+- **`hidden` 属性要靠 `app.css` 开头那条 `[hidden] { display: none !important }` 才真生效**：
+  组件自己写了 `display: flex` 的（`.cmt-tool`、`.cmt-anchor-chip`）会把浏览器默认的
+  `[hidden] { display: none }` 盖掉，属性设上了、元素还在屏上（2026-10-30 就踩了：评论工具条、
+  引文小框一直不消失，前端量 `el.hidden` 却是 true，误判了两轮）。以后新增带 `display` 的浮层
+  要记得这条全局规则，别删
+- **前端改动要量渲染结果，不能只量 DOM 属性**：判断「收起来了没有」用
+  `getComputedStyle(el).display === 'none'` / `el.offsetParent === null` / `document.elementFromPoint`
+  实际命中的元素，必要时截一张图；只读 `el.hidden`、只读 JS 返回值都会骗人
 - **改完要看响应时间**：`bash /opt/deploy/measure.sh dev`（服务器上跑，5 个主页面各热身 6 次再采 40 次，
   报 p50/p95 和 TTFB；源码 `deploy/measure.sh`）。2026-10-30 基线：p50 25~82ms，p95 ≤ 111ms
 - `app.sh` 部署完会自己把 4 个列表页 + 一篇正文各打 5 遍**预热**——JVM 刚起来头十几次请求是解释执行的，
