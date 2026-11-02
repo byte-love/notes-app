@@ -185,19 +185,28 @@ sudo /opt/deploy/sync-db.sh    # 正式库整库覆盖到测试库
   `getComputedStyle(el).display === 'none'` / `el.offsetParent === null` / `document.elementFromPoint`
   实际命中的元素，必要时截一张图；只读 `el.hidden`、只读 JS 返回值都会骗人
 - **列表页是「两级」结构，改样式前先看这段**（2026-11-02 定的）：
-  - 一级 = 分组标题条（`.item-group-toggle`：`bg-2` 底 + 描边 + 圆角 12 + 计数胶囊），整行可点，收起时只剩这条
+  - 一级 = 分组标题条（`.item-group-toggle`：`bg-2` 底 + 描边 + 圆角 12 + 计数胶囊），整行可点；
+    收起后条带退成一张卡片，跟同样收起的其他分类并排成两列（见下面「收起的一级排成卡片网格」）
   - 二级 = 该组卡片的**筛选标签**（`.subgroup-chip`：胶囊 + 计数），**永远有一档选中**（服务端先把第一档标 `on`），
     所以点开任何一组看到的都是卡片，不会再出现「点开是又一层分类列表」
   - 二级档位由 `SubGroupService` + `resources/subgroups.json` 算：按分组 slug 配 `{name, words}`，
     顺序匹配「标题 + 摘要」，命中第一个词就归那档，都没命中归「其他」；**只有该组条数 ≥ 13 且配了规则才拆**，
     只拆出一档就不拆。加新组只要往 json 里加一段，不用动数据库
   - 展开状态：一级记 `group-fold:<组标题>`，二级记 `sub-open:<组标题>`（存 chip 的 `data-chip`）
+  - **收起的一级排成卡片网格**（2026-11-02 定的）：分组外层是 `.group-grid`
+    （`repeat(auto-fill, minmax(320px, 1fr))`，窄屏一列，宽度上限和条目列一样是 `min(1160px, 96%)`）；
+    `.item-group` 默认 `grid-column: 1 / -1` 占满整行，挂了 `.folded` 才回到网格里跟别的分类并排。
+    所以：**新增页面渲染 `groupSections` 片段的，外面要包一层 `.group-grid`**，
+    否则「加载更多」插进来的新分组不会进网格；`.list-more` 锚点已按 `grid-column: 1 / -1` 处理
   - **坑一：Thymeleaf 的 `th:replace` 优先级高于 `th:each`**。写
     `<th:block th:each="i : ${items}" th:replace="~{... card(${i})}">` 时 fragment 里拿到的是 null
     （列表页 500，报 `Property or field 'id' cannot be found on null`）。必须拆成两层 th:block
   - **坑二：折叠外层要包一个容器**。`.item-group.folded .item-list { display: none }` 只盖得住卡片，
     二级标签行不在 `.item-list` 里，所以二级内容整体包在 `.item-group-body` 里，靠
     `.item-group.folded .item-group-body { display: none }` 一起收掉
+  - **坑三：条目列在分组里会缩两次**。`.with-tree .item-list` 本来就限了 `min(1160px, 96%)`，
+    分组外层再限一次就变成 96% 的 96%，卡片比上面的条带窄一圈，所以
+    `.group-grid > .item-group .item-list { max-width: 100% }` 要留着（实测外层和内层都是 745px 才对齐）
 - **改完要看响应时间**：`bash /opt/deploy/measure.sh dev`（服务器上跑，5 个主页面各热身 6 次再采 40 次，
   报 p50/p95 和 TTFB；源码 `deploy/measure.sh`）。2026-10-30 基线：p50 25~82ms，p95 ≤ 111ms
 - `app.sh` 部署完会自己把 4 个列表页 + 一篇正文各打 5 遍**预热**——JVM 刚起来头十几次请求是解释执行的，

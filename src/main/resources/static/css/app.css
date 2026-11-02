@@ -3507,6 +3507,66 @@ html[data-theme='dark'] .cl-latest {
     margin-bottom: 0;
 }
 
+/* 收起态的排列：收起的分组并排成卡片网格，展开的那组占满整行。
+   以前每条都占满整行、组间还留 2.6rem，一屏只有几条空条带，很空；
+   现在收起的并成两列（窄屏一列），一屏能扫完所有分类，展开的那组仍是整行条带 + 卡片。
+   参考 shadcn 的 Card Collapsible（标题 + 计数徽标 + 可折叠内容）与 GitHub topics 的卡片网格。 */
+.group-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 0.6rem;
+    /* 和里面条目列同一个宽度上限，否则条带比下面的卡片宽出一圈 */
+    max-width: min(1160px, 96%);
+}
+
+.group-grid > .item-group {
+    grid-column: 1 / -1;
+    margin-top: 0;
+}
+
+/* 收起的分组退回网格，跟旁边的分类并排；撑满整行的格子，高度才齐 */
+.group-grid > .item-group.folded {
+    grid-column: auto;
+    display: flex;
+    flex-direction: column;
+}
+
+.group-grid > .item-group.folded > .item-group-toggle {
+    flex: 1;
+    padding: 0.85rem 1rem;
+    border-radius: 14px;
+}
+
+/* 卡片里空间大，计数给得比条带上大一点，右侧不至于空着 */
+.group-grid > .item-group.folded .item-group-count {
+    padding: 0.14rem 0.58rem;
+    font-size: 0.74rem;
+}
+
+.group-grid > .item-group.folded > .item-group-toggle:hover .item-group-count {
+    color: var(--accent);
+    border-color: var(--accent);
+}
+
+.group-grid > .item-group:not(.folded) {
+    margin-bottom: 1.2rem;
+}
+
+/* 外层已经限过宽了，里面的条目列别再缩 4%（96% of 96%），否则卡片比条带窄一圈 */
+.group-grid > .item-group .item-list {
+    max-width: 100%;
+}
+
+/* 收起的卡片把三角往右挪一点，暗示点开是「展开」 */
+.group-grid > .item-group.folded .item-group-toggle:hover .item-group-caret {
+    transform: rotate(0deg) translateX(2px);
+}
+
+/* 「取下一批」的锚点别单独占一个网格格子 */
+.group-grid > .list-more {
+    grid-column: 1 / -1;
+}
+
 /* 二级分档：一行标签（chip），点开才在下面展开那一档的卡片；一次只开一档。
    参考 shadcn 的 filter-chip 做法：胶囊 + 计数，选中态用强调色 */
 .subgroup-chips {
