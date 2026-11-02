@@ -155,7 +155,9 @@ sudo /opt/deploy/sync-db.sh    # 正式库整库覆盖到测试库
   - 选中文字后工具条给两个按钮「评论」「注释」，走 `comments.js` 里各自的 handler；两种标记互不嵌套
     （`markText` 的 walker 同时跳过 `.cmt-mark` 和 `.ann-mark`）
   - 服务端 `addComment` 收 `entryKind`：注释必须带 `quote`（没有落点画不出下划线，直接忽略）
-  - 两条线共用 10 秒一条的限流、脏话挡板、2000 字上限
+  - 两条线共用 10 秒一条的限流、脏话挡板。**字数上限现在不一致**：注释框 `maxlength=2000`、
+    评论框（含回复）还是 `maxlength=500`，而服务端 `MAX_COMMENT` 对两者都按 2000 截断——
+    待定：要么服务端按 `entryKind` 分别截断（评论 500 / 注释 2000），要么把评论框也放开到 2000
   - **写什么进哪条线**：评论只写「对这一段有疑问 / 一点小见解」这种短的；长解释、补充、贴代码走注释。
     2026-10-30 已经把当时所有 `COMMENT` 行改成了 `ANNOTATION`
     （`update content_comment set entry_kind='ANNOTATION' where entry_kind='COMMENT'`），因为那些内容全是长解释
