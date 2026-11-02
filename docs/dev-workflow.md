@@ -218,11 +218,16 @@ sudo /opt/deploy/sync-db.sh    # 正式库整库覆盖到测试库
     只给叶子连续编号，分组不占号），模板里 `#numbers.formatInteger(n.ordinal(), 2)` 补成 01；
     分组标题右侧 `#lists.size(n.children)`（lazy 的那种节点子列表还没渲染，不显示）。
     叶子行的 padding-left 是 2rem、text-indent -1.4rem，正好让号在 0.6rem 起、标题和折行对齐到 2rem
-  - **只有最外层的 `<ul>` 带 `.tree`**（`fragments/tree :: nodes`），子层用 `sub`（裸 `<ul>`），
-    懒加载接口也返回 `sub`。子层要是也带 `.tree`，分组之间的分隔线（`.tree > li + li`）会套到每一层，
-    叶子之间全长出横线（2026-11-02 就是这个 bug，看着像一个个方框）
+  - **逐行分隔线是「要的效果」，别当 bug 修**（2026-11-02 来回折腾了两次）：`fragments/tree :: nodes`
+    是递归片段，**每一层的 `<ul>` 都带 `.tree` 类**，所以 `.tree > li + li` 的 `border-top` 会套到每层，
+    叶子之间也是一条线 —— 用户要的就是这个观感（他拿正式版截图对照过）。我把子层改成裸 `<ul>`（`sub`）
+    去掉线之后被否了，已还原。要动这块先问
+  - **左树字号/行距固定值**：叶子 0.83rem、行高 28px、上下内边距 0.22rem、悬挂缩进 `padding-left:2rem`
+    + `text-indent:-1.4rem`；行号 0.66rem（宽 1.1rem）；一级分组 0.9rem、二级分组 0.85rem。
+    2026-11-02 试过整体 ×1.15，被否（太挤、换行多），已还原
   - **单行加粗的引用块**（`> **回答流程**`）当标签用：`.markdown blockquote:has(> p:only-of-type > strong:only-child)`
-    居中 + 收窄内边距。注意必须用 `:only-of-type`——注释功能会往引用块里插一个「＋」按钮，
+    收窄内边距 + 纵向居中（`display:flex; align-items:center`）、**横向仍然左对齐**（试过居中，
+    用户明确要左对齐）。必须用 `:only-of-type`——注释功能会往引用块里插一个「＋」按钮，
     用 `:only-child` 永远匹配不上（踩过一次，规则写了页面没生效）
   - **正文里的三种下划线别撞**：评论 = 1px 实线（强调色 35% 透明，`color-mix`）、注释 = 1px 点线、
     术语浮窗 = 1px 灰虚线；评论不再铺半透明底，避免干扰阅读
