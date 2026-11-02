@@ -26,10 +26,12 @@ public class RecommendService {
 
     private final ContentItemRepository items;
     private final VisibilityService visibility;
+    private final TagService tags;
 
-    public RecommendService(ContentItemRepository items, VisibilityService visibility) {
+    public RecommendService(ContentItemRepository items, VisibilityService visibility, TagService tags) {
         this.items = items;
         this.visibility = visibility;
+        this.tags = tags;
     }
 
     /** 推荐栏的一张卡片。count 是这条加它下面所有子孙的条数。 */
@@ -187,6 +189,7 @@ public class RecommendService {
             copy.setRecommended(false);
             copy.setCopiedFromId(src.getId());
             ContentItem saved = items.save(copy);
+            tags.copy(src.getId(), saved.getId());
             newIdOf.put(src.getId(), saved.getId());
             copied++;
         }

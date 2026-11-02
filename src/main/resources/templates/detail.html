@@ -42,6 +42,12 @@
                 </div>
             </header>
 
+            <!-- 自动打的标签：点一下就是把列表按这个标签筛一遍 -->
+            <p class="doc-tags" th:if="${itemTags != null and !#lists.isEmpty(itemTags)}">
+                <a class="doc-tag" th:each="t : ${itemTags}" th:href="${basePath + '?tag=' + t}"
+                   th:text="${t}">标签</a>
+            </p>
+
             <!-- 这条是补充笔记时，标题下面指出「本体」是哪一篇，点一下回去 -->
             <p class="doc-origin" th:if="${parentNote != null}">
                 <span class="doc-origin-label">本体</span>

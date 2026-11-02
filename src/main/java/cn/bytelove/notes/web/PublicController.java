@@ -15,6 +15,7 @@ import cn.bytelove.notes.service.ReadingPositionService;
 import cn.bytelove.notes.service.RatingService;
 import cn.bytelove.notes.service.NoteTreeService;
 import cn.bytelove.notes.service.SubGroupService;
+import cn.bytelove.notes.service.TagService;
 import cn.bytelove.notes.service.ViewerService;
 import cn.bytelove.notes.service.VisibilityService;
 import cn.bytelove.notes.service.VisibilityService.Viewer;
@@ -65,6 +66,7 @@ public class PublicController {
     private final ViewerService viewers;
     private final ContentStarService stars;
     private final RatingService ratings;
+    private final TagService tags;
     private final ProjectMetaService meta;
     private final ReadingPositionService positions;
     private final BookmarkService bookmarks;
@@ -77,7 +79,7 @@ public class PublicController {
     private final HighlightService highlights;
 
     public PublicController(ContentItemRepository items, VisibilityService visibility, ViewerService viewers,
-                            ContentStarService stars, RatingService ratings, ProjectMetaService meta, ReadingPositionService positions, BookmarkService bookmarks,
+                            ContentStarService stars, RatingService ratings, TagService tags, ProjectMetaService meta, ReadingPositionService positions, BookmarkService bookmarks,
                             MarkdownRenderer markdown, NoteTreeService tree, SubGroupService subGroups,
                             CommentService comments, CommentFilter commentFilter,
                             CommentRateLimiter commentLimiter, HighlightService highlights) {
@@ -86,6 +88,7 @@ public class PublicController {
         this.viewers = viewers;
         this.stars = stars;
         this.ratings = ratings;
+        this.tags = tags;
         this.meta = meta;
         this.positions = positions;
         this.bookmarks = bookmarks;
@@ -100,39 +103,43 @@ public class PublicController {
 
     @GetMapping("/")
     public String home(Model model, Authentication auth) {
-        return listing(ContentKind.NOTE, "笔记", model, auth, null, false, null);
+        return listing(ContentKind.NOTE, "笔记", model, auth, null, false, null, null);
     }
 
     @GetMapping("/notes")
     public String notes(Model model, Authentication auth,
                         @RequestParam(name = "from", required = false) Integer from,
                         @RequestParam(name = "fragment", defaultValue = "false") boolean fragment,
-                        @RequestParam(name = "rate", required = false) String rate) {
-        return listing(ContentKind.NOTE, "笔记", model, auth, from, fragment, rate);
+                        @RequestParam(name = "rate", required = false) String rate,
+                        @RequestParam(name = "tag", required = false) String tag) {
+        return listing(ContentKind.NOTE, "笔记", model, auth, from, fragment, rate, tag);
     }
 
     @GetMapping("/bagu")
     public String bagu(Model model, Authentication auth,
                        @RequestParam(name = "from", required = false) Integer from,
                        @RequestParam(name = "fragment", defaultValue = "false") boolean fragment,
-                       @RequestParam(name = "rate", required = false) String rate) {
-        return listing(ContentKind.BAGU, "八股", model, auth, from, fragment, rate);
+                       @RequestParam(name = "rate", required = false) String rate,
+                       @RequestParam(name = "tag", required = false) String tag) {
+        return listing(ContentKind.BAGU, "八股", model, auth, from, fragment, rate, tag);
     }
 
     @GetMapping("/algo")
     public String algo(Model model, Authentication auth,
                        @RequestParam(name = "from", required = false) Integer from,
                        @RequestParam(name = "fragment", defaultValue = "false") boolean fragment,
-                       @RequestParam(name = "rate", required = false) String rate) {
-        return listing(ContentKind.ALGO, "算法", model, auth, from, fragment, rate);
+                       @RequestParam(name = "rate", required = false) String rate,
+                       @RequestParam(name = "tag", required = false) String tag) {
+        return listing(ContentKind.ALGO, "算法", model, auth, from, fragment, rate, tag);
     }
 
     @GetMapping("/projects")
     public String projects(Model model, Authentication auth,
                            @RequestParam(name = "from", required = false) Integer from,
                            @RequestParam(name = "fragment", defaultValue = "false") boolean fragment,
-                           @RequestParam(name = "rate", required = false) String rate) {
-        return listing(ContentKind.PROJECT, "项目", model, auth, from, fragment, rate);
+                           @RequestParam(name = "rate", required = false) String rate,
+                           @RequestParam(name = "tag", required = false) String tag) {
+        return listing(ContentKind.PROJECT, "项目", model, auth, from, fragment, rate, tag);
     }
 
     @GetMapping("/bagu/{slug}")
@@ -156,7 +163,7 @@ public class PublicController {
     }
 
     private String listing(ContentKind kind, String pageTitle, Model model, Authentication auth,
-                           Integer from, boolean fragment, String rate) {
+                           Integer from, boolean fragment, String rate, String tag) {
         Viewer viewer = viewers.current(auth);
         Set<Long> lockedIds = new LinkedHashSet<>();
         List<ContentItem> all = filtered(poolForListing(kind, viewer), viewer, lockedIds);
@@ -180,6 +187,21 @@ public class PublicController {
         Map<String, Integer> counts = rateCounts(leaves, starIds);
         String rateFilter = pickRate(rate);
         leaves = byRate(leaves, rateFilter, starIds);
+
+        // 标签筛选：同样只挑卡片；标签上的条数按「当前星级筛选后」的数，
+        // 这样「只看三星」时还能看出三星里哪些主题多
+        Map<String, Integer> tagCounts = tags.counts(idsOf(leaves));
+        String tagFilter = (tag == null || tag.isBlank()) ? null : tag.trim();
+        if (tagFilter != null) {
+            Set<Long> withTag = tags.itemIdsWithTag(tagFilter);
+            List<ContentItem> kept = new ArrayList<>();
+            for (ContentItem i : leaves) {
+                if (withTag.contains(i.getId())) {
+                    kept.add(i);
+                }
+            }
+            leaves = kept;
+        }
 
         // 补充笔记不单独占一张卡：作为附件挂到它的「本体」卡片里（本体不可见时才退回当普通卡片）
         Map<Long, List<ContentItem>> supplementsOf = new LinkedHashMap<>();
@@ -236,6 +258,9 @@ public class PublicController {
         model.addAttribute("starIds", starIds);
         model.addAttribute("rateFilter", rateFilter);
         model.addAttribute("rateCounts", counts);
+        model.addAttribute("tagFilter", tagFilter);
+        model.addAttribute("tagCounts", tagCounts);
+        model.addAttribute("itemTags", tags.of(idsOf(leaves)));
         model.addAttribute("canRate", viewer.userId() != null);
         model.addAttribute("bookmarkIds", bookmarks.ids(viewer.userId()));
         model.addAttribute("lastReadId", lastReadId);
@@ -299,6 +324,7 @@ public class PublicController {
         model.addAttribute("item", item);
         model.addAttribute("html", markdown.toHtml(item.getBody()));
         model.addAttribute("toc", markdown.toc(item.getBody()));
+        model.addAttribute("itemTags", tags.of(List.of(item.getId())).getOrDefault(item.getId(), List.of()));
         // 正文末尾的附件卡：挂到本文下面的补充笔记，点开就是那篇
         model.addAttribute("attachedNotes", attachedNotesOf(siblings, item, lockedIds));
         // 反过来，本文如果是补充笔记，标题下面给一条回「本体」的链接
@@ -592,6 +618,15 @@ public class PublicController {
             return;
         }
         response.sendRedirect(request.getContextPath() + basePath(item.getKind()) + "/" + item.getSlug());
+    }
+
+    /** 列表里这批条目的 id，标签是一次查一批，不要每张卡片查一次。 */
+    private static List<Long> idsOf(List<ContentItem> items) {
+        List<Long> ids = new ArrayList<>(items.size());
+        for (ContentItem i : items) {
+            ids.add(i.getId());
+        }
+        return ids;
     }
 
     /** 星级标签的筛选项：star = 只看收藏，3/2/1 = 这一档及以上，0 = 只看没标的；别的值当没选。 */

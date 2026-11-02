@@ -82,10 +82,12 @@
         if (!base || !from) return;
         more.dataset.busy = '1';
         try {
-            // 星级筛选得跟着翻页一起带过去，否则第二批又是全部
+            // 星级 / 标签筛选得跟着翻页一起带过去，否则第二批又是全部
             const rate = more.dataset.rate;
+            const tag = more.dataset.tag;
             const query = `from=${encodeURIComponent(from)}&fragment=true`
-                + (rate ? `&rate=${encodeURIComponent(rate)}` : '');
+                + (rate ? `&rate=${encodeURIComponent(rate)}` : '')
+                + (tag ? `&tag=${encodeURIComponent(tag)}` : '');
             const res = await fetch(`${base}?${query}`, {
                 credentials: 'same-origin',
                 headers: { 'X-Requested-With': 'fetch' },

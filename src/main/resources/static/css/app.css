@@ -1166,6 +1166,51 @@ button:hover,
     color: var(--accent);
 }
 
+/* ---------- 标签（按词表自动打的，卡片上只展示，详情页点了能筛） ---------- */
+.item-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3rem;
+    margin: 0.3rem 0 0;
+}
+
+.item-tag {
+    font-size: 0.72rem;
+    line-height: 1.6;
+    padding: 0.02rem 0.4rem;
+    color: var(--fg-3);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+}
+
+.doc-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin: -1.2rem 0 2rem;
+}
+
+.doc-tag {
+    font-size: 0.76rem;
+    line-height: 1.7;
+    padding: 0.05rem 0.55rem;
+    color: var(--fg-2);
+    background: var(--bg-2);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+}
+
+.doc-tag:hover {
+    color: var(--accent);
+    border-color: var(--accent);
+    text-decoration: none;
+}
+
+/* 标签那条筛选行跟星级那条挨着，别各自留一份外边距 */
+.tag-filter {
+    margin-top: -0.9rem;
+}
+
 /* ---------- document layout ---------- */
 .doc-wrap {
     max-width: 1100px;
