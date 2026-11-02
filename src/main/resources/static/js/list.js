@@ -1,7 +1,9 @@
 // 列表页：① 滚到底取下一批 ② 分类标题可收起/展开，状态记在 localStorage
+// ③ 大分类里的二级小分类默认收起，点开才展开
 (() => {
     // ---------- 分类折叠 ----------
     const KEY = 'group-fold:';
+    const SUB_KEY = 'sub-fold:';
 
     const applyFold = (group) => {
         const key = group.dataset.key;
@@ -11,11 +13,36 @@
         } catch (e) {}
     };
 
+    // 二级小分类：没记过状态就默认收起（这样一进页面只看到几档小标题）
+    const applySubFold = (sub) => {
+        const key = sub.dataset.sub;
+        if (!key) return;
+        let saved = null;
+        try {
+            saved = localStorage.getItem(SUB_KEY + key);
+        } catch (e) {}
+        sub.classList.toggle('folded', saved === null ? true : saved === '1');
+    };
+
     const applyFolds = (root) => {
         (root || document).querySelectorAll('.item-group[data-key]').forEach(applyFold);
+        (root || document).querySelectorAll('.item-subgroup[data-sub]').forEach(applySubFold);
     };
 
     document.addEventListener('click', (e) => {
+        const subToggle = e.target.closest('.item-subgroup-toggle');
+        if (subToggle) {
+            const sub = subToggle.closest('.item-subgroup');
+            if (!sub) return;
+            sub.classList.toggle('folded');
+            const key = sub.dataset.sub;
+            if (key) {
+                try {
+                    localStorage.setItem(SUB_KEY + key, sub.classList.contains('folded') ? '1' : '0');
+                } catch (err) {}
+            }
+            return;
+        }
         const toggle = e.target.closest('.item-group-toggle');
         if (!toggle) return;
         const group = toggle.closest('.item-group');

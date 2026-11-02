@@ -3489,6 +3489,52 @@ html[data-theme='dark'] .cl-latest {
 .item-group.folded .item-group-toggle {
     margin-bottom: 0;
 }
+
+/* 二级小分类：条目太多的大组里再分一层，默认收起（一进页面只看到几档小标题） */
+.item-subgroup {
+    margin: 0.1rem 0 0;
+}
+
+.item-subgroup-toggle {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    width: 100%;
+    margin: 0;
+    padding: 0.3rem 0;
+    font: inherit;
+    text-align: left;
+    color: inherit;
+    background: none;
+    border: 0;
+    cursor: pointer;
+}
+
+.item-subgroup-title {
+    margin: 0;
+    font-size: 0.84rem;
+    font-weight: 500;
+    color: var(--fg-2);
+    letter-spacing: 0.01em;
+}
+
+.item-subgroup-toggle:hover .item-subgroup-title {
+    color: var(--accent);
+}
+
+.item-subgroup .item-group-caret {
+    border-left-width: 4px;
+    border-top-width: 3px;
+    border-bottom-width: 3px;
+}
+
+.item-subgroup .item-list {
+    margin: 0.45rem 0 0.6rem;
+}
+
+.item-subgroup.folded .item-list {
+    display: none;
+}
 /* 「已加入」状态：同类按钮，但不可点 */
 .btn-small.on,
 .btn-small[disabled] {
