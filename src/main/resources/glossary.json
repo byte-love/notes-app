@@ -115,5 +115,17 @@
   "HTML": "HTML（超文本标记语言）：用标签描述页面结构的语言（`<p>`、`<span>`、`<a href>`）。它和「纯文本」的关键区别是：数据里的 `<` 若不转义就会被当成标签 —— 这是 XSS 的根源。",
   "DOM": "DOM（Document Object Model，文档对象模型）：浏览器把 HTML 解析成的一棵对象树，JS 通过它读写页面 —— document、querySelector、innerHTML、addEventListener 都在这一层。小程序没有 DOM，所以不能直接操作页面节点，只能用 setData 驱动视图。",
   "BOM": "BOM（Browser Object Model，浏览器对象模型）：浏览器提供、但「不是页面本身」的那套能力 —— window、location、history、navigator、localStorage、setTimeout 都属于 BOM。小程序也没有 BOM，所以存储要用 wx.setStorageSync、跳转要用 wx.navigateTo。",
-  "JSCore": "JSCore：JavaScript 引擎（WebKit 的实现名；V8 是 Chrome 的同类引擎）。小程序把 JS 跑在 JSCore / V8 里 —— 引擎只提供语言本身，不提供 DOM/BOM，那些能力要靠宿主（浏览器或小程序框架）另行提供。"
+  "JSCore": "JSCore：JavaScript 引擎（WebKit 的实现名；V8 是 Chrome 的同类引擎）。小程序把 JS 跑在 JSCore / V8 里 —— 引擎只提供语言本身，不提供 DOM/BOM，那些能力要靠宿主（浏览器或小程序框架）另行提供。",
+  "ApplicationContext": "ApplicationContext：Spring 的应用上下文，是整个 IoC 容器的句柄——@Component / @Service / @Bean 生成的对象都由它管理。常用 getBean(Class) 按类型取一个、getBeansOfType(Class) 按类型取一批、containsBean 判断有没有。",
+  "BeanFactory": "BeanFactory：Spring 容器最底层的接口，负责 Bean 的创建与获取。ApplicationContext 在它之上加了事件、国际化、资源加载等能力，日常开发直接用 ApplicationContext 就够。",
+  "ListableBeanFactory": "ListableBeanFactory：BeanFactory 的子接口，提供「按类型批量取 Bean」的能力——getBeansOfType / getBeanNamesForType 都定义在它上面，策略模式靠它一次性收集所有策略实现。",
+  "@PostConstruct": "@PostConstruct：JSR-250 的注解，标在方法上表示「这个 Bean 依赖注入完成后执行一次」，常用来做初始化、或收集容器里的同类 Bean 建缓存表。",
+  "getBeansOfType": "getBeansOfType：按类型取出容器里所有该类型的 Bean，返回「Bean 名字 → Bean 实例」的 Map。策略模式用它一次性把所有策略装进自己的 Map，key 就是 @Component 括号里写的名字。",
+  "@Component": "@Component：把一个类交给 Spring 管理；带括号可以指定 Bean 的名字，例如 @Component(\"USER:WAIT_PAY\")，这个名字后面会当路由 key 用。",
+  "@Autowired": "@Autowired：让 Spring 把一个现成的依赖注入进来（默认按类型匹配），比如把容器自己注入成 ApplicationContext 字段。",
+  "DTO": "DTO（Data Transfer Object，数据传输对象）：层与层之间传数据用的普通 Java 对象，只装字段不装逻辑，比如订单取消时的订单号、操作人、取消原因、订单状态。",
+  "ThreadLocal": "ThreadLocal：每个线程各存一份副本的变量，请求进来放当前登录用户、请求结束再清掉，业务代码里随手就能取到登录态。",
+  "SecurityContext": "SecurityContext：Spring Security 存放当前登录用户（Authentication）的上下文，通常也是挂在线程上，所以同一线程里能随手取到。",
+  "ConcurrentHashMap": "ConcurrentHashMap：JDK 提供的线程安全哈希表，读写按桶加锁而不是锁整表，适合「启动时写一次、运行时大量读」的缓存表（比如策略注册表）。",
+  "Bean": "Bean：由 Spring 容器创建和管理的对象。@Component / @Service 标过的类，启动时被实例化并注册进容器，业务代码通过注入拿到的都是 Bean。"
 }
