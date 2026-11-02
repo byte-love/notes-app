@@ -1454,7 +1454,9 @@ button:hover,
     grid-template-columns: 19% minmax(0, 1fr);
     justify-content: stretch;
     gap: 2rem;
-    padding: 2rem 1.5rem 0;
+    /* 底部留白：以前是 0，滚到底时最后一个元素（列表最后一张卡、正文末尾那张附件卡）
+       贴着视口底边，看着像被切掉了 */
+    padding: 2rem 1.5rem 3.6rem;
     align-items: start;
 }
 
@@ -1488,29 +1490,14 @@ button:hover,
     padding: 0;
 }
 
+/* 层级只靠缩进 + 字重区分：不再画整列竖线和每行短横线（那行线是「单调」的主要来源） */
 .tree ul {
-    margin-left: 0.45rem;
-    padding-left: 0.95rem;
-    border-left: 1px solid var(--tree-guide);
+    margin-left: 0;
+    padding-left: 0.7rem;
 }
 
 .tree li {
     margin: 0;
-}
-
-/* 每层挂一根短横线，层级才看得出来 */
-.tree ul > li {
-    position: relative;
-}
-
-.tree ul > li::before {
-    content: "";
-    position: absolute;
-    left: -0.95rem;
-    top: 1.03rem;
-    width: 0.62rem;
-    height: 1px;
-    background: var(--tree-guide);
 }
 
 .tree a,
@@ -1522,34 +1509,89 @@ button:hover,
     border: 0;
     background: none;
     font-family: inherit;
-    padding: 0.26rem 0.5rem;
-    border-radius: 6px;
+    padding: 0.38rem 0.6rem;
+    border-radius: 8px;
     color: var(--fg-2);
-    font-size: 0.86rem;
-    line-height: 1.45;
+    font-size: 0.85rem;
+    line-height: 1.5;
     text-decoration: none;
+    transition: background 0.14s ease, color 0.14s ease;
 }
 
-/* 分组标题是一颗折叠按钮，不是链接 */
+/* 叶子行最左边留出「行号」的位置：号从 0.6rem 起，标题和折行后的第二行都对齐到 2rem */
+.tree a,
+.tree .locked {
+    padding-left: 2rem;
+    text-indent: -1.4rem;
+}
+
+.tree-num {
+    display: inline-block;
+    text-indent: 0;
+    width: 1.1rem;
+    margin-right: 0.3rem;
+    font-family: var(--mono);
+    font-size: 0.66rem;
+    line-height: 1.7;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.01em;
+    color: var(--fg-3);
+}
+
+.tree a.on .tree-num {
+    color: var(--accent);
+}
+
+/* 分组标题是一颗折叠按钮，不是链接；箭头用两条边画出来，比 ▾ 细一点。
+   标题和右侧条数排成一行，条数用等宽数字，一行里不至于只有一串标题 */
 .tree .tree-group {
     position: relative;
-    padding-left: 0.95rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding-left: 1.15rem;
     cursor: pointer;
+    font-weight: 600;
+    color: var(--fg);
+    text-indent: 0;
+}
+
+.tree-group-title {
+    flex: 1;
+    min-width: 0;
+}
+
+.tree-count {
+    flex: none;
+    font-family: var(--mono);
+    font-size: 0.66rem;
+    font-variant-numeric: tabular-nums;
+    color: var(--fg-3);
+}
+
+.tree .tree-group.on .tree-count {
+    color: var(--accent);
 }
 
 .tree .tree-group::before {
-    content: "▾";
+    content: "";
     position: absolute;
-    left: 0.12rem;
+    left: 0.5rem;
     top: 50%;
-    transform: translateY(-50%);
-    font-size: 0.82rem;
-    line-height: 1;
-    color: var(--fg-2);
+    width: 0.3rem;
+    height: 0.3rem;
+    border-right: 1.4px solid var(--fg-3);
+    border-bottom: 1.4px solid var(--fg-3);
+    transform: translateY(-65%) rotate(45deg);
+    transition: transform 0.14s ease, border-color 0.14s ease;
 }
 
 .tree li.folded > .tree-group::before {
-    content: "▸";
+    transform: translateY(-35%) rotate(-45deg);
+}
+
+.tree .tree-group:hover::before {
+    border-color: var(--accent);
 }
 
 .tree li.folded > ul {
@@ -1557,7 +1599,13 @@ button:hover,
 }
 
 .tree > li {
-    margin-top: 1.4rem;
+    margin-top: 0.85rem;
+}
+
+/* 组和组之间加一条极淡的分隔线：条目多的页面（笔记有 5 组）才不会糊成一片 */
+.tree > li + li {
+    padding-top: 0.6rem;
+    border-top: 1px solid var(--line);
 }
 
 .tree > li:first-child {
@@ -1572,38 +1620,48 @@ button:hover,
     font-weight: 600;
     font-size: 0.9rem;
     letter-spacing: 0.01em;
-    padding: 0.4rem 0.5rem;
+    padding: 0.36rem 0.6rem;
+}
+
+.tree > li > a,
+.tree > li > .locked {
+    padding-left: 2rem;
+    text-indent: -1.4rem;
 }
 
 .tree > li > .tree-group {
-    padding-left: 0.95rem;
+    padding-left: 1.15rem;
 }
 
 /* 二级分组（如笔记的「面试问答」）也要比叶子重，否则整棵树看起来是平的 */
 .tree ul > li > .tree-group {
     font-weight: 600;
-    font-size: 0.86rem;
+    font-size: 0.85rem;
     color: var(--fg);
     /* 左侧留出箭头的位，否则 padding 简写会把 .tree-group 的 padding-left 覆盖掉，箭头压到文字上 */
-    padding: 0.34rem 0.5rem 0.34rem 0.95rem;
+    padding: 0.28rem 0.6rem 0.28rem 1.15rem;
 }
 
 /* 没有嵌套子目录时（项目区那种两层结构），靠字号和间距撑出层次 */
 
-/* 二级是正文层级：正常字重，比分类低一档亮度 */
+/* 二级是正文层级：正常字重，比分类低一档亮度。
+   长标题会折行，折出来的第二行用「悬挂缩进」对齐到正文起点，而不是贴着圆角边 */
 .tree ul > li > a,
 .tree ul > li > .locked {
     font-weight: 400;
-    font-size: 0.82rem;
+    font-size: 0.83rem;
+    line-height: 1.4;
     color: var(--fg-2);
-    padding: 0.42rem 0.5rem;
+    padding: 0.22rem 0.6rem 0.22rem 2rem;
+    text-indent: -1.4rem;
 }
 
 .tree ul ul a,
 .tree ul ul .locked {
     color: var(--fg-3);
     font-size: 0.8rem;
-    padding: 0.2rem 0.5rem;
+    padding: 0.28rem 0.6rem 0.28rem 2rem;
+    text-indent: -1.4rem;
 }
 
 .tree a:hover,
@@ -1614,10 +1672,12 @@ button:hover,
     text-decoration: none;
 }
 
+/* 当前这一条：浅底 + 文字变强调色 + 左边一条强调色竖线，比纯浅底更容易扫到 */
 .tree a.on {
     color: var(--accent);
-    background: var(--bg-2);
+    background: var(--accent-soft);
     font-weight: 600;
+    box-shadow: inset 2px 0 0 var(--accent);
 }
 
 /* 没权限看的：只占位，压暗 + 锁，点进登录页 */
@@ -3280,15 +3340,13 @@ html[data-theme='dark'] .cl-latest {
     letter-spacing: 0.01em;
 }
 
-/* 树节点名字长就换到第二行，不再挤成一行 */
-.tree .tree-item,
+/* 树节点名字长就换到第二行，不再挤成一行。
+   这里只管换行：display / padding 交给上面的行样式，别再把行号位和 flex 布局盖掉 */
 .tree a:not(.locked),
 .tree-group {
     white-space: normal;
     overflow-wrap: anywhere;
     line-height: 1.45;
-    display: block;
-    padding: 0.28rem 0.4rem 0.28rem 0.95rem;
 }
 /* 选中文字后浮出的工具条（仿飞书：选中 -> 浮出选项 -> 点评论） */
 .cmt-tool {
@@ -3719,4 +3777,182 @@ html[data-theme='dark'] .cl-latest {
 
 .cl-fold ul {
     margin-top: 0.3rem;
+}
+
+/* 补充笔记：正文末尾那张「附件卡」，以及补充笔记页顶部指向「本体」的那一行 */
+.attach-list {
+    margin-top: 2.4rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.55rem;
+}
+
+.attach-card {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    padding: 0.7rem 0.9rem;
+    background: var(--bg-2);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    text-decoration: none;
+    transition: border-color 0.14s ease, transform 0.14s ease, box-shadow 0.14s ease;
+}
+
+.attach-card:hover {
+    border-color: var(--fg-3);
+    transform: translateY(-1px);
+    box-shadow: 0 10px 20px -16px rgba(28, 27, 24, 0.5);
+}
+
+.attach-icon {
+    flex: none;
+    width: 2.45rem;
+    height: 2.45rem;
+    display: grid;
+    place-items: center;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 0.9rem;
+    color: var(--accent);
+    background: var(--accent-soft);
+    border-radius: 9px;
+}
+
+.attach-main {
+    display: flex;
+    flex-direction: column;
+    gap: 0.18rem;
+    min-width: 0;
+}
+
+.attach-title {
+    font-size: 0.97rem;
+    font-weight: 600;
+    line-height: 1.4;
+    color: var(--fg);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.attach-size {
+    font-size: 0.76rem;
+    color: var(--fg-3);
+    font-variant-numeric: tabular-nums;
+}
+
+.attach-eye {
+    margin-left: auto;
+    flex: none;
+    display: grid;
+    place-items: center;
+    color: var(--fg-3);
+}
+
+.attach-card:hover .attach-eye {
+    color: var(--accent);
+}
+
+.doc-origin {
+    margin: 0 0 1.6rem;
+    display: flex;
+    align-items: baseline;
+    gap: 0.45rem;
+    font-size: 0.86rem;
+    color: var(--fg-3);
+}
+
+.doc-origin-label {
+    flex: none;
+    padding: 0.05rem 0.4rem;
+    font-size: 0.72rem;
+    color: var(--accent);
+    background: var(--accent-soft);
+    border-radius: 999px;
+}
+
+.doc-origin a {
+    min-width: 0;
+    color: var(--fg-2);
+    text-decoration: none;
+    border-bottom: 1px dotted var(--line);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.doc-origin a:hover {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+}
+
+/* 列表卡片里的补充笔记：一条内嵌的附件行（图标 + 标题 + 体积 + 眼睛），点进去是那篇详解 */
+.card-attach {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 0.7rem;
+    padding: 0.42rem 0.5rem;
+    min-width: 0;
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: 9px;
+    text-decoration: none;
+    transition: border-color 0.14s ease, background 0.14s ease;
+}
+
+.card-attach + .card-attach {
+    margin-top: 0.4rem;
+}
+
+.card-attach:hover {
+    border-color: var(--fg-3);
+}
+
+.card-attach-icon {
+    flex: none;
+    width: 1.5rem;
+    height: 1.5rem;
+    display: grid;
+    place-items: center;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 0.6rem;
+    color: var(--accent);
+    background: var(--accent-soft);
+    border-radius: 6px;
+}
+
+.card-attach-main {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.08rem;
+}
+
+.card-attach-title {
+    font-size: 0.82rem;
+    font-weight: 500;
+    color: var(--fg-2);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.card-attach-size {
+    font-size: 0.7rem;
+    color: var(--fg-3);
+    font-variant-numeric: tabular-nums;
+}
+
+.card-attach-eye {
+    flex: none;
+    display: grid;
+    place-items: center;
+    color: var(--fg-3);
+}
+
+.card-attach:hover .card-attach-title,
+.card-attach:hover .card-attach-eye {
+    color: var(--accent);
 }

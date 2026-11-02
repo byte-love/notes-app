@@ -19,8 +19,9 @@ public class NoteTreeService {
 
     /**
      * lazy = 有子节点但没渲染出来（前端展开时再取），避免几百条内容把整棵树塞进每个页面。
+     * ordinal = 在同一个父节点下的「第几篇」（只给叶子编号，1 起；分组为 0），左树用它当行号。
      */
-    public record Node(ContentItem item, List<Node> children, boolean locked, boolean lazy) {
+    public record Node(ContentItem item, List<Node> children, boolean locked, boolean lazy, int ordinal) {
 
         public boolean hasChildren() {
             return !children.isEmpty();
@@ -44,6 +45,11 @@ public class NoteTreeService {
         Map<Long, List<ContentItem>> childrenOf = new LinkedHashMap<>();
         List<ContentItem> roots = new ArrayList<>();
         for (ContentItem item : items) {
+            // 补充笔记不单独上一个目录行：它跟在「本体」的卡片 / 正文里，目录里只剩本体那一行
+            Long suppOf = item.getSupplementOfId();
+            if (suppOf != null && byId.containsKey(suppOf) && !suppOf.equals(item.getId())) {
+                continue;
+            }
             Long pid = item.getParentId();
             // 父节点不可见（比如 PRIVATE 被游客访问）时，把子节点提到顶层，而不是让它消失
             if (pid == null || !byId.containsKey(pid) || pid.equals(item.getId())) {
@@ -61,10 +67,15 @@ public class NoteTreeService {
     private List<Node> toNodes(List<ContentItem> nodes, Map<Long, List<ContentItem>> childrenOf,
                                Set<Long> lockedIds) {
         List<Node> result = new ArrayList<>();
+        int leafNo = 0;
         for (ContentItem item : nodes) {
             List<ContentItem> kids = childrenOf.getOrDefault(item.getId(), List.of());
+            // 行号只给叶子：同一个父节点下按顺序 1、2、3…，分组不占号
+            if (kids.isEmpty()) {
+                leafNo++;
+            }
             result.add(new Node(item, toNodes(kids, childrenOf, lockedIds),
-                    lockedIds.contains(item.getId()), false));
+                    lockedIds.contains(item.getId()), false, kids.isEmpty() ? leafNo : 0));
         }
         return result;
     }
@@ -99,7 +110,7 @@ public class NoteTreeService {
                 kids = keep.contains(n.item().getId()) ? prune(kids, keep) : List.of();
             }
             boolean lazy = !n.children().isEmpty() && kids.isEmpty();
-            out.add(new Node(n.item(), kids, n.locked(), lazy));
+            out.add(new Node(n.item(), kids, n.locked(), lazy, n.ordinal()));
         }
         return out;
     }
