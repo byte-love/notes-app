@@ -39,6 +39,9 @@
                                 th:classappend="${bookmarked} ? 'on'"
                                 th:text="${bookmarked} ? '已加书签' : '加书签'">加书签</button>
                     </form>
+                    <!-- 只有自己的内容才给编辑入口；back 让编辑页的「返回」和保存后都回到这一页 -->
+                    <a th:if="${canRate == true}" class="star-btn"
+                       th:href="@{/admin/{id}/edit(id=${item.id},back=${editBack})}">编辑</a>
                 </div>
             </header>
 

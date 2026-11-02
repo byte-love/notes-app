@@ -5,12 +5,16 @@
 <header th:replace="~{fragments/layout :: nav}"></header>
 
 <main class="wrap">
-    <a th:href="@{/admin}" class="back-link">返回</a>
+    <!-- 从正文页点「编辑」进来时，返回就回那篇文章；从后台列表进来就回列表 -->
+    <a th:if="${backUrl != null}" th:href="${backUrl}" class="back-link">返回</a>
+    <a th:unless="${backUrl != null}" th:href="@{/admin}" class="back-link">返回</a>
 
     <h1 th:text="${editing} ? '编辑内容' : '新建内容'">新建内容</h1>
 
     <form th:action="${editing} ? @{/admin/{id}/edit(id=${itemId})} : @{/admin/new}"
           th:object="${form}" method="post" class="stack">
+
+        <input type="hidden" name="back" th:if="${back != null}" th:value="${back}">
 
         <div class="field">
             <div class="field-label">
@@ -129,19 +133,28 @@
             <div class="field-label">
                 <span>正文</span>
                 <span class="help" role="button" tabindex="0"
-                      data-help="支持 Markdown：# 一级标题、- 列表、**粗体**、[链接](url)、| 表格 |、``` 代码块 ```。">?</span>
+                      data-help="支持 Markdown：# 一级标题、- 列表、**粗体**、[链接](url)、| 表格 |、``` 代码块 ```。右边是实时预览，写多少看多少。">?</span>
             </div>
-            <textarea th:field="*{body}" rows="24" spellcheck="false"></textarea>
+            <div class="md-bar">
+                <button type="button" class="btn-quiet" id="md-image">插入图片</button>
+            </div>
+            <div class="md-editor">
+                <textarea th:field="*{body}" rows="26" spellcheck="false" id="md-source"
+                          th:attr="data-preview=@{/admin/preview},data-upload=@{/admin/upload}"></textarea>
+                <div class="markdown md-preview" id="md-preview"></div>
+            </div>
             <span class="error" th:if="${#fields.hasErrors('body')}" th:errors="*{body}"></span>
         </div>
 
         <div class="form-actions">
             <button type="submit" class="btn-primary">保存</button>
-            <a th:href="@{/admin}" class="btn-ghost">取消</a>
+            <a th:if="${backUrl != null}" th:href="${backUrl}" class="btn-ghost">取消</a>
+            <a th:unless="${backUrl != null}" th:href="@{/admin}" class="btn-ghost">取消</a>
         </div>
     </form>
 </main>
 
 <footer th:replace="~{fragments/layout :: foot}"></footer>
+<script th:src="@{/js/admin-editor.js(v=1)}"></script>
 </body>
 </html>

@@ -1211,6 +1211,45 @@ button:hover,
     margin-top: -0.9rem;
 }
 
+/* ---------- 正文编辑器（编辑页）：左边写、右边预览 ---------- */
+.md-bar {
+    display: flex;
+    justify-content: flex-end;
+    margin: 0 0 0.5rem;
+}
+
+.md-editor {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 1rem;
+    align-items: stretch;
+}
+
+.md-editor textarea {
+    min-height: 26rem;
+    font-family: var(--mono);
+    font-size: 0.86rem;
+    line-height: 1.7;
+    tab-size: 4;
+}
+
+.md-preview {
+    min-height: 26rem;
+    max-height: 70vh;
+    overflow: auto;
+    padding: 0.4rem 1.2rem;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: var(--bg);
+}
+
+/* 窄屏放不下两栏就改成上下排 */
+@media (max-width: 900px) {
+    .md-editor {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
 /* ---------- document layout ---------- */
 .doc-wrap {
     max-width: 1100px;
