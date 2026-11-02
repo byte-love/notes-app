@@ -22,6 +22,29 @@ public class RatingService {
         jdbc.update("update content_item set rating = ? where id = ?", clamp(rating), itemId);
     }
 
+    /** 星级统计的四个数：总数、★★★、★★以上、没标的。只算八股里的叶子（目录节点不算）。 */
+    public record Summary(int total, int r3, int r2, int none) {
+    }
+
+    public Summary summary(Long ownerId) {
+        Summary empty = new Summary(0, 0, 0, 0);
+        if (ownerId == null) {
+            return empty;
+        }
+        return jdbc.queryForObject(
+                "select count(*) as total,"
+                        + " count(*) filter (where i.rating >= 3) as r3,"
+                        + " count(*) filter (where i.rating >= 2) as r2,"
+                        + " count(*) filter (where i.rating = 0) as none"
+                        + " from content_item i"
+                        + " where i.owner_id = ? and i.kind = 'BAGU' and i.deleted_at is null"
+                        + " and not exists (select 1 from content_item c"
+                        + "                  where c.parent_id = i.id and c.deleted_at is null)",
+                (rs, n) -> new Summary(rs.getInt("total"), rs.getInt("r3"),
+                        rs.getInt("r2"), rs.getInt("none")),
+                ownerId);
+    }
+
     private static int clamp(int rating) {
         return Math.max(0, Math.min(3, rating));
     }

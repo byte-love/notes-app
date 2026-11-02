@@ -19,6 +19,9 @@
                 class="tree-bookmark" th:if="${bookmarkIds != null and bookmarkIds.contains(n.item.id)}"
                 title="已加书签"></span><span
                 class="tree-star" th:if="${starIds != null and starIds.contains(n.item.id)}">★</span><span
+                class="tree-rate"
+                th:attr="data-slug=${n.item.slug},data-v=${n.item.rating}"
+                th:text="${n.item.rating == 1 ? '★' : (n.item.rating == 2 ? '★★' : '★★★')}"></span><span
                 th:text="${n.item.title}"></span></a>
         <a th:if="${not n.hasChildren() and n.locked()}" class="locked" th:href="@{/login}" title="需要登录后查看">
             <span class="tree-num" th:text="${#numbers.formatInteger(n.ordinal(), 2)}">01</span><span

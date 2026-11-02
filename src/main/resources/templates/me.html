@@ -26,6 +26,15 @@
         <li><a th:href="@{/trash}"><strong th:text="${trashCount}">0</strong><span>回收站</span></a></li>
     </ul>
 
+    <section class="me-section" th:if="${ratingSummary.total() > 0}">
+        <h2>星级</h2>
+        <ul class="me-stats">
+            <li><a th:href="@{/bagu(rate=3)}"><strong th:text="${ratingSummary.r3()}">0</strong><span>★★★</span></a></li>
+            <li><a th:href="@{/bagu(rate=2)}"><strong th:text="${ratingSummary.r2()}">0</strong><span>★★以上</span></a></li>
+            <li><a th:href="@{/bagu(rate=0)}"><strong th:text="${ratingSummary.none()}">0</strong><span>未评</span></a></li>
+        </ul>
+    </section>
+
     <section class="me-section">
         <h2>阅读设置</h2>
 

@@ -6,6 +6,7 @@ import cn.bytelove.notes.repo.AppUserRepository;
 import cn.bytelove.notes.repo.ContentItemRepository;
 import cn.bytelove.notes.service.BookmarkService;
 import cn.bytelove.notes.service.ContentStarService;
+import cn.bytelove.notes.service.RatingService;
 import cn.bytelove.notes.service.TrashService;
 import cn.bytelove.notes.service.UserBadge;
 import cn.bytelove.notes.service.ViewerService;
@@ -26,16 +27,18 @@ public class MeController {
     private final ViewerService viewers;
     private final TrashService trash;
     private final BookmarkService bookmarks;
+    private final RatingService ratings;
 
     public MeController(AppUserRepository users, ContentItemRepository items,
                         ContentStarService stars, ViewerService viewers, TrashService trash,
-                        BookmarkService bookmarks) {
+                        BookmarkService bookmarks, RatingService ratings) {
         this.users = users;
         this.items = items;
         this.stars = stars;
         this.viewers = viewers;
         this.trash = trash;
         this.bookmarks = bookmarks;
+        this.ratings = ratings;
     }
 
     @GetMapping("/me")
@@ -57,6 +60,7 @@ public class MeController {
         model.addAttribute("memoCount", stars.count(viewer.userId()));
         model.addAttribute("trashCount", trash.list(viewer.userId()).size());
         model.addAttribute("bookmarkCount", bookmarks.count(viewer.userId()));
+        model.addAttribute("ratingSummary", ratings.summary(viewer.userId()));
 
         model.addAttribute("tabActive", "me");
         return "me";

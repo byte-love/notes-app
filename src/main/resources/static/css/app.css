@@ -1105,6 +1105,18 @@ button:hover,
     font-size: 1rem;
 }
 
+/* 左侧目录里的星级：和收藏的 ★ 同一个位置，用颜色区分（收藏是强调色，星级是暖金色） */
+.tree-rate {
+    color: #c8901f;
+    margin-right: 0.32rem;
+    font-size: 0.78em;
+    letter-spacing: 0.04em;
+}
+
+.tree-rate[data-v="0"] {
+    display: none;
+}
+
 /* 筛选条：胶囊标签 + 条数，选中态用强调色；条数为 0 的置灰点不动 */
 .rate-filter {
     display: flex;
