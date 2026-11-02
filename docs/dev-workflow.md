@@ -152,7 +152,7 @@ sudo /opt/deploy/sync-db.sh    # 正式库整库覆盖到测试库
   - `COMMENT`：右栏评论区，整篇评 / 选中文字评 / 楼中楼，进 `#comments`
   - `ANNOTATION`：正文里**短虚下划线**（`.ann-mark`，`1px dotted`），点开是 `.ann-pop` 弹窗——列这一处全部注释，
     也能接着写。数据渲染在 `#annotations`（hidden）里当数据源，表单 `.ann-form` 带 `entryKind=ANNOTATION`
-  - 选中文字后工具条给两个按钮「评论」「注释」，走 `comments.js` 里各自的 handler；两种标记互不嵌套
+  - 选中文字后工具条给三个按钮「评论」「注释」「高亮」，走 `comments.js` 里各自的 handler；评论 / 注释两种标记互不嵌套
     （`markText` 的 walker 同时跳过 `.cmt-mark` 和 `.ann-mark`）
   - 服务端 `addComment` 收 `entryKind`：注释必须带 `quote`（没有落点画不出下划线，直接忽略）
   - 两条线共用 10 秒一条的限流、脏话挡板。**字数上限按 kind 分开**（2026-11-02 收口）：
@@ -162,8 +162,32 @@ sudo /opt/deploy/sync-db.sh    # 正式库整库覆盖到测试库
   - **写什么进哪条线**：评论只写「对这一段有疑问 / 一点小见解」这种短的；长解释、补充、贴代码走注释。
     2026-10-30 已经把当时所有 `COMMENT` 行改成了 `ANNOTATION`
     （`update content_comment set entry_kind='ANNOTATION' where entry_kind='COMMENT'`），因为那些内容全是长解释
+- **重点高亮（V24）**：`content_highlight(item_id, user_id, quote, anchor_kind, block_index, prefix, suffix, color)`，
+  锚点和评论同一套（原文 + 前后各二十字 + 块序号），颜色五种（yellow/green/blue/pink/purple）。
+  **只给标的本人看**：查询一律带 `user_id`，别人打开同一篇看不到。同一段再标一次是换色（服务端按
+  锚点去重，不会叠两层）。正文里的底纹用 **CSS Custom Highlight API** 画（`CSS.highlights` + `::highlight(hl-*)`），
+  不往 DOM 里塞 span——评论 / 注释已经在正文里套 span 了，再套一层容易把它们的选区结构弄坏。
+  ⚠ **`::highlight()` 伪元素不认 `var()`**（自定义属性不会带进高亮伪元素，写了就是空值、页面上一点底纹都没有，
+  2026-11-02 踩过）：颜色由 `comments.js` 从 `:root` 读出 `--hl-*` / `--accent-soft` 写成实体值的 `<style>`，
+  切主题时重写。点击已标文字浮出换色 / 删除的小面板（点位置靠 `caretRangeFromPoint` + `Range.compareBoundaryPoints` 判定）
+- **正文自动围代码块的判据**（`MarkdownRenderer.fenceBareCode`，2026-11-02 全站体检后收紧）：
+  去掉列表符号后不含中文、长度 ≤200、含 `; { } ( ) =` 之一，或以 `//` `#` `--` `/*` `@` 开头；**连续 ≥3 行**才围。
+  另外三条别再改回去：① Markdown 的图片 / 链接 / 表格行**不是代码**（以前 Redis、MySQL 两篇里成组的截图被围成
+  代码块，页面上是 `![](...)` 字面量）；② JSON 的键值行、单独一行括号**算代码**，且要先于「含中文就不算」判断
+  （`"id": 202,   // 活动ID` 这种行尾中文注释是正常写法）；③ 行尾注释（`code; // 说明`）先摘掉再判中文和长度。
+  只围 2 行会把「1kb = 1024byte。」这种并列的两条换算误收进去，所以阈值是 3
+
 - 术语浮窗是另一套（tooltip）：`.markdown .gl[data-tip]` + `detail.js` 的 `.gl-tip`，鼠标悬停显示、灰色长虚线，
-  跟注释的松绿点线不是一回事
+  跟注释的松绿点线不是一回事。**解释存在 `glossary_term` 表**（V25，第一次启动用 `resources/glossary.json`
+  播种，表非空就不动），所以能在页面上直接改：
+  - 管理员点正文里带解释的词 → `.gl-edit` 浮出「术语 / 语境关键词 / 解释」+ 保存·删除·新增；接口在
+    `GlossaryEditController`（`POST /glossary`、`POST /glossary/{id}`、`POST /glossary/{id}/delete`，非管理员 403），
+    入口靠 `layout.html` 里的 `<meta name="glossary-endpoint">`（只有 `glossaryAdmin` 才渲染）
+  - **语境关键词（`sense`）**：同一个词可以有多个义项，只有关键词出现在**这一段的正文**里才命中那一条；
+    一个词只有语境义项、又一条都没命中时宁可不标。这是为了「标签」这种词 —— Redis 段落里是 hash tag，
+    模型段落里才是 label，以前一套解释套全站，在 Redis 的 Hash 结构里弹出来的是模型的 label（2026-11-02 用户指出）
+  - 改/删/新增完页面会 `location.reload()` 一次（术语可能改名、新增的词要重新包标记）
+
 - 「加入我的空间」是**幂等**的：`copyTo` 先查 `(owner_id, copied_from_id)` 有没有复制过，有就返回 0；
   页面上已加入的卡片显示「已加入」。重复复制产生的脏数据用
   `partition by owner_id, copied_from_id` 保留最小 id 清掉

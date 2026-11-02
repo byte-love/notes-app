@@ -94,14 +94,125 @@
             if (el && el === current && !el.contains(e.relatedTarget)) hide();
         });
 
-        document.addEventListener('click', (e) => {
-            const el = pick(e.target);
-            if (el) show(el);
-            else hide();
-        });
-
         window.addEventListener('scroll', hide, { passive: true });
         window.addEventListener('resize', hide);
+
+        // ---------- 管理员：点术语直接改（改解释 / 改语境关键词 / 删除 / 新增） ----------
+        const endpoint = document.querySelector('meta[name="glossary-endpoint"]');
+        if (!endpoint) {
+            document.addEventListener('click', (e) => {
+                const el = pick(e.target);
+                if (el) show(el);
+                else hide();
+            });
+            return;
+        }
+        document.documentElement.classList.add('gl-admin');
+
+        const box = document.createElement('div');
+        box.className = 'gl-edit';
+        box.hidden = true;
+        box.innerHTML = '<label>术语<input class="gl-term" maxlength="120"></label>'
+            + '<label>语境关键词<input class="gl-sense" maxlength="200"></label>'
+            + '<label>解释<textarea class="gl-text" rows="6" maxlength="2000"></textarea></label>'
+            + '<div class="gl-ops">'
+            + '<button type="button" class="gl-save">保存</button>'
+            + '<button type="button" class="gl-del">删除</button>'
+            + '<button type="button" class="gl-new">新增</button>'
+            + '<button type="button" class="gl-cancel">取消</button>'
+            + '</div>';
+        document.body.appendChild(box);
+
+        const termInput = box.querySelector('.gl-term');
+        const senseInput = box.querySelector('.gl-sense');
+        const textInput = box.querySelector('.gl-text');
+        const csrf = () => (document.querySelector('meta[name="_csrf"]') || {}).content || '';
+
+        // 正在编辑的是哪一条；id 为空 = 新增
+        let editing = null;
+
+        const post = async (url, data) => {
+            const body = new URLSearchParams(data);
+            body.set('_csrf', csrf());
+            try {
+                const res = await fetch(url, { method: 'POST', credentials: 'same-origin', body });
+                return res.ok ? await res.text() : '';
+            } catch (e) {
+                return '';
+            }
+        };
+
+        const close = () => {
+            box.hidden = true;
+            editing = null;
+        };
+
+        const place = (el) => {
+            box.hidden = false;
+            const r = el.getBoundingClientRect();
+            const b = box.getBoundingClientRect();
+            let left = Math.min(Math.max(12, r.left), window.innerWidth - b.width - 12);
+            let top = r.bottom + 8;
+            if (top + b.height > window.innerHeight - 12) {
+                top = Math.max(12, r.top - b.height - 8);
+            }
+            box.style.left = `${Math.round(left)}px`;
+            box.style.top = `${Math.round(top)}px`;
+        };
+
+        const open = (el) => {
+            hide();
+            editing = { id: el.dataset.tid, el };
+            termInput.value = el.dataset.term || '';
+            senseInput.value = el.dataset.sense || '';
+            textInput.value = el.dataset.tip || '';
+            place(el);
+            textInput.focus();
+        };
+
+        const openNew = () => {
+            editing = null;
+            termInput.value = '';
+            senseInput.value = '';
+            textInput.value = '';
+            termInput.focus();
+        };
+
+        document.addEventListener('click', (e) => {
+            if (box.contains(e.target)) return;
+            const el = pick(e.target);
+            if (el) open(el);
+            else {
+                close();
+                hide();
+            }
+        });
+
+        box.querySelector('.gl-save').addEventListener('click', async () => {
+            const term = termInput.value.trim();
+            const text = textInput.value.trim();
+            if (!term || !text) return;
+            const data = { term, tip: text, sense: senseInput.value.trim() };
+            const url = editing && editing.id ? `${endpoint.content}/${editing.id}` : endpoint.content;
+            const ok = await post(url, data);
+            close();
+            // 术语可能被改名、新增的词也要重新包标记，改完统一刷新一次
+            if (ok) location.reload();
+        });
+
+        box.querySelector('.gl-del').addEventListener('click', async () => {
+            if (!editing || !editing.id) return;
+            const ok = await post(`${endpoint.content}/${editing.id}/delete`, {});
+            close();
+            if (ok) location.reload();
+        });
+
+        box.querySelector('.gl-new').addEventListener('click', openNew);
+        box.querySelector('.gl-cancel').addEventListener('click', close);
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && !box.hidden) close();
+        });
     })();
 
     // 每个正文标题右边挂一个书签按钮，点一下把位置记下来；下次从「书签」页直接跳回来

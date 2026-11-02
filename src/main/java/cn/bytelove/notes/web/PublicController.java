@@ -8,6 +8,7 @@ import cn.bytelove.notes.service.CommentFilter;
 import cn.bytelove.notes.service.CommentRateLimiter;
 import cn.bytelove.notes.service.CommentService;
 import cn.bytelove.notes.service.ContentStarService;
+import cn.bytelove.notes.service.HighlightService;
 import cn.bytelove.notes.service.MarkdownRenderer;
 import cn.bytelove.notes.service.ProjectMetaService;
 import cn.bytelove.notes.service.ReadingPositionService;
@@ -52,6 +53,9 @@ public class PublicController {
     /** 评论是短句：前端输入框就限了 500，服务端按同一个数截断，别让绕过输入框的请求写进长评论。 */
     private static final int MAX_COMMENT = 500;
 
+    /** 高亮的引文只存锚点用，截 500 字就够定位了。 */
+    private static final int MAX_HIGHLIGHT = 500;
+
     private final ContentItemRepository items;
     private final VisibilityService visibility;
     private final ViewerService viewers;
@@ -65,12 +69,13 @@ public class PublicController {
     private final CommentService comments;
     private final CommentFilter commentFilter;
     private final CommentRateLimiter commentLimiter;
+    private final HighlightService highlights;
 
     public PublicController(ContentItemRepository items, VisibilityService visibility, ViewerService viewers,
                             ContentStarService stars, ProjectMetaService meta, ReadingPositionService positions, BookmarkService bookmarks,
                             MarkdownRenderer markdown, NoteTreeService tree, SubGroupService subGroups,
                             CommentService comments, CommentFilter commentFilter,
-                            CommentRateLimiter commentLimiter) {
+                            CommentRateLimiter commentLimiter, HighlightService highlights) {
         this.items = items;
         this.visibility = visibility;
         this.viewers = viewers;
@@ -84,6 +89,7 @@ public class PublicController {
         this.comments = comments;
         this.commentFilter = commentFilter;
         this.commentLimiter = commentLimiter;
+        this.highlights = highlights;
     }
 
     @GetMapping("/")
@@ -296,6 +302,9 @@ public class PublicController {
         model.addAttribute("annotationCount", comments.count(commentKey, CommentService.ANNOTATION));
         model.addAttribute("canComment", viewer.userId() != null);
         model.addAttribute("commentSlug", item.getSlug());
+        // 重点高亮：只取自己标的那些，别人标的看不到
+        model.addAttribute("highlights", highlights.list(item.getId(),
+                viewer.userId() == null ? 0L : viewer.userId()));
         return "detail";
     }
 
@@ -434,6 +443,15 @@ public class PublicController {
         return t.length() <= 40 ? t : t.substring(t.length() - 40);
     }
 
+    /** 引文后面的前四十个字。 */
+    private static String head40(String s) {
+        if (s == null) {
+            return null;
+        }
+        String t = s.trim();
+        return t.length() <= 40 ? t : t.substring(0, 40);
+    }
+
     /** 删评论：自己的、或者管理员；软删，楼里其他人的回复保留。 */
     @PostMapping("/comment/{slug}/{id}/delete")
     public String deleteComment(@PathVariable String slug, @PathVariable Long id, Authentication auth) {
@@ -444,6 +462,46 @@ public class PublicController {
         ContentItem item = resolveAnyKind(slug, viewer);
         comments.remove(id, viewer.userId(), viewer.admin());
         return "redirect:" + basePath(item.getKind()) + "/" + item.getSlug() + "#comments";
+    }
+
+    /**
+     * 标一处重点高亮：选中文字 → 挑个颜色 → 存下来。
+     * 返回新记录的 id，前端当场画上，不刷新页面。
+     */
+    @PostMapping("/highlight/{slug}")
+    @ResponseBody
+    public String addHighlight(@PathVariable String slug,
+                               @RequestParam(required = false) String quote,
+                               @RequestParam(required = false) String anchorKind,
+                               @RequestParam(required = false) Integer blockIndex,
+                               @RequestParam(required = false) String prefix,
+                               @RequestParam(required = false) String suffix,
+                               @RequestParam(required = false) String color,
+                               Authentication auth) {
+        Viewer viewer = viewers.current(auth);
+        String text = quote == null ? "" : quote.trim();
+        if (viewer.userId() == null || text.isEmpty()) {
+            return "";
+        }
+        if (text.length() > MAX_HIGHLIGHT) {
+            text = text.substring(0, MAX_HIGHLIGHT);
+        }
+        ContentItem item = resolveAnyKind(slug, viewer);
+        long id = highlights.add(item.getId(), viewer.userId(), anchorKind, text,
+                trim40(prefix), head40(suffix), blockIndex, color);
+        return String.valueOf(id);
+    }
+
+    /** 取消一处高亮：只能取消自己标的。 */
+    @PostMapping("/highlight/{slug}/{id}/delete")
+    @ResponseBody
+    public String removeHighlight(@PathVariable String slug, @PathVariable Long id, Authentication auth) {
+        Viewer viewer = viewers.current(auth);
+        if (viewer.userId() == null) {
+            return "";
+        }
+        highlights.remove(id, viewer.userId());
+        return "";
     }
 
     /** 手动书签：自己插的旗，想标几处标几处；anchor 为空是整篇，非空是某个标题块。 */
