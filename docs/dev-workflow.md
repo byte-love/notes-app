@@ -205,6 +205,10 @@ sudo /opt/deploy/sync-db.sh    # 正式库整库覆盖到测试库
   - **补充笔记（`supplement_of_id`）不单独占位置**：列表里并进「本体」那张卡片的内嵌附件行
     （`.card-attach`），左树里直接不渲染它，正文末尾给一张附件卡（`.attach-card`），
     补充笔记页标题下面给一条「本体」回链（`.doc-origin`）。层级上两者同级（`parent_id` 相同）
+    - 再挂一条补充笔记的做法：新建一篇内容，`parent_id` 设成**本体的父节点**（同级而不是子节点），
+      `supplement_of_id` 设成本体 id，`sort_order` 排在本体后面；页面上的附件卡 / 内嵌行会自动出来
+    - 附件卡 / 内嵌行上那个体积（`9.1 KB`）是 `PublicController.sizeOf()` 按正文 UTF-8 字节折算的，
+      只做量级参考；行号的来源见下面「左树每行带行号」那条
   - **左树样式**（2026-11-02 改）：不再画整列竖线 + 每行短横线（`.tree ul` 的 border-left 和
     `li::before` 都删了），层级靠缩进 + 字重；行是圆角 8 的块，hover 浅底、当前项浅底 + 强调色 +
     左侧 2px 强调色；二级条目长标题用悬挂缩进（`padding-left` + 负 `text-indent`）对齐；
@@ -213,6 +217,9 @@ sudo /opt/deploy/sync-db.sh    # 正式库整库覆盖到测试库
     只给叶子连续编号，分组不占号），模板里 `#numbers.formatInteger(n.ordinal(), 2)` 补成 01；
     分组标题右侧 `#lists.size(n.children)`（lazy 的那种节点子列表还没渲染，不显示）。
     叶子行的 padding-left 是 2rem、text-indent -1.4rem，正好让号在 0.6rem 起、标题和折行对齐到 2rem
+  - **页面底部留白**：`.with-tree` 的 `padding-bottom` 是 **3.6rem**（2026-11-02 加）。这站
+    **没有可见页脚**（`foot` 片段里只有脚本），改回 0 的话滚到底时最后一个元素（正文末尾的附件卡、
+    列表最后一行卡片）会贴着视口底边，看着像被切掉
   - **预览行来自 `ItemGroup.preview`**：`PublicController.previewOf()` 取该组前两条的标题拼成
     `A · B`，收起时显示、展开时整条藏掉（`.item-group:not(.folded) .item-group-preview`）；
     组里只有一条就是一行标题，标题为空串时这一行不占位
