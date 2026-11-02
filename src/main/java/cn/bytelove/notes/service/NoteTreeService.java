@@ -19,8 +19,9 @@ public class NoteTreeService {
 
     /**
      * lazy = 有子节点但没渲染出来（前端展开时再取），避免几百条内容把整棵树塞进每个页面。
+     * ordinal = 在同一个父节点下的「第几篇」（只给叶子编号，1 起；分组为 0），左树用它当行号。
      */
-    public record Node(ContentItem item, List<Node> children, boolean locked, boolean lazy) {
+    public record Node(ContentItem item, List<Node> children, boolean locked, boolean lazy, int ordinal) {
 
         public boolean hasChildren() {
             return !children.isEmpty();
@@ -66,10 +67,15 @@ public class NoteTreeService {
     private List<Node> toNodes(List<ContentItem> nodes, Map<Long, List<ContentItem>> childrenOf,
                                Set<Long> lockedIds) {
         List<Node> result = new ArrayList<>();
+        int leafNo = 0;
         for (ContentItem item : nodes) {
             List<ContentItem> kids = childrenOf.getOrDefault(item.getId(), List.of());
+            // 行号只给叶子：同一个父节点下按顺序 1、2、3…，分组不占号
+            if (kids.isEmpty()) {
+                leafNo++;
+            }
             result.add(new Node(item, toNodes(kids, childrenOf, lockedIds),
-                    lockedIds.contains(item.getId()), false));
+                    lockedIds.contains(item.getId()), false, kids.isEmpty() ? leafNo : 0));
         }
         return result;
     }
@@ -104,7 +110,7 @@ public class NoteTreeService {
                 kids = keep.contains(n.item().getId()) ? prune(kids, keep) : List.of();
             }
             boolean lazy = !n.children().isEmpty() && kids.isEmpty();
-            out.add(new Node(n.item(), kids, n.locked(), lazy));
+            out.add(new Node(n.item(), kids, n.locked(), lazy, n.ordinal()));
         }
         return out;
     }

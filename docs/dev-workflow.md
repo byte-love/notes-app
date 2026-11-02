@@ -209,6 +209,10 @@ sudo /opt/deploy/sync-db.sh    # 正式库整库覆盖到测试库
     `li::before` 都删了），层级靠缩进 + 字重；行是圆角 8 的块，hover 浅底、当前项浅底 + 强调色 +
     左侧 2px 强调色；二级条目长标题用悬挂缩进（`padding-left` + 负 `text-indent`）对齐；
     顶层分组之间用 `border-top` 出一条极淡分隔线
+  - **左树每行带行号 + 分组带条数**：行号来自 `NoteTreeService.Node.ordinal()`（同一个父节点下
+    只给叶子连续编号，分组不占号），模板里 `#numbers.formatInteger(n.ordinal(), 2)` 补成 01；
+    分组标题右侧 `#lists.size(n.children)`（lazy 的那种节点子列表还没渲染，不显示）。
+    叶子行的 padding-left 是 2rem、text-indent -1.4rem，正好让号在 0.6rem 起、标题和折行对齐到 2rem
   - **预览行来自 `ItemGroup.preview`**：`PublicController.previewOf()` 取该组前两条的标题拼成
     `A · B`，收起时显示、展开时整条藏掉（`.item-group:not(.folded) .item-group-preview`）；
     组里只有一条就是一行标题，标题为空串时这一行不占位
