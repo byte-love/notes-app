@@ -1454,7 +1454,9 @@ button:hover,
     grid-template-columns: 19% minmax(0, 1fr);
     justify-content: stretch;
     gap: 2rem;
-    padding: 2rem 1.5rem 0;
+    /* 底部留白：以前是 0，滚到底时最后一个元素（列表最后一张卡、正文末尾那张附件卡）
+       贴着视口底边，看着像被切掉了 */
+    padding: 2rem 1.5rem 3.6rem;
     align-items: start;
 }
 
