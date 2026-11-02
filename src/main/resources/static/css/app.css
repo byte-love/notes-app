@@ -20,8 +20,6 @@
     --fg-3: #726d63;
     --bg: #fbfaf7;
     --bg-2: #f4f2ec;
-    /* 卡片底色：比页面底色亮一点，配极淡阴影才有「抬起」的感觉 */
-    --card-bg: #ffffff;
     --line: #e5e1d8;
     --accent: #1f6f66;
     --accent-soft: #edf3f1;
@@ -45,7 +43,6 @@
         --fg-3: #8c8980;
         --bg: #131413;
         --bg-2: #1b1d1c;
-        --card-bg: #1b1d1c;
         --line: #2a2e2c;
         --accent: #6fd3c3;
         --accent-soft: #1c2725;
@@ -3168,22 +3165,20 @@ html[data-theme='dark'] .cl-latest {
     gap: 1.1rem;
 }
 
-/* 每条一块卡片：白底 + 极淡阴影 + 14px 圆角，日期压到底部对齐（参考 shadcn 的 Card：
-   rounded-xl + border + shadow-sm；悬停上浮借鉴它的 shadow-lift 写法） */
+/* 每条一块卡片：只动形状和间距，底色 / 边框 / 悬停色都用原来的变量，不另配颜色 */
 .with-tree .item-list li {
     display: flex;
     flex-direction: column;
     border: 1px solid var(--line);
     border-radius: 14px;
     padding: 1.05rem 1.15rem 0.85rem;
-    background: var(--card-bg);
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+    background: var(--bg-2);
     transition: transform 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease;
 }
 
 .with-tree .item-list li:hover {
     transform: translateY(-2px);
-    border-color: var(--accent-soft);
+    border-color: var(--fg-3);
     box-shadow: 0 12px 26px -18px rgba(28, 27, 24, 0.45);
 }
 
