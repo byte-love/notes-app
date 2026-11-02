@@ -878,6 +878,14 @@ button:hover,
     background: var(--accent-soft);
 }
 
+/* 整段 / 代码块上的注释：左边一条点线 */
+.ann-block-mark {
+    border-left: 1px dotted var(--accent);
+    padding-left: 0.7rem;
+    margin-left: -0.7rem;
+    cursor: pointer;
+}
+
 /* 注释弹窗：这一处的全部注释 + 写新注释的框 */
 .ann-pop {
     position: fixed;

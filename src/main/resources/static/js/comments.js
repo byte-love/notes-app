@@ -531,6 +531,19 @@
             if (form && !form.hidden) closeForm();
             openPop(anchor, rect, thread);
         };
+        const blockIndex = anchor.block === '' ? -1 : Number(anchor.block);
+        if (anchor.kind === 'block' && blockIndex >= 0 && blocks[blockIndex]) {
+            // 整段 / 代码块上的注释：左边一条点线
+            const block = blocks[blockIndex];
+            block.classList.add('ann-block-mark');
+            block.addEventListener('click', (e) => {
+                if (e.target.closest('.cmt-block-btn') || e.target.closest('.ann-pop')) return;
+                const sel = window.getSelection();
+                if (sel && !sel.isCollapsed) return; // 正在选字，别弹窗打断
+                hit(e);
+            });
+            return;
+        }
         if (!markText(thread, 'ann-mark', '有注释', hit, false)) {
             markText(thread, 'ann-mark', '有注释', hit, true);
         }
