@@ -13,6 +13,11 @@ server:
 spring:
   application:
     name: notes-app
+  servlet:
+    multipart:
+      # 正文编辑器插图用：默认 1MB 挡不住截图，放到 8MB
+      max-file-size: 8MB
+      max-request-size: 12MB
   web:
     resources:
       static-locations: "classpath:/static/,file:/srv/data/uploads/"

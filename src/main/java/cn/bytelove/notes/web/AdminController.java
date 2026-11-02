@@ -4,6 +4,7 @@ import cn.bytelove.notes.domain.ContentItem;
 import cn.bytelove.notes.domain.ContentKind;
 import cn.bytelove.notes.domain.Visibility;
 import cn.bytelove.notes.repo.ContentItemRepository;
+import cn.bytelove.notes.service.MarkdownRenderer;
 import cn.bytelove.notes.service.NoteTreeService;
 import cn.bytelove.notes.service.ProjectMetaService;
 import cn.bytelove.notes.service.TagService;
@@ -16,6 +17,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
@@ -27,8 +29,14 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseBody;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneId;
@@ -39,6 +47,9 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
 
 /**
  * 内容管理。登录就能进，但默认只看到、只能改自己的；
@@ -59,21 +70,32 @@ public class AdminController {
     /** 一次渲染多少行；剩下的滚动加载 */
     private static final int ADMIN_BATCH = 60;
 
+    /** 正文编辑器插图的上限和允许的扩展名（不收 svg：里面能带脚本）。 */
+    private static final long MAX_UPLOAD = 8L * 1024 * 1024;
+    private static final Set<String> IMAGE_EXT = Set.of("png", "jpg", "jpeg", "gif", "webp");
+
+    /** 上传目录：静态资源映射把整个 /srv/data/uploads 挂出来了，所以这里存进去就能用 /media/... 访问。 */
+    @Value("${notes.media-dir:/srv/data/uploads/media}")
+    private String mediaDir;
+
     private final ContentItemRepository items;
     private final NoteTreeService tree;
     private final ViewerService viewers;
     private final ProjectMetaService meta;
     private final TrashService trash;
     private final TagService tags;
+    private final MarkdownRenderer markdown;
 
     public AdminController(ContentItemRepository items, NoteTreeService tree, ViewerService viewers,
-                           ProjectMetaService meta, TrashService trash, TagService tags) {
+                           ProjectMetaService meta, TrashService trash, TagService tags,
+                           MarkdownRenderer markdown) {
         this.items = items;
         this.tree = tree;
         this.viewers = viewers;
         this.meta = meta;
         this.trash = trash;
         this.tags = tags;
+        this.markdown = markdown;
     }
 
     @ModelAttribute("kinds")
@@ -219,7 +241,9 @@ public class AdminController {
     }
 
     @GetMapping("/{id}/edit")
-    public String editForm(@PathVariable Long id, Model model, Authentication auth) {
+    public String editForm(@PathVariable Long id, Model model, Authentication auth,
+                           @RequestParam(name = "back", required = false) String back,
+                           HttpServletRequest request) {
         Viewer viewer = viewers.current(auth);
         ContentItem item = owned(id, viewer);
         ContentForm form = new ContentForm();
@@ -236,12 +260,18 @@ public class AdminController {
         model.addAttribute("itemId", id);
         model.addAttribute("editing", true);
         model.addAttribute("parents", parentOptions(id, item.getOwnerId()));
+        // 从正文页点进来时，返回和保存后都回那一页
+        String backPath = safeBack(back, basePathOf(item) + "/" + item.getSlug());
+        model.addAttribute("back", backPath);
+        model.addAttribute("backUrl", request.getContextPath() + backPath);
         return "admin/form";
     }
 
     @PostMapping("/{id}/edit")
     public String edit(@PathVariable Long id, @Valid @ModelAttribute("form") ContentForm form,
-                       BindingResult binding, Model model, Authentication auth) {
+                       BindingResult binding, Model model, Authentication auth,
+                       @RequestParam(name = "back", required = false) String back,
+                       HttpServletRequest request) {
         Viewer viewer = viewers.current(auth);
         ContentItem item = owned(id, viewer);
 
@@ -259,10 +289,13 @@ public class AdminController {
         if (!meta.isValid(form.getProjectDoc())) {
             binding.rejectValue("projectDoc", "invalid", "项目字段不是合法的 JSON");
         }
+        String backPath = safeBack(back, basePathOf(item) + "/" + item.getSlug());
         if (binding.hasErrors()) {
             model.addAttribute("editing", true);
             model.addAttribute("itemId", id);
             model.addAttribute("parents", parentOptions(id, item.getOwnerId()));
+            model.addAttribute("back", backPath);
+            model.addAttribute("backUrl", request.getContextPath() + backPath);
             return "admin/form";
         }
 
@@ -277,7 +310,67 @@ public class AdminController {
         ContentItem saved = items.save(item);
         saveProjectDoc(saved, form);
         tags.retag(saved.getId(), saved.getTitle(), saved.getBody());
-        return "redirect:/admin";
+        // 保存后直接回文章页看效果，不用再从列表里找一遍
+        return "redirect:" + safeBack(back, basePathOf(saved) + "/" + saved.getSlug());
+    }
+
+    /**
+     * 正文编辑器插图：图存进上传目录，回一个能直接写进 Markdown 的地址。
+     * CSRF 走 X-CSRF-TOKEN 头（multipart 的 body 在过滤器那一层还读不到参数）。
+     */
+    @PostMapping("/upload")
+    @ResponseBody
+    public Map<String, String> upload(@RequestParam("file") MultipartFile file,
+                                      HttpServletRequest request) throws IOException {
+        if (file == null || file.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "没有收到文件");
+        }
+        if (file.getSize() > MAX_UPLOAD) {
+            throw new ResponseStatusException(HttpStatus.PAYLOAD_TOO_LARGE, "图片超过 8MB");
+        }
+        String original = file.getOriginalFilename() == null ? "" : file.getOriginalFilename();
+        int dot = original.lastIndexOf('.');
+        String ext = dot < 0 ? "" : original.substring(dot + 1).toLowerCase(Locale.ROOT);
+        if (!IMAGE_EXT.contains(ext)) {
+            throw new ResponseStatusException(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "只收 png / jpg / gif / webp");
+        }
+        Path dir = Paths.get(mediaDir, "notes");
+        Files.createDirectories(dir);
+        String name = UUID.randomUUID().toString().replace("-", "").substring(0, 16) + "." + ext;
+        file.transferTo(dir.resolve(name).toFile());
+        return Map.of("url", request.getContextPath() + "/media/notes/" + name);
+    }
+
+    /** 编辑器右栏的实时预览：跟正文页同一个渲染器，看到的排版就是发出去的样子。 */
+    @PostMapping("/preview")
+    @ResponseBody
+    public String preview(@RequestParam(name = "body", required = false) String body) {
+        return markdown.toHtml(body == null ? "" : body);
+    }
+
+    /** 回跳目标只允许站内路径，防止有人拿 back 参数把页面跳到别处。 */
+    private static String safeBack(String back, String fallback) {
+        if (back == null || back.isBlank()) {
+            return fallback;
+        }
+        if (!back.startsWith("/") || back.startsWith("//") || back.contains("://")) {
+            return fallback;
+        }
+        return back;
+    }
+
+    /** 各种内容类型的正文页前缀（不带 contextPath，redirect: 会自己加）。 */
+    private static String basePathOf(ContentItem item) {
+        switch (item.getKind()) {
+            case BAGU:
+                return "/bagu";
+            case ALGO:
+                return "/algo";
+            case PROJECT:
+                return "/projects";
+            default:
+                return "/notes";
+        }
     }
 
     /** 词表改过之后，把当前用户的内容整体重打一遍标签。 */

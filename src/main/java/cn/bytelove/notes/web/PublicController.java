@@ -334,6 +334,8 @@ public class PublicController {
         model.addAttribute("starred", viewer.userId() != null && stars.isStarred(viewer.userId(), item.getId()));
         // 只有自己的内容能标星级：星级是内容上的字段，不是「谁标的」，改别人的条目等于改别人的东西
         model.addAttribute("canRate", viewer.userId() != null && viewer.userId().equals(item.getOwnerId()));
+        // 编辑页「返回」要回到这一页；这里给的是不带 contextPath 的路径（redirect: 和 @{} 各管各的）
+        model.addAttribute("editBack", basePath(kind) + "/" + item.getSlug());
 
         // 右栏换成评论区：整篇评论 + 锚在某句话上的评论（楼中楼在 service 里组好）
         // 复制出来的副本要跟原版共用同一串评论，所以按「最初的来源条目」做 key
