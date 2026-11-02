@@ -46,7 +46,11 @@ import java.util.Set;
 public class PublicController {
 
     /** 一条评论 / 注释的正文上限。注释里常整段贴代码，500 字不够用。 */
-    private static final int MAX_COMMENT = 2000;
+    /** 注释可以写长解释：2000 字。 */
+    private static final int MAX_ANNOTATION = 2000;
+
+    /** 评论是短句：前端输入框就限了 500，服务端按同一个数截断，别让绕过输入框的请求写进长评论。 */
+    private static final int MAX_COMMENT = 500;
 
     private final ContentItemRepository items;
     private final VisibilityService visibility;
@@ -399,11 +403,13 @@ public class PublicController {
         if (text.isEmpty()) {
             return "redirect:" + basePath(item.getKind()) + "/" + item.getSlug() + "#comments";
         }
-        if (text.length() > MAX_COMMENT) {
-            text = text.substring(0, MAX_COMMENT);
+        boolean annotation = CommentService.ANNOTATION.equalsIgnoreCase(entryKind == null ? "" : entryKind.trim());
+        // 评论和注释按不同的上限截断：长的解释走注释，评论只收短句
+        int limit = annotation ? MAX_ANNOTATION : MAX_COMMENT;
+        if (text.length() > limit) {
+            text = text.substring(0, limit);
         }
         String anchor = (quote == null || quote.isBlank()) ? null : quote.trim();
-        boolean annotation = CommentService.ANNOTATION.equalsIgnoreCase(entryKind == null ? "" : entryKind.trim());
         // 注释没有引文就没有落点，收下也画不出下划线
         if (annotation && (anchor == null || anchor.isEmpty())) {
             return "redirect:" + basePath(item.getKind()) + "/" + item.getSlug();

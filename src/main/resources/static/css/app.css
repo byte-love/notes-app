@@ -857,14 +857,16 @@ button:hover,
     border-left: 2px solid var(--line);
 }
 
-/* 正文里被评论过的那句话：下划线 + 悬停提示 */
+/* 正文里被评论过的那句话：一条很淡的实线（跟注释的点线、术语浮窗的灰虚线区分开），
+   不铺底色、不加粗，尽量不打断阅读 */
 .cmt-mark {
-    border-bottom: 2px solid var(--accent);
+    border-bottom: 1px solid var(--line);
+    border-bottom-color: color-mix(in srgb, var(--accent) 35%, transparent);
     cursor: pointer;
-    background: linear-gradient(transparent 62%, var(--accent-soft) 62%);
 }
 
 .cmt-mark:hover {
+    border-bottom-color: var(--accent);
     background: var(--accent-soft);
 }
 
@@ -1400,6 +1402,17 @@ button:hover,
 
 .markdown blockquote p:last-child {
     margin-bottom: 0;
+}
+
+/* 只有一行加粗的引用块（「回答流程」「回答」这类提词）：当标签用——框收窄、文字纵向居中（上下内边距对称），
+   横向仍然左对齐。
+   用 p:only-of-type 而不是 p:only-child：注释功能会往引用块里插一个「＋」按钮，
+   用 only-child 永远匹配不上（2026-11-02 踩过，规则写了但页面没生效） */
+.markdown blockquote:has(> p:only-of-type > strong:only-child) {
+    padding: 0.55rem 1rem;
+    display: flex;
+    align-items: center;
+    min-height: 2.6rem;
 }
 
 .markdown blockquote ol > li::marker,

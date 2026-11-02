@@ -155,9 +155,10 @@ sudo /opt/deploy/sync-db.sh    # 正式库整库覆盖到测试库
   - 选中文字后工具条给两个按钮「评论」「注释」，走 `comments.js` 里各自的 handler；两种标记互不嵌套
     （`markText` 的 walker 同时跳过 `.cmt-mark` 和 `.ann-mark`）
   - 服务端 `addComment` 收 `entryKind`：注释必须带 `quote`（没有落点画不出下划线，直接忽略）
-  - 两条线共用 10 秒一条的限流、脏话挡板。**字数上限现在不一致**：注释框 `maxlength=2000`、
-    评论框（含回复）还是 `maxlength=500`，而服务端 `MAX_COMMENT` 对两者都按 2000 截断——
-    待定：要么服务端按 `entryKind` 分别截断（评论 500 / 注释 2000），要么把评论框也放开到 2000
+  - 两条线共用 10 秒一条的限流、脏话挡板。**字数上限按 kind 分开**（2026-11-02 收口）：
+    评论 500 字（`MAX_COMMENT`，前端输入框也是 `maxlength=500`）、注释 2000 字（`MAX_ANNOTATION`，
+    前端也是 2000）；服务端按 `entryKind` 选上限后 `substring` 截断，所以绕过输入框直接 POST 也写不进长评论。
+    实测：700 字的评论落库是 500，700 字的注释原样 700
   - **写什么进哪条线**：评论只写「对这一段有疑问 / 一点小见解」这种短的；长解释、补充、贴代码走注释。
     2026-10-30 已经把当时所有 `COMMENT` 行改成了 `ANNOTATION`
     （`update content_comment set entry_kind='ANNOTATION' where entry_kind='COMMENT'`），因为那些内容全是长解释
@@ -217,6 +218,14 @@ sudo /opt/deploy/sync-db.sh    # 正式库整库覆盖到测试库
     只给叶子连续编号，分组不占号），模板里 `#numbers.formatInteger(n.ordinal(), 2)` 补成 01；
     分组标题右侧 `#lists.size(n.children)`（lazy 的那种节点子列表还没渲染，不显示）。
     叶子行的 padding-left 是 2rem、text-indent -1.4rem，正好让号在 0.6rem 起、标题和折行对齐到 2rem
+  - **只有最外层的 `<ul>` 带 `.tree`**（`fragments/tree :: nodes`），子层用 `sub`（裸 `<ul>`），
+    懒加载接口也返回 `sub`。子层要是也带 `.tree`，分组之间的分隔线（`.tree > li + li`）会套到每一层，
+    叶子之间全长出横线（2026-11-02 就是这个 bug，看着像一个个方框）
+  - **单行加粗的引用块**（`> **回答流程**`）当标签用：`.markdown blockquote:has(> p:only-of-type > strong:only-child)`
+    居中 + 收窄内边距。注意必须用 `:only-of-type`——注释功能会往引用块里插一个「＋」按钮，
+    用 `:only-child` 永远匹配不上（踩过一次，规则写了页面没生效）
+  - **正文里的三种下划线别撞**：评论 = 1px 实线（强调色 35% 透明，`color-mix`）、注释 = 1px 点线、
+    术语浮窗 = 1px 灰虚线；评论不再铺半透明底，避免干扰阅读
   - **页面底部留白**：`.with-tree` 的 `padding-bottom` 是 **3.6rem**（2026-11-02 加）。这站
     **没有可见页脚**（`foot` 片段里只有脚本），改回 0 的话滚到底时最后一个元素（正文末尾的附件卡、
     列表最后一行卡片）会贴着视口底边，看着像被切掉
