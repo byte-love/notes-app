@@ -20,6 +20,8 @@
     --fg-3: #726d63;
     --bg: #fbfaf7;
     --bg-2: #f4f2ec;
+    /* 卡片底色：比页面底色亮一点，配极淡阴影才有「抬起」的感觉 */
+    --card-bg: #ffffff;
     --line: #e5e1d8;
     --accent: #1f6f66;
     --accent-soft: #edf3f1;
@@ -43,6 +45,7 @@
         --fg-3: #8c8980;
         --bg: #131413;
         --bg-2: #1b1d1c;
+        --card-bg: #1b1d1c;
         --line: #2a2e2c;
         --accent: #6fd3c3;
         --accent-soft: #1c2725;
@@ -3159,38 +3162,76 @@ html[data-theme='dark'] .cl-latest {
 }
 
 .with-tree .item-list {
-    max-width: min(1000px, 92%);
+    max-width: min(1160px, 96%);
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
-    gap: 1.2rem;
+    grid-template-columns: repeat(auto-fill, minmax(258px, 1fr));
+    gap: 1.1rem;
 }
 
-/* 每条一块卡片，不再用横线分隔 */
+/* 每条一块卡片：白底 + 极淡阴影 + 14px 圆角，日期压到底部对齐（参考 shadcn 的 Card：
+   rounded-xl + border + shadow-sm；悬停上浮借鉴它的 shadow-lift 写法） */
 .with-tree .item-list li {
+    display: flex;
+    flex-direction: column;
     border: 1px solid var(--line);
-    border-radius: 10px;
-    padding: 0.8rem 0.85rem;
-    background: var(--bg-2);
+    border-radius: 14px;
+    padding: 1.05rem 1.15rem 0.85rem;
+    background: var(--card-bg);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+    transition: transform 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease;
 }
 
 .with-tree .item-list li:hover {
-    border-color: var(--fg-3);
+    transform: translateY(-2px);
+    border-color: var(--accent-soft);
+    box-shadow: 0 12px 26px -18px rgba(28, 27, 24, 0.45);
 }
 
-/* 卡片窄，写不下的地方截断加省略号，高度才齐 */
 .with-tree .item-title {
-    font-size: 1rem;
+    font-size: 1.02rem;
+    line-height: 1.45;
+    letter-spacing: -0.01em;
     display: -webkit-box;
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
     overflow: hidden;
 }
 
+/* 卡片窄，写不下的地方截断加省略号，高度才齐 */
 .with-tree .item-summary {
+    margin: 0.45rem 0 0;
+    color: var(--fg-2);
+    font-size: 0.88rem;
+    line-height: 1.65;
     display: -webkit-box;
     -webkit-line-clamp: 3;
     -webkit-box-orient: vertical;
     overflow: hidden;
+}
+
+/* 日期落到底部，悬停时右侧浮出一个淡箭头，暗示整张卡可点 */
+.with-tree .item-date {
+    margin-top: auto;
+    padding-top: 0.7rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 0.72rem;
+    letter-spacing: 0.02em;
+    color: var(--fg-3);
+}
+
+.with-tree .item-date::after {
+    content: "→";
+    opacity: 0;
+    transform: translateX(-4px);
+    transition: opacity 0.16s ease, transform 0.16s ease;
+    color: var(--accent);
+}
+
+.with-tree .item-list li:hover .item-date::after {
+    opacity: 1;
+    transform: translateX(0);
 }
 
 /* 右栏没有目录时列同分类条目：长列表要能自己滚，不然撑出屏幕 */
