@@ -3273,8 +3273,8 @@ html[data-theme='dark'] .cl-latest {
 }
 
 .item-group-title {
-    margin: 0 0 0.8rem;
-    font-size: 0.92rem;
+    margin: 0;
+    font-size: 0.95rem;
     font-weight: 600;
     color: var(--accent-2);
     letter-spacing: 0.01em;
@@ -3441,19 +3441,27 @@ html[data-theme='dark'] .cl-latest {
     color: var(--danger);
 }
 /* 分类标题做成可点的折叠条：左边小三角 + 标题 + 条数 */
+/* 一级分组标题：整行条带（浅底 + 描边 + 圆角 + 计数胶囊），和二级的 chips 同一套材料，
+   只是更大更重，层级一眼能看出来。整行可点，收起后只剩这条。 */
 .item-group-toggle {
     display: flex;
     align-items: center;
-    gap: 0.45rem;
+    gap: 0.6rem;
     width: 100%;
-    margin: 0 0 0.8rem;
-    padding: 0;
+    margin: 0 0 0.9rem;
+    padding: 0.62rem 0.85rem;
     font: inherit;
     text-align: left;
     color: inherit;
-    background: none;
-    border: 0;
+    background: var(--bg-2);
+    border: 1px solid var(--line);
+    border-radius: 12px;
     cursor: pointer;
+    transition: border-color 0.14s ease, background 0.14s ease;
+}
+
+.item-group-toggle:hover {
+    border-color: var(--fg-3);
 }
 
 .item-group-caret {
@@ -3472,14 +3480,23 @@ html[data-theme='dark'] .cl-latest {
 }
 
 .item-group-toggle:hover .item-group-title {
-    text-decoration: underline;
-    text-underline-offset: 3px;
+    color: var(--accent);
 }
 
+/* 计数做成胶囊徽标，和二级 chip 里的计数是同一套样子 */
 .item-group-count {
-    font-size: 0.76rem;
-    color: var(--fg-3);
+    margin-left: auto;
+    padding: 0.1rem 0.5rem;
+    font-size: 0.72rem;
     font-variant-numeric: tabular-nums;
+    color: var(--fg-3);
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+}
+
+.item-group-toggle:hover .item-group-count {
+    color: var(--fg-2);
 }
 
 .item-group.folded .item-list {
