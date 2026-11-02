@@ -857,14 +857,16 @@ button:hover,
     border-left: 2px solid var(--line);
 }
 
-/* 正文里被评论过的那句话：下划线 + 悬停提示 */
+/* 正文里被评论过的那句话：一条很淡的实线（跟注释的点线、术语浮窗的灰虚线区分开），
+   不铺底色、不加粗，尽量不打断阅读 */
 .cmt-mark {
-    border-bottom: 2px solid var(--accent);
+    border-bottom: 1px solid var(--line);
+    border-bottom-color: color-mix(in srgb, var(--accent) 35%, transparent);
     cursor: pointer;
-    background: linear-gradient(transparent 62%, var(--accent-soft) 62%);
 }
 
 .cmt-mark:hover {
+    border-bottom-color: var(--accent);
     background: var(--accent-soft);
 }
 
@@ -1402,6 +1404,14 @@ button:hover,
     margin-bottom: 0;
 }
 
+/* 只有一行加粗的引用块（「回答流程」「回答」这类提词）：当标签用——文字居中、上下别撑那么大。
+   用 p:only-of-type 而不是 p:only-child：注释功能会往引用块里插一个「＋」按钮，
+   用 only-child 永远匹配不上（2026-11-02 踩过，规则写了但页面没生效） */
+.markdown blockquote:has(> p:only-of-type > strong:only-child) {
+    padding: 0.42rem 1rem;
+    text-align: center;
+}
+
 .markdown blockquote ol > li::marker,
 .markdown blockquote ul > li::marker {
     color: var(--accent-2);
@@ -1620,7 +1630,7 @@ button:hover,
     font-weight: 600;
     font-size: 0.9rem;
     letter-spacing: 0.01em;
-    padding: 0.36rem 0.6rem;
+    padding: 0.3rem 0.6rem;
 }
 
 .tree > li > a,
@@ -1639,7 +1649,7 @@ button:hover,
     font-size: 0.85rem;
     color: var(--fg);
     /* 左侧留出箭头的位，否则 padding 简写会把 .tree-group 的 padding-left 覆盖掉，箭头压到文字上 */
-    padding: 0.28rem 0.6rem 0.28rem 1.15rem;
+    padding: 0.22rem 0.6rem 0.22rem 1.15rem;
 }
 
 /* 没有嵌套子目录时（项目区那种两层结构），靠字号和间距撑出层次 */
@@ -1652,7 +1662,7 @@ button:hover,
     font-size: 0.83rem;
     line-height: 1.4;
     color: var(--fg-2);
-    padding: 0.22rem 0.6rem 0.22rem 2rem;
+    padding: 0.1rem 0.6rem 0.1rem 2rem;
     text-indent: -1.4rem;
 }
 
@@ -1660,7 +1670,7 @@ button:hover,
 .tree ul ul .locked {
     color: var(--fg-3);
     font-size: 0.8rem;
-    padding: 0.28rem 0.6rem 0.28rem 2rem;
+    padding: 0.14rem 0.6rem 0.14rem 2rem;
     text-indent: -1.4rem;
 }
 

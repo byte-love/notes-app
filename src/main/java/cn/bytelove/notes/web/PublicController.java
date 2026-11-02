@@ -616,7 +616,8 @@ public class PublicController {
         model.addAttribute("treeBase", contextPath() + "/api/tree/" + kind.toLowerCase(java.util.Locale.ROOT));
         model.addAttribute("starIds", stars.starredIds(viewer.userId()));
         model.addAttribute("bookmarkIds", bookmarks.ids(viewer.userId()));
-        return "fragments/tree :: nodes";
+        // 懒加载返回的是「子层」：用裸 <ul>（sub），别带 .tree，否则分组分隔线会套到每一层
+        return "fragments/tree :: sub";
     }
 
     /** 按父节点把列表拆成小节，小节顺序跟左侧树一致（sortOrder + 标题）。 */

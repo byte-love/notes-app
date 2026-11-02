@@ -1,7 +1,20 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
 <body>
+
+<!-- 整棵树：只有最外层带 .tree；子层用 sub（裸 <ul>），
+     否则「分组之间的分隔线」（.tree > li + li）会套到每一层，叶子之间也长出横线 -->
 <ul th:fragment="nodes(nodes)" class="tree">
+    <th:block th:replace="~{fragments/tree :: items(${nodes})}"></th:block>
+</ul>
+
+<!-- 子层：裸 <ul>，由上层 <li> 自己包 -->
+<ul th:fragment="sub(nodes)">
+    <th:block th:replace="~{fragments/tree :: items(${nodes})}"></th:block>
+</ul>
+
+<!-- 一行行的 <li>：分组是折叠按钮，叶子是链接；叶子带行号 -->
+<th:block th:fragment="items(nodes)">
     <li th:each="n : ${nodes}" th:classappend="${n.hasChildren()} ? 'has-kids' : ''">
         <button th:if="${n.hasChildren() or n.lazy()}" type="button" class="tree-group"
                 th:attr="data-key=${n.item.slug},data-lazy=${n.lazy()} ? ${treeBase + '?parent=' + n.item.slug} : null"
@@ -24,10 +37,11 @@
             <span class="tree-num" th:text="${#numbers.formatInteger(n.ordinal(), 2)}">01</span><span
                 th:text="${n.item.title}"></span>
         </a>
-        <th:block th:if="${n.hasChildren()}">
-            <ul th:replace="~{fragments/tree :: nodes(${n.children})}"></ul>
-        </th:block>
+        <ul th:if="${n.hasChildren()}">
+            <th:block th:replace="~{fragments/tree :: items(${n.children})}"></th:block>
+        </ul>
     </li>
-</ul>
+</th:block>
+
 </body>
 </html>
