@@ -3490,49 +3490,66 @@ html[data-theme='dark'] .cl-latest {
     margin-bottom: 0;
 }
 
-/* 二级小分类：条目太多的大组里再分一层，默认收起（一进页面只看到几档小标题） */
-.item-subgroup {
-    margin: 0.1rem 0 0;
-}
-
-.item-subgroup-toggle {
+/* 二级分档：一行标签（chip），点开才在下面展开那一档的卡片；一次只开一档。
+   参考 shadcn 的 filter-chip 做法：胶囊 + 计数，选中态用强调色 */
+.subgroup-chips {
     display: flex;
-    align-items: center;
+    flex-wrap: wrap;
     gap: 0.4rem;
-    width: 100%;
-    margin: 0;
-    padding: 0.3rem 0;
+    margin: 0.5rem 0 0;
+}
+
+.subgroup-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
     font: inherit;
-    text-align: left;
-    color: inherit;
-    background: none;
-    border: 0;
-    cursor: pointer;
-}
-
-.item-subgroup-title {
-    margin: 0;
-    font-size: 0.84rem;
-    font-weight: 500;
+    font-size: 0.82rem;
+    line-height: 1;
+    padding: 0.42rem 0.75rem;
     color: var(--fg-2);
-    letter-spacing: 0.01em;
+    background: var(--bg-2);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    cursor: pointer;
+    transition: color 0.14s ease, border-color 0.14s ease, background 0.14s ease;
 }
 
-.item-subgroup-toggle:hover .item-subgroup-title {
+.subgroup-chip:hover {
+    color: var(--fg);
+    border-color: var(--fg-3);
+}
+
+.subgroup-chip.on {
+    color: var(--accent);
+    border-color: var(--accent);
+    background: var(--accent-soft);
+}
+
+.subgroup-chip-count {
+    font-size: 0.72rem;
+    color: var(--fg-3);
+    font-variant-numeric: tabular-nums;
+}
+
+.subgroup-chip.on .subgroup-chip-count {
     color: var(--accent);
 }
 
-.item-subgroup .item-group-caret {
-    border-left-width: 4px;
-    border-top-width: 3px;
-    border-bottom-width: 3px;
+.subgroup-panels {
+    margin-top: 0.8rem;
 }
 
-.item-subgroup .item-list {
-    margin: 0.45rem 0 0.6rem;
+.subgroup-panel {
+    display: none;
 }
 
-.item-subgroup.folded .item-list {
+.subgroup-panel.on {
+    display: block;
+}
+
+/* 外层分组收起时，标签行和展开面板一起收掉（之前只藏 .item-list，标签还留着） */
+.item-group.folded .item-group-body {
     display: none;
 }
 /* 「已加入」状态：同类按钮，但不可点 */

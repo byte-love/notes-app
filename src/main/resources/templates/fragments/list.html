@@ -33,20 +33,27 @@
         <h2 class="item-group-title" th:unless="${g.title() != null}" th:text="${g.title()}">分类</h2>
 
         <th:block th:if="${g.hasSub()}">
-            <section class="item-subgroup" th:each="sg : ${g.subGroups()}"
-                     th:attr="data-sub=${(g.slug() == null ? '' : g.slug()) + '::' + sg.name()}">
-                <button type="button" class="item-subgroup-toggle">
-                    <span class="item-group-caret" aria-hidden="true"></span>
-                    <h3 class="item-subgroup-title" th:text="${sg.name()}">小分类</h3>
-                    <span class="item-group-count" th:text="${#lists.size(sg.items())}">0</span>
-                </button>
-                <ul class="item-list">
-                    <!-- 注意：th:replace 的优先级比 th:each 高，必须分成两层，否则 fragment 里拿到的是 null -->
-                    <th:block th:each="i : ${sg.items()}">
-                        <th:block th:replace="~{fragments/list :: card(${i}, ${basePath})}"></th:block>
-                    </th:block>
-                </ul>
-            </section>
+            <div class="item-group-body">
+                <!-- 二级分档做成一行标签：点标签才展开那一档的卡片，一次只开一档 -->
+                <div class="subgroup-chips">
+                    <button type="button" class="subgroup-chip" th:each="sg : ${g.subGroups()}"
+                            th:attr="data-chip=${(g.slug() == null ? '' : g.slug()) + '::' + sg.name()}">
+                        <span th:text="${sg.name()}">小分类</span>
+                        <span class="subgroup-chip-count" th:text="${#lists.size(sg.items())}">0</span>
+                    </button>
+                </div>
+                <div class="subgroup-panels">
+                    <section class="subgroup-panel" th:each="sg : ${g.subGroups()}"
+                             th:attr="data-panel=${(g.slug() == null ? '' : g.slug()) + '::' + sg.name()}">
+                        <ul class="item-list">
+                            <!-- 注意：th:replace 的优先级比 th:each 高，必须分成两层，否则 fragment 里拿到的是 null -->
+                            <th:block th:each="i : ${sg.items()}">
+                                <th:block th:replace="~{fragments/list :: card(${i}, ${basePath})}"></th:block>
+                            </th:block>
+                        </ul>
+                    </section>
+                </div>
+            </div>
         </th:block>
 
         <ul class="item-list" th:unless="${g.hasSub()}">

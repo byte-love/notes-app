@@ -1,9 +1,9 @@
 // 列表页：① 滚到底取下一批 ② 分类标题可收起/展开，状态记在 localStorage
-// ③ 大分类里的二级小分类默认收起，点开才展开
+// ③ 大分类里的二级分档做成标签行：点标签展开那一档，一次只开一档
 (() => {
     // ---------- 分类折叠 ----------
     const KEY = 'group-fold:';
-    const SUB_KEY = 'sub-fold:';
+    const SUB_KEY = 'sub-open:';
 
     const applyFold = (group) => {
         const key = group.dataset.key;
@@ -13,32 +13,46 @@
         } catch (e) {}
     };
 
-    // 二级小分类：没记过状态就默认收起（这样一进页面只看到几档小标题）
-    const applySubFold = (sub) => {
-        const key = sub.dataset.sub;
+    // 二级分档：记住每个分组上次打开的那一档（只认第一档，默认全关）
+    const openSub = (group, chipKey) => {
+        group.querySelectorAll('.subgroup-chip').forEach((c) => {
+            c.classList.toggle('on', chipKey != null && c.dataset.chip === chipKey);
+        });
+        group.querySelectorAll('.subgroup-panel').forEach((p) => {
+            p.classList.toggle('on', chipKey != null && p.dataset.panel === chipKey);
+        });
+    };
+
+    const applySubOpen = (group) => {
+        const key = group.dataset.key;
         if (!key) return;
         let saved = null;
         try {
             saved = localStorage.getItem(SUB_KEY + key);
         } catch (e) {}
-        sub.classList.toggle('folded', saved === null ? true : saved === '1');
+        if (saved) openSub(group, saved);
     };
 
     const applyFolds = (root) => {
-        (root || document).querySelectorAll('.item-group[data-key]').forEach(applyFold);
-        (root || document).querySelectorAll('.item-subgroup[data-sub]').forEach(applySubFold);
+        (root || document).querySelectorAll('.item-group[data-key]').forEach((g) => {
+            applyFold(g);
+            applySubOpen(g);
+        });
     };
 
     document.addEventListener('click', (e) => {
-        const subToggle = e.target.closest('.item-subgroup-toggle');
-        if (subToggle) {
-            const sub = subToggle.closest('.item-subgroup');
-            if (!sub) return;
-            sub.classList.toggle('folded');
-            const key = sub.dataset.sub;
-            if (key) {
+        const chip = e.target.closest('.subgroup-chip');
+        if (chip) {
+            const group = chip.closest('.item-group');
+            if (!group) return;
+            const key = chip.dataset.chip;
+            const willOpen = !chip.classList.contains('on');
+            openSub(group, willOpen ? key : null);
+            const gk = group.dataset.key;
+            if (gk) {
                 try {
-                    localStorage.setItem(SUB_KEY + key, sub.classList.contains('folded') ? '1' : '0');
+                    if (willOpen) localStorage.setItem(SUB_KEY + gk, key);
+                    else localStorage.removeItem(SUB_KEY + gk);
                 } catch (err) {}
             }
             return;
