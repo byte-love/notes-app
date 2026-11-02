@@ -1,12 +1,9 @@
 /* 正在评论的那段原文：光标点进输入框后原生选区就没了，这里用 Custom Highlight 再铺一层底。
-   底色 + 下划线，跟「已有评论」的 .cmt-mark 同一套视觉语言，但整段铺满，一眼能看出在评哪句 */
-::highlight(cmt-anchor) {
-    background-color: var(--accent-soft);
-    color: inherit;
-    text-decoration: underline;
-    text-decoration-color: var(--accent);
-    text-decoration-thickness: 2px;
-}
+   重点高亮（hl-yellow 等五个）同理。
+   ⚠ 这两组高亮的颜色**不能写在这张表里**：::highlight() 伪元素不认 var()（自定义属性不会带进
+   高亮伪元素，实测 var(--hl-yellow) 解析成空，页面上一点底纹都没有）。所以颜色由 comments.js
+   从 :root 上读出来，写成一条实体值的 <style> 塞进 head，切主题时重写；这里的 --hl-* / --sw-*
+   只作为那条 <style> 和工具条色块的数据源。 */
 
 /* hidden 属性要真的不显示：下面不少组件自带 display: flex，会把浏览器默认的
    [hidden] { display: none } 盖掉（工具条「评论」、引文小框就这么赖着不走） */
@@ -28,6 +25,17 @@
     --tree-guide: #dfdacf;
     /* 仿飞书的提示块底色（暖米色），和强调色的赭石搭 */
     --callout-bg: #fdf4e6;
+    /* 重点高亮的五层底纹（半透明，正文颜色不受影响）和工具条上那排色块 */
+    --hl-yellow: rgba(250, 205, 60, 0.45);
+    --hl-green: rgba(72, 199, 116, 0.35);
+    --hl-blue: rgba(64, 156, 255, 0.28);
+    --hl-pink: rgba(255, 105, 160, 0.30);
+    --hl-purple: rgba(160, 120, 245, 0.30);
+    --sw-yellow: #f5cf49;
+    --sw-green: #4ec97a;
+    --sw-blue: #4f9dff;
+    --sw-pink: #ff6fa5;
+    --sw-purple: #a580f5;
     /* 滚动条：滚动时用 active，停手后 JS 会把它插值到 idle */
     --sb-active: rgba(114, 109, 99, 0.9);
     --sb-idle: rgba(28, 27, 24, 0.042);
@@ -50,6 +58,17 @@
         --danger: #f07c74;
         --tree-guide: #2b302e;
         --callout-bg: #251f18;
+        /* 深色底下五层底纹都再压一档，免得盖住正文 */
+        --hl-yellow: rgba(250, 205, 60, 0.28);
+        --hl-green: rgba(72, 199, 116, 0.26);
+        --hl-blue: rgba(64, 156, 255, 0.28);
+        --hl-pink: rgba(255, 105, 160, 0.26);
+        --hl-purple: rgba(160, 120, 245, 0.30);
+        --sw-yellow: #f5cf49;
+        --sw-green: #4ec97a;
+        --sw-blue: #4f9dff;
+        --sw-pink: #ff6fa5;
+        --sw-purple: #a580f5;
         --sb-active: rgba(140, 137, 128, 0.85);
         --sb-idle: rgba(231, 229, 223, 0.035);
     }
@@ -57,6 +76,16 @@
 
 html[data-theme='light'] {
     --callout-bg: #fdf4e6;
+    --hl-yellow: rgba(250, 205, 60, 0.45);
+    --hl-green: rgba(72, 199, 116, 0.35);
+    --hl-blue: rgba(64, 156, 255, 0.28);
+    --hl-pink: rgba(255, 105, 160, 0.30);
+    --hl-purple: rgba(160, 120, 245, 0.30);
+    --sw-yellow: #f5cf49;
+    --sw-green: #4ec97a;
+    --sw-blue: #4f9dff;
+    --sw-pink: #ff6fa5;
+    --sw-purple: #a580f5;
     --fg: #1c1b18;
     --fg-2: #57534b;
     --fg-3: #726d63;
@@ -102,6 +131,16 @@ html[data-theme='sepia'] {
     --danger: #a82f2f;
     --tree-guide: #d8ccb6;
     --callout-bg: #f8eedb;
+    --hl-yellow: rgba(248, 200, 60, 0.42);
+    --hl-green: rgba(72, 180, 110, 0.32);
+    --hl-blue: rgba(64, 140, 230, 0.24);
+    --hl-pink: rgba(240, 100, 150, 0.26);
+    --hl-purple: rgba(150, 115, 235, 0.26);
+    --sw-yellow: #f5cf49;
+    --sw-green: #4ec97a;
+    --sw-blue: #4f9dff;
+    --sw-pink: #ff6fa5;
+    --sw-purple: #a580f5;
     --sb-active: rgba(111, 101, 82, 0.9);
     --sb-idle: rgba(59, 50, 39, 0.042);
 }
@@ -1004,6 +1043,174 @@ button:hover,
     font-family: var(--mono);
 }
 
+/* ---------- 星级 ---------- */
+/* 收藏是「留着以后再看」，星级是「这题值不值得花时间」，两个标记互不干扰 */
+
+/* 卡片：标题一列、星级一列。星级固定在右列，翻页时右边缘始终对得上 */
+.item-head {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    column-gap: 1rem;
+    align-items: baseline;
+}
+
+.rate {
+    display: inline-flex;
+    gap: 0.15rem;
+    line-height: 1;
+    justify-self: end;
+}
+
+.rate-star {
+    font: inherit;
+    font-size: 0.86rem;
+    line-height: 1;
+    padding: 0.05rem 0.1rem;
+    border: 0;
+    background: none;
+    /* 没标到的用正文灰压淡，标到的换暖金色：三个主题都不用单独配色 */
+    color: var(--fg-3);
+    opacity: 0.42;
+    cursor: pointer;
+    transition: color 0.12s ease, opacity 0.12s ease, transform 0.12s ease;
+}
+
+.rate[data-v="1"] .rate-star:nth-child(1),
+.rate[data-v="2"] .rate-star:nth-child(-n+2),
+.rate[data-v="3"] .rate-star:nth-child(-n+3) {
+    color: #cf9a2e;
+    opacity: 1;
+}
+
+.rate:not(.readonly) .rate-star:hover {
+    opacity: 1;
+    transform: scale(1.15);
+}
+
+/* 只读（游客、或别人的条目）时只留已标的那几颗，0 星什么都不显示，别满屏灰星 */
+.rate.readonly .rate-star {
+    display: none;
+    cursor: default;
+    pointer-events: none;
+}
+
+.rate.readonly[data-v="1"] .rate-star:nth-child(1),
+.rate.readonly[data-v="2"] .rate-star:nth-child(-n+2),
+.rate.readonly[data-v="3"] .rate-star:nth-child(-n+3) {
+    display: inline;
+}
+
+/* 详情页标题下面那颗稍大一点，和左边的日期、右边的按钮一个量级 */
+.doc-meta .rate-star {
+    font-size: 1rem;
+}
+
+/* 左侧目录里的星级：和收藏的 ★ 同一个位置，用颜色区分（收藏是强调色，星级是暖金色） */
+.tree-rate {
+    color: #c8901f;
+    margin-right: 0.32rem;
+    font-size: 0.78em;
+    letter-spacing: 0.04em;
+}
+
+.tree-rate[data-v="0"] {
+    display: none;
+}
+
+/* 筛选条：胶囊标签 + 条数，选中态用强调色；条数为 0 的置灰点不动 */
+.rate-filter {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin: 0 0 1.6rem;
+}
+
+.rate-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.82rem;
+    line-height: 1;
+    padding: 0.42rem 0.75rem;
+    color: var(--fg-2);
+    background: var(--bg-2);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    transition: color 0.14s ease, border-color 0.14s ease, background 0.14s ease;
+}
+
+.rate-chip:hover {
+    color: var(--fg);
+    border-color: var(--fg-3);
+    text-decoration: none;
+}
+
+.rate-chip.on {
+    color: var(--accent);
+    border-color: var(--accent);
+    background: var(--accent-soft);
+}
+
+.rate-chip.off {
+    opacity: 0.42;
+    pointer-events: none;
+}
+
+.rate-chip-count {
+    font-size: 0.72rem;
+    color: var(--fg-3);
+    font-variant-numeric: tabular-nums;
+}
+
+.rate-chip.on .rate-chip-count {
+    color: var(--accent);
+}
+
+/* ---------- 标签（按词表自动打的，卡片上只展示，详情页点了能筛） ---------- */
+.item-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3rem;
+    margin: 0.3rem 0 0;
+}
+
+.item-tag {
+    font-size: 0.72rem;
+    line-height: 1.6;
+    padding: 0.02rem 0.4rem;
+    color: var(--fg-3);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+}
+
+.doc-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin: -1.2rem 0 2rem;
+}
+
+.doc-tag {
+    font-size: 0.76rem;
+    line-height: 1.7;
+    padding: 0.05rem 0.55rem;
+    color: var(--fg-2);
+    background: var(--bg-2);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+}
+
+.doc-tag:hover {
+    color: var(--accent);
+    border-color: var(--accent);
+    text-decoration: none;
+}
+
+/* 标签那条筛选行跟星级那条挨着，别各自留一份外边距 */
+.tag-filter {
+    margin-top: -0.9rem;
+}
+
 /* ---------- document layout ---------- */
 .doc-wrap {
     max-width: 1100px;
@@ -1278,6 +1485,77 @@ button:hover,
 
 .gl-tip.on {
     opacity: 1;
+}
+
+/* 管理员点术语后浮出的编辑框：术语 / 语境关键词 / 解释 + 保存·删除·新增·取消 */
+.gl-admin .markdown .gl {
+    cursor: pointer;
+}
+
+.gl-edit {
+    position: fixed;
+    z-index: 110;
+    width: min(360px, 92vw);
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+    padding: 0.7rem 0.8rem 0.75rem;
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    box-shadow: 0 14px 36px rgba(0, 0, 0, 0.24);
+}
+
+.gl-edit label {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    font-size: 0.72rem;
+    color: var(--fg-3);
+}
+
+.gl-edit input,
+.gl-edit textarea {
+    font: inherit;
+    font-size: 0.82rem;
+    line-height: 1.6;
+    color: var(--fg);
+    background: var(--bg-2);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 0.3rem 0.45rem;
+}
+
+.gl-edit textarea {
+    resize: vertical;
+    min-height: 5rem;
+}
+
+.gl-ops {
+    display: flex;
+    gap: 0.35rem;
+    justify-content: flex-end;
+}
+
+.gl-ops button {
+    font: inherit;
+    font-size: 0.78rem;
+    padding: 0.2rem 0.6rem;
+    color: var(--fg);
+    background: var(--bg-2);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.gl-ops button:hover {
+    color: var(--accent);
+    border-color: var(--accent);
+}
+
+.gl-ops .gl-del:hover {
+    color: var(--danger);
+    border-color: var(--danger);
 }
 
 /* 代码块：等宽 + 顶部语言条 + 行号（行号由 js/code.js 加），整体像飞书那种卡片 */
@@ -3388,6 +3666,81 @@ html[data-theme='dark'] .cl-latest {
 .cmt-tool button:hover {
     color: var(--accent);
     background: var(--bg);
+}
+
+/* 高亮工具条上那一排颜色块，和点已有高亮时浮出来的小面板 */
+.hl-row {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0 0.3rem;
+}
+
+.hl-dot {
+    width: 15px;
+    height: 15px;
+    padding: 0;
+    border: 1px solid rgba(0, 0, 0, 0.12);
+    border-radius: 50%;
+    cursor: pointer;
+}
+
+.hl-dot:hover {
+    transform: scale(1.14);
+}
+
+.hl-dot[data-color='yellow'] {
+    background: var(--sw-yellow);
+}
+
+.hl-dot[data-color='green'] {
+    background: var(--sw-green);
+}
+
+.hl-dot[data-color='blue'] {
+    background: var(--sw-blue);
+}
+
+.hl-dot[data-color='pink'] {
+    background: var(--sw-pink);
+}
+
+.hl-dot[data-color='purple'] {
+    background: var(--sw-purple);
+}
+
+.hl-pop {
+    position: fixed;
+    z-index: 95;
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.35rem 0.5rem;
+    background: var(--bg-2);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+}
+
+.hl-del {
+    font: inherit;
+    font-size: 0.78rem;
+    padding: 0.15rem 0.55rem;
+    color: var(--fg-3);
+    background: none;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.hl-del:hover {
+    color: var(--danger);
+    border-color: var(--danger);
+}
+
+/* 高亮的数据容器不占版面 */
+.hl-data {
+    display: none;
 }
 
 /* 评论框默认收起，选中文字点了「评论」才出现 */

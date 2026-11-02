@@ -8,14 +8,19 @@ import cn.bytelove.notes.service.CommentFilter;
 import cn.bytelove.notes.service.CommentRateLimiter;
 import cn.bytelove.notes.service.CommentService;
 import cn.bytelove.notes.service.ContentStarService;
+import cn.bytelove.notes.service.HighlightService;
 import cn.bytelove.notes.service.MarkdownRenderer;
 import cn.bytelove.notes.service.ProjectMetaService;
 import cn.bytelove.notes.service.ReadingPositionService;
+import cn.bytelove.notes.service.RatingService;
 import cn.bytelove.notes.service.NoteTreeService;
 import cn.bytelove.notes.service.SubGroupService;
+import cn.bytelove.notes.service.TagService;
 import cn.bytelove.notes.service.ViewerService;
 import cn.bytelove.notes.service.VisibilityService;
 import cn.bytelove.notes.service.VisibilityService.Viewer;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
@@ -30,6 +35,7 @@ import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.io.IOException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -52,10 +58,15 @@ public class PublicController {
     /** 评论是短句：前端输入框就限了 500，服务端按同一个数截断，别让绕过输入框的请求写进长评论。 */
     private static final int MAX_COMMENT = 500;
 
+    /** 高亮的引文只存锚点用，截 500 字就够定位了。 */
+    private static final int MAX_HIGHLIGHT = 500;
+
     private final ContentItemRepository items;
     private final VisibilityService visibility;
     private final ViewerService viewers;
     private final ContentStarService stars;
+    private final RatingService ratings;
+    private final TagService tags;
     private final ProjectMetaService meta;
     private final ReadingPositionService positions;
     private final BookmarkService bookmarks;
@@ -65,16 +76,19 @@ public class PublicController {
     private final CommentService comments;
     private final CommentFilter commentFilter;
     private final CommentRateLimiter commentLimiter;
+    private final HighlightService highlights;
 
     public PublicController(ContentItemRepository items, VisibilityService visibility, ViewerService viewers,
-                            ContentStarService stars, ProjectMetaService meta, ReadingPositionService positions, BookmarkService bookmarks,
+                            ContentStarService stars, RatingService ratings, TagService tags, ProjectMetaService meta, ReadingPositionService positions, BookmarkService bookmarks,
                             MarkdownRenderer markdown, NoteTreeService tree, SubGroupService subGroups,
                             CommentService comments, CommentFilter commentFilter,
-                            CommentRateLimiter commentLimiter) {
+                            CommentRateLimiter commentLimiter, HighlightService highlights) {
         this.items = items;
         this.visibility = visibility;
         this.viewers = viewers;
         this.stars = stars;
+        this.ratings = ratings;
+        this.tags = tags;
         this.meta = meta;
         this.positions = positions;
         this.bookmarks = bookmarks;
@@ -84,39 +98,48 @@ public class PublicController {
         this.comments = comments;
         this.commentFilter = commentFilter;
         this.commentLimiter = commentLimiter;
+        this.highlights = highlights;
     }
 
     @GetMapping("/")
     public String home(Model model, Authentication auth) {
-        return listing(ContentKind.NOTE, "笔记", model, auth, null, false);
+        return listing(ContentKind.NOTE, "笔记", model, auth, null, false, null, null);
     }
 
     @GetMapping("/notes")
     public String notes(Model model, Authentication auth,
                         @RequestParam(name = "from", required = false) Integer from,
-                        @RequestParam(name = "fragment", defaultValue = "false") boolean fragment) {
-        return listing(ContentKind.NOTE, "笔记", model, auth, from, fragment);
+                        @RequestParam(name = "fragment", defaultValue = "false") boolean fragment,
+                        @RequestParam(name = "rate", required = false) String rate,
+                        @RequestParam(name = "tag", required = false) String tag) {
+        return listing(ContentKind.NOTE, "笔记", model, auth, from, fragment, rate, tag);
     }
 
     @GetMapping("/bagu")
     public String bagu(Model model, Authentication auth,
                        @RequestParam(name = "from", required = false) Integer from,
-                       @RequestParam(name = "fragment", defaultValue = "false") boolean fragment) {
-        return listing(ContentKind.BAGU, "八股", model, auth, from, fragment);
+                       @RequestParam(name = "fragment", defaultValue = "false") boolean fragment,
+                       @RequestParam(name = "rate", required = false) String rate,
+                       @RequestParam(name = "tag", required = false) String tag) {
+        return listing(ContentKind.BAGU, "八股", model, auth, from, fragment, rate, tag);
     }
 
     @GetMapping("/algo")
     public String algo(Model model, Authentication auth,
                        @RequestParam(name = "from", required = false) Integer from,
-                       @RequestParam(name = "fragment", defaultValue = "false") boolean fragment) {
-        return listing(ContentKind.ALGO, "算法", model, auth, from, fragment);
+                       @RequestParam(name = "fragment", defaultValue = "false") boolean fragment,
+                       @RequestParam(name = "rate", required = false) String rate,
+                       @RequestParam(name = "tag", required = false) String tag) {
+        return listing(ContentKind.ALGO, "算法", model, auth, from, fragment, rate, tag);
     }
 
     @GetMapping("/projects")
     public String projects(Model model, Authentication auth,
                            @RequestParam(name = "from", required = false) Integer from,
-                           @RequestParam(name = "fragment", defaultValue = "false") boolean fragment) {
-        return listing(ContentKind.PROJECT, "项目", model, auth, from, fragment);
+                           @RequestParam(name = "fragment", defaultValue = "false") boolean fragment,
+                           @RequestParam(name = "rate", required = false) String rate,
+                           @RequestParam(name = "tag", required = false) String tag) {
+        return listing(ContentKind.PROJECT, "项目", model, auth, from, fragment, rate, tag);
     }
 
     @GetMapping("/bagu/{slug}")
@@ -140,10 +163,11 @@ public class PublicController {
     }
 
     private String listing(ContentKind kind, String pageTitle, Model model, Authentication auth,
-                           Integer from, boolean fragment) {
+                           Integer from, boolean fragment, String rate, String tag) {
         Viewer viewer = viewers.current(auth);
         Set<Long> lockedIds = new LinkedHashSet<>();
         List<ContentItem> all = filtered(poolForListing(kind, viewer), viewer, lockedIds);
+        Set<Long> starIds = stars.starredIds(viewer.userId());
 
         // 目录节点只出现在左侧树里，不混进右侧正文列表
         Set<Long> parentIds = new LinkedHashSet<>();
@@ -157,6 +181,26 @@ public class PublicController {
             if (!parentIds.contains(i.getId())) {
                 leaves.add(i);
             }
+        }
+
+        // 星级 / 收藏筛选只挑卡片，左侧目录照旧整棵给：筛完还得能顺着目录跳
+        Map<String, Integer> counts = rateCounts(leaves, starIds);
+        String rateFilter = pickRate(rate);
+        leaves = byRate(leaves, rateFilter, starIds);
+
+        // 标签筛选：同样只挑卡片；标签上的条数按「当前星级筛选后」的数，
+        // 这样「只看三星」时还能看出三星里哪些主题多
+        Map<String, Integer> tagCounts = tags.counts(idsOf(leaves));
+        String tagFilter = (tag == null || tag.isBlank()) ? null : tag.trim();
+        if (tagFilter != null) {
+            Set<Long> withTag = tags.itemIdsWithTag(tagFilter);
+            List<ContentItem> kept = new ArrayList<>();
+            for (ContentItem i : leaves) {
+                if (withTag.contains(i.getId())) {
+                    kept.add(i);
+                }
+            }
+            leaves = kept;
         }
 
         // 补充笔记不单独占一张卡：作为附件挂到它的「本体」卡片里（本体不可见时才退回当普通卡片）
@@ -211,7 +255,13 @@ public class PublicController {
 
         model.addAttribute("items", leaves);
         model.addAttribute("tree", visibleTree(all, lockedIds, null));
-        model.addAttribute("starIds", stars.starredIds(viewer.userId()));
+        model.addAttribute("starIds", starIds);
+        model.addAttribute("rateFilter", rateFilter);
+        model.addAttribute("rateCounts", counts);
+        model.addAttribute("tagFilter", tagFilter);
+        model.addAttribute("tagCounts", tagCounts);
+        model.addAttribute("itemTags", tags.of(idsOf(leaves)));
+        model.addAttribute("canRate", viewer.userId() != null);
         model.addAttribute("bookmarkIds", bookmarks.ids(viewer.userId()));
         model.addAttribute("lastReadId", lastReadId);
         model.addAttribute("lastRead", lastRead);
@@ -274,6 +324,7 @@ public class PublicController {
         model.addAttribute("item", item);
         model.addAttribute("html", markdown.toHtml(item.getBody()));
         model.addAttribute("toc", markdown.toc(item.getBody()));
+        model.addAttribute("itemTags", tags.of(List.of(item.getId())).getOrDefault(item.getId(), List.of()));
         // 正文末尾的附件卡：挂到本文下面的补充笔记，点开就是那篇
         model.addAttribute("attachedNotes", attachedNotesOf(siblings, item, lockedIds));
         // 反过来，本文如果是补充笔记，标题下面给一条回「本体」的链接
@@ -281,6 +332,8 @@ public class PublicController {
         // 九成八股正文里没有 ## 标题，右栏会空着；没有目录时改用「同分类的其他条目」填上
         model.addAttribute("rail", railOf(siblings, item, lockedIds));
         model.addAttribute("starred", viewer.userId() != null && stars.isStarred(viewer.userId(), item.getId()));
+        // 只有自己的内容能标星级：星级是内容上的字段，不是「谁标的」，改别人的条目等于改别人的东西
+        model.addAttribute("canRate", viewer.userId() != null && viewer.userId().equals(item.getOwnerId()));
 
         // 右栏换成评论区：整篇评论 + 锚在某句话上的评论（楼中楼在 service 里组好）
         // 复制出来的副本要跟原版共用同一串评论，所以按「最初的来源条目」做 key
@@ -296,6 +349,9 @@ public class PublicController {
         model.addAttribute("annotationCount", comments.count(commentKey, CommentService.ANNOTATION));
         model.addAttribute("canComment", viewer.userId() != null);
         model.addAttribute("commentSlug", item.getSlug());
+        // 重点高亮：只取自己标的那些，别人标的看不到
+        model.addAttribute("highlights", highlights.list(item.getId(),
+                viewer.userId() == null ? 0L : viewer.userId()));
         return "detail";
     }
 
@@ -434,6 +490,15 @@ public class PublicController {
         return t.length() <= 40 ? t : t.substring(t.length() - 40);
     }
 
+    /** 引文后面的前四十个字。 */
+    private static String head40(String s) {
+        if (s == null) {
+            return null;
+        }
+        String t = s.trim();
+        return t.length() <= 40 ? t : t.substring(0, 40);
+    }
+
     /** 删评论：自己的、或者管理员；软删，楼里其他人的回复保留。 */
     @PostMapping("/comment/{slug}/{id}/delete")
     public String deleteComment(@PathVariable String slug, @PathVariable Long id, Authentication auth) {
@@ -444,6 +509,46 @@ public class PublicController {
         ContentItem item = resolveAnyKind(slug, viewer);
         comments.remove(id, viewer.userId(), viewer.admin());
         return "redirect:" + basePath(item.getKind()) + "/" + item.getSlug() + "#comments";
+    }
+
+    /**
+     * 标一处重点高亮：选中文字 → 挑个颜色 → 存下来。
+     * 返回新记录的 id，前端当场画上，不刷新页面。
+     */
+    @PostMapping("/highlight/{slug}")
+    @ResponseBody
+    public String addHighlight(@PathVariable String slug,
+                               @RequestParam(required = false) String quote,
+                               @RequestParam(required = false) String anchorKind,
+                               @RequestParam(required = false) Integer blockIndex,
+                               @RequestParam(required = false) String prefix,
+                               @RequestParam(required = false) String suffix,
+                               @RequestParam(required = false) String color,
+                               Authentication auth) {
+        Viewer viewer = viewers.current(auth);
+        String text = quote == null ? "" : quote.trim();
+        if (viewer.userId() == null || text.isEmpty()) {
+            return "";
+        }
+        if (text.length() > MAX_HIGHLIGHT) {
+            text = text.substring(0, MAX_HIGHLIGHT);
+        }
+        ContentItem item = resolveAnyKind(slug, viewer);
+        long id = highlights.add(item.getId(), viewer.userId(), anchorKind, text,
+                trim40(prefix), head40(suffix), blockIndex, color);
+        return String.valueOf(id);
+    }
+
+    /** 取消一处高亮：只能取消自己标的。 */
+    @PostMapping("/highlight/{slug}/{id}/delete")
+    @ResponseBody
+    public String removeHighlight(@PathVariable String slug, @PathVariable Long id, Authentication auth) {
+        Viewer viewer = viewers.current(auth);
+        if (viewer.userId() == null) {
+            return "";
+        }
+        highlights.remove(id, viewer.userId());
+        return "";
     }
 
     /** 手动书签：自己插的旗，想标几处标几处；anchor 为空是整篇，非空是某个标题块。 */
@@ -492,6 +597,102 @@ public class PublicController {
         // 这里不能自己拼 contextPath：redirect: 的目标 Spring 会自动加上前缀，
         // 手动再加一次会变成 /app/app/bagu/xxx 直接 404
         return "redirect:" + basePath(item.getKind()) + "/" + item.getSlug();
+    }
+
+    /**
+     * 星级：点第 n 颗设成 n 星，点当前那一颗清回 0 星（增、改、删都是这一个口子）。
+     * 页面上的星星用 fetch 提交，回 204 就够；从别处直接 POST 过来则跳回详情页。
+     */
+    @PostMapping("/rate/{slug}")
+    public void rate(@PathVariable String slug,
+                     @RequestParam(name = "rating", defaultValue = "0") int rating,
+                     Authentication auth, HttpServletRequest request, HttpServletResponse response) throws IOException {
+        Viewer viewer = viewers.current(auth);
+        ContentItem item = resolveAnyKind(slug, viewer);
+        if (viewer.userId() == null || !viewer.userId().equals(item.getOwnerId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN);
+        }
+        ratings.set(item.getId(), rating);
+        if ("fetch".equalsIgnoreCase(request.getHeader("X-Requested-With"))) {
+            response.setStatus(HttpServletResponse.SC_NO_CONTENT);
+            return;
+        }
+        response.sendRedirect(request.getContextPath() + basePath(item.getKind()) + "/" + item.getSlug());
+    }
+
+    /** 列表里这批条目的 id，标签是一次查一批，不要每张卡片查一次。 */
+    private static List<Long> idsOf(List<ContentItem> items) {
+        List<Long> ids = new ArrayList<>(items.size());
+        for (ContentItem i : items) {
+            ids.add(i.getId());
+        }
+        return ids;
+    }
+
+    /** 星级标签的筛选项：star = 只看收藏，3/2/1 = 这一档及以上，0 = 只看没标的；别的值当没选。 */
+    private static String pickRate(String rate) {
+        if (rate == null) {
+            return null;
+        }
+        return switch (rate) {
+            case "star", "3", "2", "1", "0" -> rate;
+            default -> null;
+        };
+    }
+
+    /** 每个标签上显示的条数，按筛选前的全部卡片数：筛完还要知道别的档有多少。 */
+    private static Map<String, Integer> rateCounts(List<ContentItem> leaves, Set<Long> starIds) {
+        int starred = 0;
+        int r3 = 0;
+        int r2 = 0;
+        int r1 = 0;
+        int none = 0;
+        for (ContentItem i : leaves) {
+            if (starIds.contains(i.getId())) {
+                starred++;
+            }
+            if (i.getRating() >= 3) {
+                r3++;
+            }
+            if (i.getRating() >= 2) {
+                r2++;
+            }
+            if (i.getRating() >= 1) {
+                r1++;
+            }
+            if (i.getRating() == 0) {
+                none++;
+            }
+        }
+        Map<String, Integer> counts = new LinkedHashMap<>();
+        counts.put("all", leaves.size());
+        counts.put("star", starred);
+        counts.put("3", r3);
+        counts.put("2", r2);
+        counts.put("1", r1);
+        counts.put("0", none);
+        return counts;
+    }
+
+    private static List<ContentItem> byRate(List<ContentItem> leaves, String filter, Set<Long> starIds) {
+        if (filter == null) {
+            return leaves;
+        }
+        List<ContentItem> kept = new ArrayList<>();
+        for (ContentItem i : leaves) {
+            boolean hit = switch (filter) {
+                case "star" -> starIds.contains(i.getId());
+                case "3" -> i.getRating() >= 3;
+                case "2" -> i.getRating() >= 2;
+                case "1" -> i.getRating() >= 1;
+                case "0" -> i.getRating() == 0;
+                default -> true;
+            };
+            if (hit) {
+                kept.add(i);
+            }
+        }
+        return kept;
     }
 
     /** 备忘录列表：把标记过的条目按类型分组列出来。 */

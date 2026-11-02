@@ -21,6 +21,8 @@ public class ChangelogService {
 
     private static final Pattern CHIP = Pattern.compile("\\[([^\\]]{1,20})]");
     private static final Pattern BOLD = Pattern.compile("\\*\\*([^*]{1,200})\\*\\*");
+    /** 反引号包起来的是行内代码。 */
+    private static final Pattern CODE = Pattern.compile("`([^`\\n]{1,120})`");
 
     private final JdbcTemplate jdbc;
 
@@ -145,6 +147,21 @@ public class ChangelogService {
                 .replace("<", "&lt;")
                 .replace(">", "&gt;")
                 .replace("\"", "&quot;");
+        // 反引号里的当行内代码，和正文一个样式；代码段里的 [] 不再当小标签
+        StringBuilder out = new StringBuilder();
+        Matcher code = CODE.matcher(escaped);
+        int last = 0;
+        while (code.find()) {
+            out.append(inline(escaped.substring(last, code.start())));
+            out.append("<code>").append(code.group(1)).append("</code>");
+            last = code.end();
+        }
+        out.append(inline(escaped.substring(last)));
+        return out.toString();
+    }
+
+    /** 加粗 + [小标签]。 */
+    private static String inline(String escaped) {
         String bolded = BOLD.matcher(escaped).replaceAll("<b>$1</b>");
         Matcher m = CHIP.matcher(bolded);
         StringBuilder sb = new StringBuilder();

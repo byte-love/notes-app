@@ -39,4 +39,11 @@ public class GlobalModelAdvice {
         String name = auth.getName();
         return new NavUser(name, UserBadge.initial(name), UserBadge.hue(name));
     }
+
+    /** 术语解释可以在页面上的浮窗里直接改，只有管理员看得到入口。 */
+    @ModelAttribute("glossaryAdmin")
+    public boolean glossaryAdmin(Authentication auth) {
+        return auth != null && auth.isAuthenticated() && auth.getAuthorities().stream()
+                .anyMatch(a -> "ROLE_ADMIN".equals(a.getAuthority()));
+    }
 }

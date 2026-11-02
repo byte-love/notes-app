@@ -31,7 +31,7 @@ public class SecurityConfig {
                                 "/login", "/register", "/api/**", "/css/**", "/js/**", "/media/**", "/favicon.ico",
                                 "/error").permitAll()
                         .requestMatchers("/admin/**").authenticated()
-                        .requestMatchers("/star/**", "/memo").authenticated()
+                        .requestMatchers("/star/**", "/rate/**", "/memo").authenticated()
                         .anyRequest().authenticated()
                 )
                 .formLogin(login -> login

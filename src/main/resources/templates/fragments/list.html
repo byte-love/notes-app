@@ -5,14 +5,25 @@
 <!-- 一张卡片；分类小节和二级小节共用 -->
 <th:block th:fragment="card(i, basePath)">
     <li>
-        <div class="item-main">
-            <a th:unless="${lockedIds.contains(i.id)}" class="item-title"
-               th:href="${basePath + '/' + i.slug}" th:text="${i.title}">标题</a>
-            <a th:if="${lockedIds.contains(i.id)}" class="item-title locked"
-               th:href="@{/login}" title="需要登录后查看">
-                <span th:text="${i.title}"></span>
-            </a>
+        <div class="item-head">
+            <div class="item-main">
+                <a th:unless="${lockedIds.contains(i.id)}" class="item-title"
+                   th:href="${basePath + '/' + i.slug}" th:text="${i.title}">标题</a>
+                <a th:if="${lockedIds.contains(i.id)}" class="item-title locked"
+                   th:href="@{/login}" title="需要登录后查看">
+                    <span th:text="${i.title}"></span>
+                </a>
+            </div>
+            <!-- 星级在行右列，纵向对齐：翻的时候一眼能看出哪几题是三星 -->
+            <th:block th:replace="~{fragments/rate :: stars(${i.slug}, ${i.rating}, ${canRate == true and !lockedIds.contains(i.id)})}"></th:block>
         </div>
+        <!-- 自动打的标签：卡片上最多显示 3 个，点不进筛选（想按标签筛去顶上的标签行） -->
+        <th:block th:with="tags=${itemTags == null ? null : itemTags.get(i.id)}">
+            <p class="item-tags" th:if="${tags != null and !lockedIds.contains(i.id)}">
+                <span class="item-tag" th:each="t, it : ${tags}" th:if="${it.index < 3}"
+                      th:text="${t}">标签</span>
+            </p>
+        </th:block>
         <p class="item-summary" th:if="${i.summary != null and !lockedIds.contains(i.id)}"
            th:text="${i.summary}">摘要</p>
         <!-- 补充笔记挂在卡片里，不单独占一张卡：这是它的附件行 -->
@@ -87,7 +98,7 @@
 
     <!-- 滚到这里就去取下一批；取完没有下一批了就不再渲染这个点 -->
     <div class="list-more" id="list-more" th:if="${nextFrom != null and nextFrom > 0}"
-         th:attr="data-base=${basePath},data-from=${nextFrom}"></div>
+         th:attr="data-base=${basePath},data-from=${nextFrom},data-rate=${rateFilter},data-tag=${tagFilter}"></div>
 </th:block>
 
 </body>

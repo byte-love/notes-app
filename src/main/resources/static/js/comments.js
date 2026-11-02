@@ -242,7 +242,58 @@
     annBtn.type = 'button';
     annBtn.textContent = '注释';
     if (annData) tool.appendChild(annBtn);
+
+    // 第三个选项：重点高亮。点一下先展开颜色，挑一个颜色就给这段文字铺底纹。
+    // 底纹用 CSS Custom Highlight API 画（不往正文里塞 span），老浏览器不支持就别显示这个按钮
+    const hlData = document.getElementById('highlights');
+    const HL_COLORS = ['yellow', 'green', 'blue', 'pink', 'purple'];
+    const HL_LABELS = { yellow: '黄色', green: '绿色', blue: '蓝色', pink: '粉色', purple: '紫色' };
+    const HL_ON = !!(hlData && window.CSS && CSS.highlights && typeof Highlight !== 'undefined');
+
+    const hlBtn = document.createElement('button');
+    hlBtn.type = 'button';
+    hlBtn.textContent = '高亮';
+    const hlRow = document.createElement('div');
+    hlRow.className = 'hl-row';
+    hlRow.hidden = true;
+    const swatch = (color) => {
+        const dot = document.createElement('button');
+        dot.type = 'button';
+        dot.className = 'hl-dot';
+        dot.dataset.color = color;
+        dot.setAttribute('aria-label', HL_LABELS[color] || color);
+        return dot;
+    };
+    HL_COLORS.forEach((c) => hlRow.appendChild(swatch(c)));
+    if (HL_ON) {
+        tool.appendChild(hlBtn);
+        tool.appendChild(hlRow);
+    }
     document.body.appendChild(tool);
+
+    // ::highlight() 伪元素不认 var()：自定义属性不会带进高亮伪元素，写 var(--hl-yellow) 会解析成空、
+    // 页面上一点底纹都没有。所以颜色统一从 :root 读出来，写成实体值的一条 <style>，切主题时重写。
+    // 「正在评论的那段原文」用的 cmt-anchor 也是同一套机制，一起在这里上色。
+    if (window.CSS && CSS.highlights) {
+        const paintStyle = document.createElement('style');
+        document.head.appendChild(paintStyle);
+        const paintColors = () => {
+            const cs = getComputedStyle(document.documentElement);
+            const read = (name, fallback) => (cs.getPropertyValue(name).trim() || fallback);
+            const rules = HL_COLORS.map((c) => `::highlight(hl-${c}){background-color:${read(`--hl-${c}`, 'rgba(250, 205, 60, 0.45)')}}`).join('');
+            paintStyle.textContent = rules
+                + '::highlight(cmt-anchor){color:inherit;background-color:' + read('--accent-soft', 'transparent')
+                + ';text-decoration:underline;text-decoration-color:' + read('--accent', 'currentColor')
+                + ';text-decoration-thickness:2px}';
+        };
+        paintColors();
+        new MutationObserver(paintColors).observe(document.documentElement, {
+            attributes: true,
+            attributeFilter: ['data-theme'],
+        });
+        const dark = window.matchMedia('(prefers-color-scheme: dark)');
+        if (dark.addEventListener) dark.addEventListener('change', paintColors);
+    }
 
     const hideTool = () => {
         tool.hidden = true;
@@ -548,4 +599,272 @@
             markText(thread, 'ann-mark', '有注释', hit, true);
         }
     });
+    // ---------- 重点高亮：选中文字 → 挑颜色 → 正文里留一层底纹 ----------
+    // 只给自己看（服务端按 user_id 过滤）。底纹用 Custom Highlight API 画，正文 DOM 不动，
+    // 所以不会和评论 / 注释那些 span 打架；点已标过的文字时浮出换色 / 删除的小面板。
+    if (HL_ON) {
+        const addUrl = hlData.dataset.add || '';
+        const csrf = () => {
+            const meta = document.querySelector('meta[name="_csrf"]');
+            return meta ? meta.content : '';
+        };
+
+        // 已经画上的：{id, color, range, anchor}
+        const painted = [];
+
+        const repaint = () => {
+            HL_COLORS.forEach((c) => {
+                try {
+                    CSS.highlights.delete(`hl-${c}`);
+                } catch (e) {}
+            });
+            HL_COLORS.forEach((c) => {
+                const ranges = painted.filter((h) => h.color === c && h.range).map((h) => h.range);
+                if (!ranges.length) return;
+                try {
+                    CSS.highlights.set(`hl-${c}`, new Highlight(...ranges));
+                } catch (e) {}
+            });
+        };
+
+        // 正文里找引文：先带前后文精确匹配，找不到再只按原文找（和评论那套一致）
+        const findRange = (anchor) => {
+            const quote = anchor.quote || '';
+            if (!quote) return null;
+            const walker = document.createTreeWalker(article, NodeFilter.SHOW_TEXT, {
+                acceptNode(node) {
+                    if (!node.nodeValue) return NodeFilter.FILTER_REJECT;
+                    for (let el = node.parentElement; el && el !== article; el = el.parentElement) {
+                        if (['PRE', 'CODE', 'SCRIPT', 'STYLE'].indexOf(el.tagName) >= 0) {
+                            return NodeFilter.FILTER_REJECT;
+                        }
+                    }
+                    return NodeFilter.FILTER_ACCEPT;
+                },
+            });
+            const nodes = [];
+            while (walker.nextNode()) nodes.push(walker.currentNode);
+            const attempt = (prefix, suffix) => {
+                for (const node of nodes) {
+                    const value = node.nodeValue;
+                    let from = 0;
+                    while (from <= value.length) {
+                        const at = value.indexOf(quote, from);
+                        if (at < 0) break;
+                        if (prefix && value.slice(Math.max(0, at - prefix.length), at) !== prefix) {
+                            from = at + 1;
+                            continue;
+                        }
+                        if (suffix && value.slice(at + quote.length, at + quote.length + suffix.length) !== suffix) {
+                            from = at + 1;
+                            continue;
+                        }
+                        const range = document.createRange();
+                        range.setStart(node, at);
+                        range.setEnd(node, at + quote.length);
+                        return range;
+                    }
+                }
+                return null;
+            };
+            return attempt(anchor.prefix || '', anchor.suffix || '') || attempt('', '');
+        };
+
+        const post = async (url, data) => {
+            const body = new URLSearchParams(data);
+            body.set('_csrf', csrf());
+            try {
+                const res = await fetch(url, { method: 'POST', credentials: 'same-origin', body });
+                if (!res.ok) return '';
+                return (await res.text()).trim();
+            } catch (e) {
+                return '';
+            }
+        };
+
+        const clearSelection = () => {
+            const sel = window.getSelection();
+            if (sel) sel.removeAllRanges();
+        };
+
+        // 标一处：当前选区立刻画上，同时把锚点存到服务端
+        const mark = async (color) => {
+            if (!addUrl) return;
+            const anchor = currentAnchor();
+            const quote = anchor.quote;
+            if (!quote) return;
+            const fields = {
+                quote,
+                anchorKind: anchor.kind,
+                blockIndex: anchor.block,
+                prefix: anchor.prefix,
+                suffix: anchor.suffix,
+            };
+            hideTool();
+            hlRow.hidden = true;
+            clearSelection();
+            const id = await post(addUrl, { ...fields, color });
+            if (!id || id === '0') return;
+            const range = anchor.range || findRange(anchor);
+            // 同一段再标一次是同一条记录（服务端按锚点去重），别再叠一层
+            const same = painted.find((rec) => String(rec.id) === String(id));
+            if (same) {
+                same.color = color;
+                same.range = range || same.range;
+            } else {
+                painted.push({ id, color, range, anchor: fields });
+            }
+            repaint();
+        };
+
+        hlBtn.addEventListener('click', () => {
+            hlRow.hidden = !hlRow.hidden;
+        });
+        hlRow.addEventListener('click', (e) => {
+            const dot = e.target.closest('.hl-dot');
+            if (dot) mark(dot.dataset.color);
+        });
+
+        // 点已有高亮：浮出换色 / 删除的小面板
+        const caretAt = (x, y) => {
+            if (document.caretRangeFromPoint) {
+                const r = document.caretRangeFromPoint(x, y);
+                return r ? { node: r.startContainer, offset: r.startOffset } : null;
+            }
+            if (document.caretPositionFromPoint) {
+                const p = document.caretPositionFromPoint(x, y);
+                return p ? { node: p.offsetNode, offset: p.offset } : null;
+            }
+            return null;
+        };
+
+        const inside = (range, pos) => {
+            try {
+                const probe = document.createRange();
+                probe.setStart(pos.node, pos.offset);
+                probe.collapse(true);
+                return range.compareBoundaryPoints(Range.START_TO_START, probe) <= 0
+                    && range.compareBoundaryPoints(Range.END_TO_END, probe) >= 0;
+            } catch (e) {
+                return false;
+            }
+        };
+
+        const pop = document.createElement('div');
+        pop.className = 'hl-pop';
+        pop.hidden = true;
+        const popRow = document.createElement('div');
+        popRow.className = 'hl-row';
+        HL_COLORS.forEach((c) => popRow.appendChild(swatch(c)));
+        const delBtn = document.createElement('button');
+        delBtn.type = 'button';
+        delBtn.className = 'hl-del';
+        delBtn.textContent = '删除';
+        pop.appendChild(popRow);
+        pop.appendChild(delBtn);
+        document.body.appendChild(pop);
+
+        let target = null;
+
+        const closePop = () => {
+            pop.hidden = true;
+            target = null;
+        };
+
+        const openPop = (rec, x, y) => {
+            target = rec;
+            pop.hidden = false;
+            popRow.querySelectorAll('.hl-dot').forEach((d) => {
+                d.classList.toggle('on', d.dataset.color === rec.color);
+            });
+            const box = pop.getBoundingClientRect();
+            const left = Math.min(Math.max(10, x - box.width / 2), window.innerWidth - box.width - 10);
+            let top = y + 12;
+            if (top + box.height > window.innerHeight - 10) {
+                top = y - box.height - 12;
+            }
+            pop.style.left = `${Math.round(left)}px`;
+            pop.style.top = `${Math.round(Math.max(10, top))}px`;
+        };
+
+        pop.addEventListener('mousedown', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+        });
+
+        popRow.addEventListener('click', async (e) => {
+            const dot = e.target.closest('.hl-dot');
+            if (!dot || !target || dot.dataset.color === target.color) return;
+            const color = dot.dataset.color;
+            const rec = target;
+            closePop();
+            // 同一段文字再标一次就是换色（服务端按锚点去重，返回的还是原来那条）
+            await post(addUrl, { ...rec.anchor, color });
+            rec.color = color;
+            repaint();
+        });
+
+        delBtn.addEventListener('click', async () => {
+            if (!target) return;
+            const rec = target;
+            const url = `${addUrl.replace(/\/$/, '')}/${rec.id}/delete`;
+            closePop();
+            const index = painted.indexOf(rec);
+            if (index >= 0) painted.splice(index, 1);
+            repaint();
+            await post(url, {});
+        });
+
+        article.addEventListener('click', (e) => {
+            if (!painted.length) {
+                closePop();
+                return;
+            }
+            const sel = window.getSelection();
+            if (sel && !sel.isCollapsed) return; // 正在选字，别弹面板
+            const pos = caretAt(e.clientX, e.clientY);
+            if (!pos) {
+                closePop();
+                return;
+            }
+            const hits = painted.filter((rec) => rec.range && inside(rec.range, pos));
+            if (!hits.length) {
+                closePop();
+                return;
+            }
+            openPop(hits[hits.length - 1], e.clientX, e.clientY);
+        });
+
+        document.addEventListener('mousedown', (e) => {
+            if (!pop.hidden && !pop.contains(e.target)) closePop();
+        });
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') closePop();
+        });
+        window.addEventListener('scroll', closePop, { passive: true });
+
+        // 进来先把已有高亮画上
+        [...hlData.querySelectorAll('.hl-item')].forEach((el) => {
+            const anchor = {
+                quote: el.dataset.quote || '',
+                prefix: el.dataset.prefix || '',
+                suffix: el.dataset.suffix || '',
+            };
+            const range = findRange(anchor);
+            if (!range) return;
+            painted.push({
+                id: el.dataset.id,
+                color: el.dataset.color || 'yellow',
+                range,
+                anchor: {
+                    quote: anchor.quote,
+                    anchorKind: el.dataset.kind || 'text',
+                    blockIndex: el.dataset.block || '',
+                    prefix: anchor.prefix,
+                    suffix: anchor.suffix,
+                },
+            });
+        });
+        repaint();
+    }
 })();

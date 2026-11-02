@@ -26,6 +26,7 @@
             <header class="doc-head">
                 <h1 th:text="${item.title}">标题</h1>
                 <div class="doc-meta">
+                    <th:block th:replace="~{fragments/rate :: stars(${item.slug}, ${item.rating}, ${canRate == true})}"></th:block>
                     <time th:text="${#temporals.format(item.updatedAt, 'yyyy-MM-dd')}">2026-01-01</time>
                     <form sec:authorize="isAuthenticated()" th:action="@{/star/{s}(s=${item.slug})}"
                           method="post" class="inline">
@@ -40,6 +41,12 @@
                     </form>
                 </div>
             </header>
+
+            <!-- 自动打的标签：点一下就是把列表按这个标签筛一遍 -->
+            <p class="doc-tags" th:if="${itemTags != null and !#lists.isEmpty(itemTags)}">
+                <a class="doc-tag" th:each="t : ${itemTags}" th:href="${basePath + '?tag=' + t}"
+                   th:text="${t}">标签</a>
+            </p>
 
             <!-- 这条是补充笔记时，标题下面指出「本体」是哪一篇，点一下回去 -->
             <p class="doc-origin" th:if="${parentNote != null}">
@@ -77,9 +84,13 @@
 <!-- 注释的数据和输入框（不占版面），正文里的短虚下划线由 comments.js 读这一块画出来 -->
 <div th:replace="~{fragments/annotations :: data(${commentSlug}, ${annotations}, ${canComment})}"></div>
 
-    <script th:src="@{/js/comments.js(v=14)}"></script>
+<!-- 重点高亮的数据（不占版面），正文里的彩色底纹由 comments.js 画出来 -->
+<div th:replace="~{fragments/highlights :: data(${commentSlug}, ${highlights})}"></div>
+
+    <script th:src="@{/js/comments.js(v=15)}"></script>
     <script th:src="@{/js/code.js(v=1)}"></script>
-    <script th:src="@{/js/detail.js(v=8)}"></script>
+    <script th:src="@{/js/detail.js(v=9)}"></script>
+    <script th:src="@{/js/rate.js(v=2)}"></script>
 
 <footer th:replace="~{fragments/layout :: foot}"></footer>
 

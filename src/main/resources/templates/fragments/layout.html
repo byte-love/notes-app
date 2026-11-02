@@ -5,6 +5,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="_csrf" th:if="${_csrf != null}" th:content="${_csrf.token}">
+    <!-- 术语解释的编辑入口：管理员才有，浮窗里点一下就能改 / 删 / 新增 -->
+    <meta name="glossary-endpoint" th:if="${glossaryAdmin}" th:content="@{/glossary}">
     <title th:text="${pageTitle}">notes</title>
     <link rel="icon" href="/favicon.svg?v=3" type="image/svg+xml">
     <script th:inline="javascript">
@@ -21,7 +23,7 @@
             } catch (e) {}
         })();
     </script>
-    <link rel="stylesheet" th:href="@{/css/app.css(v=110)}">
+    <link rel="stylesheet" th:href="@{/css/app.css(v=115)}">
 </head>
 <body>
 

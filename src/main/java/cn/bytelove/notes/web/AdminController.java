@@ -6,6 +6,7 @@ import cn.bytelove.notes.domain.Visibility;
 import cn.bytelove.notes.repo.ContentItemRepository;
 import cn.bytelove.notes.service.NoteTreeService;
 import cn.bytelove.notes.service.ProjectMetaService;
+import cn.bytelove.notes.service.TagService;
 import cn.bytelove.notes.service.TrashService;
 import cn.bytelove.notes.service.ViewerService;
 import cn.bytelove.notes.service.VisibilityService.Viewer;
@@ -63,14 +64,16 @@ public class AdminController {
     private final ViewerService viewers;
     private final ProjectMetaService meta;
     private final TrashService trash;
+    private final TagService tags;
 
     public AdminController(ContentItemRepository items, NoteTreeService tree, ViewerService viewers,
-                           ProjectMetaService meta, TrashService trash) {
+                           ProjectMetaService meta, TrashService trash, TagService tags) {
         this.items = items;
         this.tree = tree;
         this.viewers = viewers;
         this.meta = meta;
         this.trash = trash;
+        this.tags = tags;
     }
 
     @ModelAttribute("kinds")
@@ -211,6 +214,7 @@ public class AdminController {
         item.setRecommended(viewer.admin());
         ContentItem saved = items.save(item);
         saveProjectDoc(saved, form);
+        tags.retag(saved.getId(), saved.getTitle(), saved.getBody());
         return "redirect:/admin";
     }
 
@@ -272,6 +276,17 @@ public class AdminController {
         item.setSortOrder(form.getSortOrder() == null ? 0 : form.getSortOrder());
         ContentItem saved = items.save(item);
         saveProjectDoc(saved, form);
+        tags.retag(saved.getId(), saved.getTitle(), saved.getBody());
+        return "redirect:/admin";
+    }
+
+    /** 词表改过之后，把当前用户的内容整体重打一遍标签。 */
+    @PostMapping("/retag")
+    public String retagAll(Authentication auth) {
+        Viewer viewer = viewers.current(auth);
+        for (ContentItem item : items.findByOwnerIdOrderByKindAscSortOrderAsc(viewer.userId())) {
+            tags.retag(item.getId(), item.getTitle(), item.getBody());
+        }
         return "redirect:/admin";
     }
 

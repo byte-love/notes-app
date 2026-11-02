@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+
+<!-- 重点高亮：正文里那些彩色底纹。数据不占版面，comments.js 读这一块把标记画回正文。
+     只放自己标的高亮（服务端按 user_id 过滤），别人的高亮不会出现在这里。
+     data-add 是标一处的地址，取消是它后面接 /{id}/delete。 -->
+<div class="hl-data" id="highlights" hidden
+     th:fragment="data(slug, highlights)"
+     th:attr="data-add=@{/highlight/{s}(s=${slug})}">
+    <span class="hl-item" th:each="h : ${highlights}"
+          th:attr="data-id=${h.id()},data-quote=${h.quote()},data-kind=${h.kind()},data-block=${h.blockIndex()},data-prefix=${h.prefix()},data-suffix=${h.suffix()},data-color=${h.color()}"></span>
+</div>
+
+</body>
+</html>

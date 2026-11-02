@@ -25,6 +25,46 @@
 
         <p class="empty" th:if="${#lists.isEmpty(tree)}">暂无内容</p>
 
+        <!-- 星级 / 收藏筛选：只换屏幕上的卡片，左边目录照旧整棵；条数为 0 的那档置灰点不动。
+             带着标签筛的时候，切星级要保留标签，反过来也一样 -->
+        <th:block th:with="tq=${tagFilter != null ? '&tag=' + tagFilter : ''}">
+        <nav class="rate-filter" th:if="${rateCounts != null}">
+            <a class="rate-chip"
+               th:classappend="${rateFilter == null ? 'on' : (rateCounts['all'] == 0 ? 'off' : '')}"
+               th:href="${basePath + (tagFilter != null ? '?tag=' + tagFilter : '')}">全部<span
+                    class="rate-chip-count" th:text="${rateCounts['all']}">0</span></a>
+            <a class="rate-chip"
+               th:classappend="${rateFilter == 'star' ? 'on' : (rateCounts['star'] == 0 ? 'off' : '')}"
+               th:href="${basePath + '?rate=star' + tq}">收藏<span class="rate-chip-count"
+                    th:text="${rateCounts['star']}">0</span></a>
+            <a class="rate-chip"
+               th:classappend="${rateFilter == '3' ? 'on' : (rateCounts['3'] == 0 ? 'off' : '')}"
+               th:href="${basePath + '?rate=3' + tq}">★★★<span class="rate-chip-count"
+                    th:text="${rateCounts['3']}">0</span></a>
+            <a class="rate-chip"
+               th:classappend="${rateFilter == '2' ? 'on' : (rateCounts['2'] == 0 ? 'off' : '')}"
+               th:href="${basePath + '?rate=2' + tq}">★★以上<span class="rate-chip-count"
+                    th:text="${rateCounts['2']}">0</span></a>
+            <a class="rate-chip"
+               th:classappend="${rateFilter == '0' ? 'on' : (rateCounts['0'] == 0 ? 'off' : '')}"
+               th:href="${basePath + '?rate=0' + tq}">未评<span class="rate-chip-count"
+                    th:text="${rateCounts['0']}">0</span></a>
+        </nav>
+
+        <!-- 标签筛选：按现在这批内容的自动标签排，条数跟当前星级筛选取交集 -->
+        <nav class="rate-filter tag-filter" th:if="${tagCounts != null and !tagCounts.isEmpty()}">
+            <a class="rate-chip"
+               th:classappend="${tagFilter == null} ? 'on'"
+               th:href="${basePath + (rateFilter != null ? '?rate=' + rateFilter : '')}">全部标签</a>
+            <a class="rate-chip" th:each="e : ${tagCounts}"
+               th:classappend="${tagFilter == e.key} ? 'on'"
+               th:href="${basePath + '?tag=' + e.key + (rateFilter != null ? '&rate=' + rateFilter : '')}">
+                <span th:text="${e.key}">Redis</span><span class="rate-chip-count"
+                    th:text="${e.value}">0</span>
+            </a>
+        </nav>
+        </th:block>
+
         <!-- 分组外层：收起的分组在这里并排成卡片网格，展开的那组占满整行 -->
         <div class="group-grid">
             <th:block th:replace="~{fragments/list :: groupSections(${groups}, ${basePath}, ${nextFrom})}"/>
@@ -32,7 +72,8 @@
     </main>
 </div>
 
-<script th:src="@{/js/list.js(v=6)}" defer></script>
+<script th:src="@{/js/list.js(v=8)}" defer></script>
+<script th:src="@{/js/rate.js(v=2)}" defer></script>
 <footer th:replace="~{fragments/layout :: foot}"></footer>
 </body>
 </html>

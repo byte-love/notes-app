@@ -34,14 +34,14 @@ public class MarkdownRenderer {
     public record TocItem(int level, String id, String text) {
     }
 
-    /** 渲染成 <span class="gl" data-tip="…">term</span> 的节点。 */
+    /** 渲染成 <span class="gl" data-tip="…" data-term="…" data-tid="…">term</span> 的节点。 */
     public static class TermNode extends Node {
         private final String text;
-        private final String tip;
+        private final GlossaryService.Entry entry;
 
-        TermNode(String text, String tip) {
+        TermNode(String text, GlossaryService.Entry entry) {
             this.text = text;
-            this.tip = tip;
+            this.entry = entry;
         }
 
         @Override
@@ -53,8 +53,8 @@ public class MarkdownRenderer {
             return text;
         }
 
-        String getTip() {
-            return tip;
+        GlossaryService.Entry getEntry() {
+            return entry;
         }
     }
 
@@ -76,7 +76,13 @@ public class MarkdownRenderer {
             TermNode term = (TermNode) node;
             HtmlWriter writer = context.getWriter();
             writer.line();
-            writer.tag("span", Map.of("class", "gl", "data-tip", term.getTip()), false);
+            // data-tid 是这条解释在库里的 id：页面上点一下就能改 / 删 / 新增
+            writer.tag("span", Map.of(
+                    "class", "gl",
+                    "data-tip", term.getEntry().tip(),
+                    "data-term", term.getEntry().term(),
+                    "data-sense", term.getEntry().sense() == null ? "" : term.getEntry().sense(),
+                    "data-tid", String.valueOf(term.getEntry().id())), false);
             writer.text(term.getText());
             writer.tag("/span");
         }
@@ -126,6 +132,15 @@ public class MarkdownRenderer {
      * 这里在渲染前把它们收进代码块——判据放得很窄，避免把中文正文误判成代码：
      * 一行代码 = 去掉列表符号后不含中文、长度 ≤200、含 ; { } ( ) = 之一，
      * 或者以 // # -- 开头（注释里可以带中文）。连续 ≥3 行才算一段代码。
+     *
+     * 几个不放宽就会出错的坑（2026-11-02 全站体检时补的）：
+     * <ul>
+     *   <li>Markdown 自己的图片 / 链接 / 表格行不是代码——以前 doc-redis 里连着几张截图
+     *       就被收进代码块，页面上显示的是一堆 {@code ![](...)} 字面量</li>
+     *   <li>JSON 的键值行要单独认：{@code "id": 202,          // 活动ID} 这种行尾中文注释
+     *       会被「含中文就不是代码」这条挡掉，整段 JSON 就漏在正文里</li>
+     *   <li>行尾注释（{@code code; // 说明}）同理，判中文之前先把它摘掉</li>
+     * </ul>
      */
     private static final java.util.regex.Pattern BARE_SQL = java.util.regex.Pattern.compile(
             "^(select|update|insert|delete|create|alter|drop|with|truncate)\\b",
@@ -136,6 +151,31 @@ public class MarkdownRenderer {
 
     private static final java.util.regex.Pattern BULLET =
             java.util.regex.Pattern.compile("^\\s*[-*+]\\s+");
+
+    /** Markdown 的图片、链接、表格行：都是排版语法，不是代码。 */
+    private static final java.util.regex.Pattern MD_IMAGE =
+            java.util.regex.Pattern.compile("^!\\[[^\\]]*\\]\\(");
+
+    private static final java.util.regex.Pattern MD_LINK =
+            java.util.regex.Pattern.compile("^\\[[^\\]]*\\]\\([^)]*\\)$");
+
+    private static final java.util.regex.Pattern MD_TABLE_ROW =
+            java.util.regex.Pattern.compile("^\\|.*\\|$");
+
+    /** JSON：一行一个键值对，或者单独一行括号。带中文注释也照样算。 */
+    private static final java.util.regex.Pattern JSON_KEY = java.util.regex.Pattern.compile(
+            "^\"[^\"\\\\]*\"\\s*:\\s*(\"[^\"]*\"|-?\\d|\\[|\\{|true|false|null)");
+
+    private static final java.util.regex.Pattern JSON_BRACE =
+            java.util.regex.Pattern.compile("^[\\[{\\]}],?$");
+
+    /** 整段里出现过键值行（可能不在第一行）——用来给拼出来的代码猜 JSON。 */
+    private static final java.util.regex.Pattern JSON_ANY = java.util.regex.Pattern.compile(
+            "(?m)^\\s*\"[^\"\\\\]*\"\\s*:\\s*(\"[^\"]*\"|-?\\d|\\[|\\{|true|false|null)");
+
+    /** 行尾注释：{@code java 语句; // 中文说明}、{@code sql -- 中文说明}。 */
+    private static final java.util.regex.Pattern TAIL_COMMENT =
+            java.util.regex.Pattern.compile("\\s+(//|--\\s).*$");
 
     static String fenceBareCode(String markdown) {
         String[] lines = markdown.split("\n", -1);
@@ -172,10 +212,13 @@ public class MarkdownRenderer {
                 j++;
             }
 
+            // 连续 ≥3 行才收：2 行会把「1kb = 1024byte。」这种两条换算并列的正文也收进去
             if (run.size() >= 3) {
-                // 这些行是从段落里拼出来的，本身没有缩进，按大括号重排一下才看得懂层次
-                String joined = String.join("\n", reindent(run));
-                out.append("```").append(guessLang(joined)).append('\n')
+                // 这些行是从段落里拼出来的，本身没有缩进，按大括号重排一下才看得懂层次。
+                // JSON 不重排：`}` 和 `]` 的层级本来就对，重排反而错位。
+                boolean json = JSON_ANY.matcher(String.join("\n", run)).find();
+                String joined = json ? String.join("\n", run) : String.join("\n", reindent(run));
+                out.append("```").append(json ? "json" : guessLang(joined)).append('\n')
                         .append(joined).append("\n```\n");
                 i = j;
             } else if (run.size() == 1 && isBareSql(run.get(0))) {
@@ -242,18 +285,26 @@ public class MarkdownRenderer {
         if (s.isEmpty()) {
             return false;
         }
-        // 分隔线、Markdown 标题都不算代码行
+        // 分隔线、Markdown 标题、图片、链接、表格都不算代码行
         if (s.matches("^[-=*_]{3,}$") || s.matches("^#{1,6}\\s.*")) {
             return false;
+        }
+        if (MD_IMAGE.matcher(s).find() || MD_LINK.matcher(s).matches() || MD_TABLE_ROW.matcher(s).matches()) {
+            return false;
+        }
+        // JSON 放在「含中文就不算代码」之前：键值行后面的中文注释是正常写法
+        if (JSON_KEY.matcher(s).find() || JSON_BRACE.matcher(s).matches()) {
+            return true;
         }
         if (s.startsWith("//") || s.startsWith("#") || s.startsWith("--")
                 || s.startsWith("/*") || s.startsWith("@")) {
             return true;
         }
-        // 结尾的中文标点、字符串字面量里的中文都不算「这段是中文散文」，
-        // 所以先去掉再判断，避免把 System.out.println("最终结果：" + i); 判成正文
-        String probe = s.replaceAll("\"(?:[^\"\\\\]|\\\\.)*\"|'(?:[^'\\\\]|\\\\.)*'", "\"\"")
-                .replaceAll("[\\s；;。.]+$", "");
+        // 结尾的中文标点、字符串字面量里的中文、行尾注释里的中文都不算「这段是中文散文」，
+        // 所以先去掉再判断，避免把 System.out.println("最终结果：" + i); // 打印 判成正文
+        String probe = s.replaceAll("\"(?:[^\"\\\\]|\\\\.)*\"|'(?:[^'\\\\]|\\\\.)*'", "\"\"");
+        probe = TAIL_COMMENT.matcher(probe).replaceFirst("");
+        probe = probe.replaceAll("[\\s；;。.]+$", "");
         if (probe.isEmpty() || probe.length() > 200 || CJK.matcher(probe).find()) {
             return false;
         }
@@ -376,7 +427,8 @@ public class MarkdownRenderer {
         while (child != null) {
             Node next = child.getNext();
             if (child instanceof Text textNode) {
-                List<Node> parts = split(textNode.getLiteral(), used);
+                // 语境 = 这一整段（最近的块级祖先）的正文，用来给同一个术语挑义项
+                List<Node> parts = split(textNode.getLiteral(), used, textOf(blockOf(textNode)));
                 if (parts != null) {
                     for (Node part : parts) {
                         textNode.insertBefore(part);
@@ -394,20 +446,29 @@ public class MarkdownRenderer {
         }
     }
 
-    private List<Node> split(String literal, Set<String> used) {
+    /** 往上找到最近的块（段落 / 列表项 / 引用 / 表格单元格），拿它的整段文字当语境。 */
+    private static Node blockOf(Node node) {
+        Node n = node;
+        while (n != null && !(n instanceof org.commonmark.node.Block)) {
+            n = n.getParent();
+        }
+        return n == null ? node : n;
+    }
+
+    private List<Node> split(String literal, Set<String> used, String context) {
         List<Node> parts = new ArrayList<>();
         StringBuilder buffer = new StringBuilder();
         int i = 0;
         boolean touched = false;
 
         while (i < literal.length()) {
-            GlossaryService.Match hit = glossary.matchAt(literal, i, used);
+            GlossaryService.Match hit = glossary.matchAt(literal, i, used, context);
             if (hit != null) {
                 if (buffer.length() > 0) {
                     parts.add(new Text(buffer.toString()));
                     buffer.setLength(0);
                 }
-                parts.add(new TermNode(hit.displayText(), glossary.definition(hit.canonical())));
+                parts.add(new TermNode(hit.displayText(), hit.entry()));
                 used.add(hit.canonical());
                 i += hit.displayText().length();
                 touched = true;
