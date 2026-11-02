@@ -64,6 +64,13 @@ public class ContentItem {
     @Column(name = "copied_from_id")
     private Long copiedFromId;
 
+    /**
+     * 补充笔记指向「本体」的那一条（例如八股正文下面挂的详解）。
+     * 只表示内容关系，不影响层级：补充笔记的 parent_id 跟本体相同，二者在目录里是同级。
+     */
+    @Column(name = "supplement_of_id")
+    private Long supplementOfId;
+
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
@@ -190,6 +197,14 @@ public class ContentItem {
 
     public void setCopiedFromId(Long copiedFromId) {
         this.copiedFromId = copiedFromId;
+    }
+
+    public Long getSupplementOfId() {
+        return supplementOfId;
+    }
+
+    public void setSupplementOfId(Long supplementOfId) {
+        this.supplementOfId = supplementOfId;
     }
 
     public Instant getCreatedAt() {

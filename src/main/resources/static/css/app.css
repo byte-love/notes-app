@@ -3720,3 +3720,110 @@ html[data-theme='dark'] .cl-latest {
 .cl-fold ul {
     margin-top: 0.3rem;
 }
+
+/* 补充笔记：正文末尾那张「附件卡」，以及补充笔记页顶部指向「本体」的那一行 */
+.attach-list {
+    margin-top: 2.4rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.55rem;
+}
+
+.attach-card {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    padding: 0.7rem 0.9rem;
+    background: var(--bg-2);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    text-decoration: none;
+    transition: border-color 0.14s ease, transform 0.14s ease, box-shadow 0.14s ease;
+}
+
+.attach-card:hover {
+    border-color: var(--fg-3);
+    transform: translateY(-1px);
+    box-shadow: 0 10px 20px -16px rgba(28, 27, 24, 0.5);
+}
+
+.attach-icon {
+    flex: none;
+    width: 2.45rem;
+    height: 2.45rem;
+    display: grid;
+    place-items: center;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 0.9rem;
+    color: var(--accent);
+    background: var(--accent-soft);
+    border-radius: 9px;
+}
+
+.attach-main {
+    display: flex;
+    flex-direction: column;
+    gap: 0.18rem;
+    min-width: 0;
+}
+
+.attach-title {
+    font-size: 0.97rem;
+    font-weight: 600;
+    line-height: 1.4;
+    color: var(--fg);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.attach-size {
+    font-size: 0.76rem;
+    color: var(--fg-3);
+    font-variant-numeric: tabular-nums;
+}
+
+.attach-eye {
+    margin-left: auto;
+    flex: none;
+    display: grid;
+    place-items: center;
+    color: var(--fg-3);
+}
+
+.attach-card:hover .attach-eye {
+    color: var(--accent);
+}
+
+.doc-origin {
+    margin: 0 0 1.6rem;
+    display: flex;
+    align-items: baseline;
+    gap: 0.45rem;
+    font-size: 0.86rem;
+    color: var(--fg-3);
+}
+
+.doc-origin-label {
+    flex: none;
+    padding: 0.05rem 0.4rem;
+    font-size: 0.72rem;
+    color: var(--accent);
+    background: var(--accent-soft);
+    border-radius: 999px;
+}
+
+.doc-origin a {
+    min-width: 0;
+    color: var(--fg-2);
+    text-decoration: none;
+    border-bottom: 1px dotted var(--line);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.doc-origin a:hover {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+}

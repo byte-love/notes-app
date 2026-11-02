@@ -246,6 +246,10 @@ public class PublicController {
         model.addAttribute("item", item);
         model.addAttribute("html", markdown.toHtml(item.getBody()));
         model.addAttribute("toc", markdown.toc(item.getBody()));
+        // 正文末尾的附件卡：挂到本文下面的补充笔记，点开就是那篇
+        model.addAttribute("attachedNotes", attachedNotesOf(siblings, item, lockedIds));
+        // 反过来，本文如果是补充笔记，标题下面给一条回「本体」的链接
+        model.addAttribute("parentNote", parentNoteOf(siblings, item, lockedIds));
         // 九成八股正文里没有 ## 标题，右栏会空着；没有目录时改用「同分类的其他条目」填上
         model.addAttribute("rail", railOf(siblings, item, lockedIds));
         model.addAttribute("starred", viewer.userId() != null && stars.isStarred(viewer.userId(), item.getId()));
@@ -267,8 +271,52 @@ public class PublicController {
         return "detail";
     }
 
-    /** 右栏的替代目录：同一父节点下的其他条目，至少 2 条才有意义。 */
-    private List<ContentItem> railOf(List<ContentItem> siblings, ContentItem current, Set<Long> lockedIds) {
+    /**
+     * 挂到当前正文下面的补充笔记（supplement_of_id = 当前条目），正文末尾用「附件卡」列出来。
+     * 卡片上显示的体积按正文 UTF-8 字节数折算，只用来给个量级参考。
+     */
+    private List<AttachedNote> attachedNotesOf(List<ContentItem> siblings, ContentItem current, Set<Long> lockedIds) {
+        List<ContentItem> kids = new ArrayList<>();
+        for (ContentItem s : siblings) {
+            if (current.getId().equals(s.getSupplementOfId()) && !lockedIds.contains(s.getId())) {
+                kids.add(s);
+            }
+        }
+        if (kids.isEmpty()) {
+            return List.of();
+        }
+        kids.sort(Comparator.comparingInt(ContentItem::getSortOrder)
+                .thenComparing(ContentItem::getTitle, Comparator.nullsLast(String::compareTo)));
+        List<AttachedNote> out = new ArrayList<>(kids.size());
+        for (ContentItem k : kids) {
+            out.add(new AttachedNote(k.getTitle(), k.getSlug(), sizeOf(k.getBody())));
+        }
+        return out;
+    }
+
+    /** 当前这条是补充笔记时，找出它的「本体」，在标题下面给一条回链。 */
+    private AttachedNote parentNoteOf(List<ContentItem> siblings, ContentItem current, Set<Long> lockedIds) {
+        if (current.getSupplementOfId() == null) {
+            return null;
+        }
+        for (ContentItem s : siblings) {
+            if (s.getId().equals(current.getSupplementOfId()) && !lockedIds.contains(s.getId())) {
+                return new AttachedNote(s.getTitle(), s.getSlug(), sizeOf(s.getBody()));
+            }
+        }
+        return null;
+    }
+
+    private static String sizeOf(String body) {
+        if (body == null || body.isEmpty()) {
+            return "0 KB";
+        }
+        double kb = body.getBytes(StandardCharsets.UTF_8).length / 1024.0;
+        String num = kb >= 10 ? String.valueOf(Math.round(kb)) : String.format(java.util.Locale.ROOT, "%.1f", kb);
+        return num + " KB";
+    }
+
+    /** 右栏的替代目录：同一父节点下的其他条目，至少 2 条才有意义。 */    private List<ContentItem> railOf(List<ContentItem> siblings, ContentItem current, Set<Long> lockedIds) {
         List<ContentItem> same = new ArrayList<>();
         for (ContentItem s : siblings) {
             if (s.getId().equals(current.getId()) || lockedIds.contains(s.getId())) {
@@ -461,6 +509,10 @@ public class PublicController {
         public boolean hasSub() {
             return subGroups != null && !subGroups.isEmpty();
         }
+    }
+
+    /** 正文末尾那张附件卡：标题、slug、体积（KB）。 */
+    public record AttachedNote(String title, String slug, String size) {
     }
 
     /** 树超过这么多节点就改成「顶层 + 当前路径」，其余展开时再取。 */
