@@ -1043,6 +1043,117 @@ button:hover,
     font-family: var(--mono);
 }
 
+/* ---------- 星级 ---------- */
+/* 收藏是「留着以后再看」，星级是「这题值不值得花时间」，两个标记互不干扰 */
+
+/* 卡片：标题一列、星级一列。星级固定在右列，翻页时右边缘始终对得上 */
+.item-head {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    column-gap: 1rem;
+    align-items: baseline;
+}
+
+.rate {
+    display: inline-flex;
+    gap: 0.15rem;
+    line-height: 1;
+    justify-self: end;
+}
+
+.rate-star {
+    font: inherit;
+    font-size: 0.86rem;
+    line-height: 1;
+    padding: 0.05rem 0.1rem;
+    border: 0;
+    background: none;
+    /* 没标到的用正文灰压淡，标到的换暖金色：三个主题都不用单独配色 */
+    color: var(--fg-3);
+    opacity: 0.42;
+    cursor: pointer;
+    transition: color 0.12s ease, opacity 0.12s ease, transform 0.12s ease;
+}
+
+.rate[data-v="1"] .rate-star:nth-child(1),
+.rate[data-v="2"] .rate-star:nth-child(-n+2),
+.rate[data-v="3"] .rate-star:nth-child(-n+3) {
+    color: #cf9a2e;
+    opacity: 1;
+}
+
+.rate:not(.readonly) .rate-star:hover {
+    opacity: 1;
+    transform: scale(1.15);
+}
+
+/* 只读（游客、或别人的条目）时只留已标的那几颗，0 星什么都不显示，别满屏灰星 */
+.rate.readonly .rate-star {
+    display: none;
+    cursor: default;
+    pointer-events: none;
+}
+
+.rate.readonly[data-v="1"] .rate-star:nth-child(1),
+.rate.readonly[data-v="2"] .rate-star:nth-child(-n+2),
+.rate.readonly[data-v="3"] .rate-star:nth-child(-n+3) {
+    display: inline;
+}
+
+/* 详情页标题下面那颗稍大一点，和左边的日期、右边的按钮一个量级 */
+.doc-meta .rate-star {
+    font-size: 1rem;
+}
+
+/* 筛选条：胶囊标签 + 条数，选中态用强调色；条数为 0 的置灰点不动 */
+.rate-filter {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin: 0 0 1.6rem;
+}
+
+.rate-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.82rem;
+    line-height: 1;
+    padding: 0.42rem 0.75rem;
+    color: var(--fg-2);
+    background: var(--bg-2);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    transition: color 0.14s ease, border-color 0.14s ease, background 0.14s ease;
+}
+
+.rate-chip:hover {
+    color: var(--fg);
+    border-color: var(--fg-3);
+    text-decoration: none;
+}
+
+.rate-chip.on {
+    color: var(--accent);
+    border-color: var(--accent);
+    background: var(--accent-soft);
+}
+
+.rate-chip.off {
+    opacity: 0.42;
+    pointer-events: none;
+}
+
+.rate-chip-count {
+    font-size: 0.72rem;
+    color: var(--fg-3);
+    font-variant-numeric: tabular-nums;
+}
+
+.rate-chip.on .rate-chip-count {
+    color: var(--accent);
+}
+
 /* ---------- document layout ---------- */
 .doc-wrap {
     max-width: 1100px;

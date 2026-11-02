@@ -12,11 +12,14 @@ import cn.bytelove.notes.service.HighlightService;
 import cn.bytelove.notes.service.MarkdownRenderer;
 import cn.bytelove.notes.service.ProjectMetaService;
 import cn.bytelove.notes.service.ReadingPositionService;
+import cn.bytelove.notes.service.RatingService;
 import cn.bytelove.notes.service.NoteTreeService;
 import cn.bytelove.notes.service.SubGroupService;
 import cn.bytelove.notes.service.ViewerService;
 import cn.bytelove.notes.service.VisibilityService;
 import cn.bytelove.notes.service.VisibilityService.Viewer;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
@@ -31,6 +34,7 @@ import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.io.IOException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -60,6 +64,7 @@ public class PublicController {
     private final VisibilityService visibility;
     private final ViewerService viewers;
     private final ContentStarService stars;
+    private final RatingService ratings;
     private final ProjectMetaService meta;
     private final ReadingPositionService positions;
     private final BookmarkService bookmarks;
@@ -72,7 +77,7 @@ public class PublicController {
     private final HighlightService highlights;
 
     public PublicController(ContentItemRepository items, VisibilityService visibility, ViewerService viewers,
-                            ContentStarService stars, ProjectMetaService meta, ReadingPositionService positions, BookmarkService bookmarks,
+                            ContentStarService stars, RatingService ratings, ProjectMetaService meta, ReadingPositionService positions, BookmarkService bookmarks,
                             MarkdownRenderer markdown, NoteTreeService tree, SubGroupService subGroups,
                             CommentService comments, CommentFilter commentFilter,
                             CommentRateLimiter commentLimiter, HighlightService highlights) {
@@ -80,6 +85,7 @@ public class PublicController {
         this.visibility = visibility;
         this.viewers = viewers;
         this.stars = stars;
+        this.ratings = ratings;
         this.meta = meta;
         this.positions = positions;
         this.bookmarks = bookmarks;
@@ -94,35 +100,39 @@ public class PublicController {
 
     @GetMapping("/")
     public String home(Model model, Authentication auth) {
-        return listing(ContentKind.NOTE, "笔记", model, auth, null, false);
+        return listing(ContentKind.NOTE, "笔记", model, auth, null, false, null);
     }
 
     @GetMapping("/notes")
     public String notes(Model model, Authentication auth,
                         @RequestParam(name = "from", required = false) Integer from,
-                        @RequestParam(name = "fragment", defaultValue = "false") boolean fragment) {
-        return listing(ContentKind.NOTE, "笔记", model, auth, from, fragment);
+                        @RequestParam(name = "fragment", defaultValue = "false") boolean fragment,
+                        @RequestParam(name = "rate", required = false) String rate) {
+        return listing(ContentKind.NOTE, "笔记", model, auth, from, fragment, rate);
     }
 
     @GetMapping("/bagu")
     public String bagu(Model model, Authentication auth,
                        @RequestParam(name = "from", required = false) Integer from,
-                       @RequestParam(name = "fragment", defaultValue = "false") boolean fragment) {
-        return listing(ContentKind.BAGU, "八股", model, auth, from, fragment);
+                       @RequestParam(name = "fragment", defaultValue = "false") boolean fragment,
+                       @RequestParam(name = "rate", required = false) String rate) {
+        return listing(ContentKind.BAGU, "八股", model, auth, from, fragment, rate);
     }
 
     @GetMapping("/algo")
     public String algo(Model model, Authentication auth,
                        @RequestParam(name = "from", required = false) Integer from,
-                       @RequestParam(name = "fragment", defaultValue = "false") boolean fragment) {
-        return listing(ContentKind.ALGO, "算法", model, auth, from, fragment);
+                       @RequestParam(name = "fragment", defaultValue = "false") boolean fragment,
+                       @RequestParam(name = "rate", required = false) String rate) {
+        return listing(ContentKind.ALGO, "算法", model, auth, from, fragment, rate);
     }
 
     @GetMapping("/projects")
     public String projects(Model model, Authentication auth,
                            @RequestParam(name = "from", required = false) Integer from,
-                           @RequestParam(name = "fragment", defaultValue = "false") boolean fragment) {
-        return listing(ContentKind.PROJECT, "项目", model, auth, from, fragment);
+                           @RequestParam(name = "fragment", defaultValue = "false") boolean fragment,
+                           @RequestParam(name = "rate", required = false) String rate) {
+        return listing(ContentKind.PROJECT, "项目", model, auth, from, fragment, rate);
     }
 
     @GetMapping("/bagu/{slug}")
@@ -146,10 +156,11 @@ public class PublicController {
     }
 
     private String listing(ContentKind kind, String pageTitle, Model model, Authentication auth,
-                           Integer from, boolean fragment) {
+                           Integer from, boolean fragment, String rate) {
         Viewer viewer = viewers.current(auth);
         Set<Long> lockedIds = new LinkedHashSet<>();
         List<ContentItem> all = filtered(poolForListing(kind, viewer), viewer, lockedIds);
+        Set<Long> starIds = stars.starredIds(viewer.userId());
 
         // 目录节点只出现在左侧树里，不混进右侧正文列表
         Set<Long> parentIds = new LinkedHashSet<>();
@@ -164,6 +175,11 @@ public class PublicController {
                 leaves.add(i);
             }
         }
+
+        // 星级 / 收藏筛选只挑卡片，左侧目录照旧整棵给：筛完还得能顺着目录跳
+        Map<String, Integer> counts = rateCounts(leaves, starIds);
+        String rateFilter = pickRate(rate);
+        leaves = byRate(leaves, rateFilter, starIds);
 
         // 补充笔记不单独占一张卡：作为附件挂到它的「本体」卡片里（本体不可见时才退回当普通卡片）
         Map<Long, List<ContentItem>> supplementsOf = new LinkedHashMap<>();
@@ -217,7 +233,10 @@ public class PublicController {
 
         model.addAttribute("items", leaves);
         model.addAttribute("tree", visibleTree(all, lockedIds, null));
-        model.addAttribute("starIds", stars.starredIds(viewer.userId()));
+        model.addAttribute("starIds", starIds);
+        model.addAttribute("rateFilter", rateFilter);
+        model.addAttribute("rateCounts", counts);
+        model.addAttribute("canRate", viewer.userId() != null);
         model.addAttribute("bookmarkIds", bookmarks.ids(viewer.userId()));
         model.addAttribute("lastReadId", lastReadId);
         model.addAttribute("lastRead", lastRead);
@@ -287,6 +306,8 @@ public class PublicController {
         // 九成八股正文里没有 ## 标题，右栏会空着；没有目录时改用「同分类的其他条目」填上
         model.addAttribute("rail", railOf(siblings, item, lockedIds));
         model.addAttribute("starred", viewer.userId() != null && stars.isStarred(viewer.userId(), item.getId()));
+        // 只有自己的内容能标星级：星级是内容上的字段，不是「谁标的」，改别人的条目等于改别人的东西
+        model.addAttribute("canRate", viewer.userId() != null && viewer.userId().equals(item.getOwnerId()));
 
         // 右栏换成评论区：整篇评论 + 锚在某句话上的评论（楼中楼在 service 里组好）
         // 复制出来的副本要跟原版共用同一串评论，所以按「最初的来源条目」做 key
@@ -550,6 +571,93 @@ public class PublicController {
         // 这里不能自己拼 contextPath：redirect: 的目标 Spring 会自动加上前缀，
         // 手动再加一次会变成 /app/app/bagu/xxx 直接 404
         return "redirect:" + basePath(item.getKind()) + "/" + item.getSlug();
+    }
+
+    /**
+     * 星级：点第 n 颗设成 n 星，点当前那一颗清回 0 星（增、改、删都是这一个口子）。
+     * 页面上的星星用 fetch 提交，回 204 就够；从别处直接 POST 过来则跳回详情页。
+     */
+    @PostMapping("/rate/{slug}")
+    public void rate(@PathVariable String slug,
+                     @RequestParam(name = "rating", defaultValue = "0") int rating,
+                     Authentication auth, HttpServletRequest request, HttpServletResponse response) throws IOException {
+        Viewer viewer = viewers.current(auth);
+        ContentItem item = resolveAnyKind(slug, viewer);
+        if (viewer.userId() == null || !viewer.userId().equals(item.getOwnerId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN);
+        }
+        ratings.set(item.getId(), rating);
+        if ("fetch".equalsIgnoreCase(request.getHeader("X-Requested-With"))) {
+            response.setStatus(HttpServletResponse.SC_NO_CONTENT);
+            return;
+        }
+        response.sendRedirect(request.getContextPath() + basePath(item.getKind()) + "/" + item.getSlug());
+    }
+
+    /** 星级标签的筛选项：star = 只看收藏，3/2/1 = 这一档及以上，0 = 只看没标的；别的值当没选。 */
+    private static String pickRate(String rate) {
+        if (rate == null) {
+            return null;
+        }
+        return switch (rate) {
+            case "star", "3", "2", "1", "0" -> rate;
+            default -> null;
+        };
+    }
+
+    /** 每个标签上显示的条数，按筛选前的全部卡片数：筛完还要知道别的档有多少。 */
+    private static Map<String, Integer> rateCounts(List<ContentItem> leaves, Set<Long> starIds) {
+        int starred = 0;
+        int r3 = 0;
+        int r2 = 0;
+        int r1 = 0;
+        int none = 0;
+        for (ContentItem i : leaves) {
+            if (starIds.contains(i.getId())) {
+                starred++;
+            }
+            if (i.getRating() >= 3) {
+                r3++;
+            }
+            if (i.getRating() >= 2) {
+                r2++;
+            }
+            if (i.getRating() >= 1) {
+                r1++;
+            }
+            if (i.getRating() == 0) {
+                none++;
+            }
+        }
+        Map<String, Integer> counts = new LinkedHashMap<>();
+        counts.put("all", leaves.size());
+        counts.put("star", starred);
+        counts.put("3", r3);
+        counts.put("2", r2);
+        counts.put("1", r1);
+        counts.put("0", none);
+        return counts;
+    }
+
+    private static List<ContentItem> byRate(List<ContentItem> leaves, String filter, Set<Long> starIds) {
+        if (filter == null) {
+            return leaves;
+        }
+        List<ContentItem> kept = new ArrayList<>();
+        for (ContentItem i : leaves) {
+            boolean hit = switch (filter) {
+                case "star" -> starIds.contains(i.getId());
+                case "3" -> i.getRating() >= 3;
+                case "2" -> i.getRating() >= 2;
+                case "1" -> i.getRating() >= 1;
+                case "0" -> i.getRating() == 0;
+                default -> true;
+            };
+            if (hit) {
+                kept.add(i);
+            }
+        }
+        return kept;
     }
 
     /** 备忘录列表：把标记过的条目按类型分组列出来。 */

@@ -56,6 +56,10 @@ public class ContentItem {
     @Column(name = "sort_order", nullable = false)
     private int sortOrder = 0;
 
+    /** 星级：0 = 没标，1-3。改星级是标注不是改内容，所以走 SQL 直写，不碰 updated_at。 */
+    @Column(nullable = false)
+    private int rating = 0;
+
     /** 是否放进推荐栏：只有推荐的内容才对本人以外的人可见。 */
     @Column(nullable = false)
     private boolean recommended = false;
@@ -189,6 +193,14 @@ public class ContentItem {
 
     public void setRecommended(boolean recommended) {
         this.recommended = recommended;
+    }
+
+    public int getRating() {
+        return rating;
+    }
+
+    public void setRating(int rating) {
+        this.rating = rating;
     }
 
     public Long getCopiedFromId() {

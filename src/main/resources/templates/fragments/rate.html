@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+
+<!-- 星级控件。点第 n 颗 = 设成 n 星，再点当前那一颗 = 清回 0 星，
+     增 / 改 / 删都在这三个按钮上，不另开编辑页。
+     不可编辑时（没登录、或这条不是自己的）只剩只读样子：只显示已标的那几颗。 -->
+<th:block th:fragment="stars(slug, rating, editable)">
+    <span class="rate" th:classappend="${editable} ? '' : 'readonly'"
+          th:with="url=@{/rate/{s}(s=${slug})}"
+          th:attr="data-v=${rating},data-url=${url}">
+        <button type="button" class="rate-star" data-v="1" th:disabled="${!editable}"
+                aria-label="1 星">★</button>
+        <button type="button" class="rate-star" data-v="2" th:disabled="${!editable}"
+                aria-label="2 星">★</button>
+        <button type="button" class="rate-star" data-v="3" th:disabled="${!editable}"
+                aria-label="3 星">★</button>
+    </span>
+</th:block>
+
+</body>
+</html>

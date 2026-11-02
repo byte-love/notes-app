@@ -181,6 +181,8 @@ public class RecommendService {
                     src.getBody(), src.getVisibility());
             copy.setParentId(newParent);
             copy.setSortOrder(src.getSortOrder());
+            // 星级跟着内容走：加入我的空间以后不用再一题一题重标
+            copy.setRating(src.getRating());
             // 复制出来的先只属于自己，不进推荐栏
             copy.setRecommended(false);
             copy.setCopiedFromId(src.getId());

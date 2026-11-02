@@ -82,7 +82,11 @@
         if (!base || !from) return;
         more.dataset.busy = '1';
         try {
-            const res = await fetch(`${base}?from=${encodeURIComponent(from)}&fragment=true`, {
+            // 星级筛选得跟着翻页一起带过去，否则第二批又是全部
+            const rate = more.dataset.rate;
+            const query = `from=${encodeURIComponent(from)}&fragment=true`
+                + (rate ? `&rate=${encodeURIComponent(rate)}` : '');
+            const res = await fetch(`${base}?${query}`, {
                 credentials: 'same-origin',
                 headers: { 'X-Requested-With': 'fetch' },
             });

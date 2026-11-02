@@ -26,6 +26,7 @@
             <header class="doc-head">
                 <h1 th:text="${item.title}">标题</h1>
                 <div class="doc-meta">
+                    <th:block th:replace="~{fragments/rate :: stars(${item.slug}, ${item.rating}, ${canRate == true})}"></th:block>
                     <time th:text="${#temporals.format(item.updatedAt, 'yyyy-MM-dd')}">2026-01-01</time>
                     <form sec:authorize="isAuthenticated()" th:action="@{/star/{s}(s=${item.slug})}"
                           method="post" class="inline">
@@ -83,6 +84,7 @@
     <script th:src="@{/js/comments.js(v=15)}"></script>
     <script th:src="@{/js/code.js(v=1)}"></script>
     <script th:src="@{/js/detail.js(v=9)}"></script>
+    <script th:src="@{/js/rate.js(v=1)}"></script>
 
 <footer th:replace="~{fragments/layout :: foot}"></footer>
 

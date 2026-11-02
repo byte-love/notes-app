@@ -25,6 +25,30 @@
 
         <p class="empty" th:if="${#lists.isEmpty(tree)}">暂无内容</p>
 
+        <!-- 星级 / 收藏筛选：只换屏幕上的卡片，左边目录照旧整棵；条数为 0 的那档置灰点不动 -->
+        <nav class="rate-filter" th:if="${rateCounts != null}">
+            <a class="rate-chip"
+               th:classappend="${rateFilter == null ? 'on' : (rateCounts['all'] == 0 ? 'off' : '')}"
+               th:href="${basePath}">全部<span class="rate-chip-count"
+                    th:text="${rateCounts['all']}">0</span></a>
+            <a class="rate-chip"
+               th:classappend="${rateFilter == 'star' ? 'on' : (rateCounts['star'] == 0 ? 'off' : '')}"
+               th:href="${basePath + '?rate=star'}">收藏<span class="rate-chip-count"
+                    th:text="${rateCounts['star']}">0</span></a>
+            <a class="rate-chip"
+               th:classappend="${rateFilter == '3' ? 'on' : (rateCounts['3'] == 0 ? 'off' : '')}"
+               th:href="${basePath + '?rate=3'}">★★★<span class="rate-chip-count"
+                    th:text="${rateCounts['3']}">0</span></a>
+            <a class="rate-chip"
+               th:classappend="${rateFilter == '2' ? 'on' : (rateCounts['2'] == 0 ? 'off' : '')}"
+               th:href="${basePath + '?rate=2'}">★★以上<span class="rate-chip-count"
+                    th:text="${rateCounts['2']}">0</span></a>
+            <a class="rate-chip"
+               th:classappend="${rateFilter == '0' ? 'on' : (rateCounts['0'] == 0 ? 'off' : '')}"
+               th:href="${basePath + '?rate=0'}">未评<span class="rate-chip-count"
+                    th:text="${rateCounts['0']}">0</span></a>
+        </nav>
+
         <!-- 分组外层：收起的分组在这里并排成卡片网格，展开的那组占满整行 -->
         <div class="group-grid">
             <th:block th:replace="~{fragments/list :: groupSections(${groups}, ${basePath}, ${nextFrom})}"/>
@@ -32,7 +56,8 @@
     </main>
 </div>
 
-<script th:src="@{/js/list.js(v=6)}" defer></script>
+<script th:src="@{/js/list.js(v=7)}" defer></script>
+<script th:src="@{/js/rate.js(v=1)}" defer></script>
 <footer th:replace="~{fragments/layout :: foot}"></footer>
 </body>
 </html>
