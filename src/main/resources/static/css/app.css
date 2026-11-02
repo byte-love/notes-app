@@ -3457,7 +3457,7 @@ html[data-theme='dark'] .cl-latest {
     border: 1px solid var(--line);
     border-radius: 12px;
     cursor: pointer;
-    transition: border-color 0.14s ease, background 0.14s ease;
+    transition: border-color 0.14s ease, background 0.14s ease, transform 0.14s ease, box-shadow 0.14s ease;
 }
 
 .item-group-toggle:hover {
@@ -3509,11 +3509,12 @@ html[data-theme='dark'] .cl-latest {
 
 /* 收起态的排列：收起的分组并排成卡片网格，展开的那组占满整行。
    以前每条都占满整行、组间还留 2.6rem，一屏只有几条空条带，很空；
-   现在收起的并成两列（窄屏一列），一屏能扫完所有分类，展开的那组仍是整行条带 + 卡片。
+   现在收起的并成多列（窄屏一列），一屏能扫完所有分类，展开的那组仍是整行条带 + 卡片。
    参考 shadcn 的 Card Collapsible（标题 + 计数徽标 + 可折叠内容）与 GitHub topics 的卡片网格。 */
 .group-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(min(320px, 100%), 1fr));
+    /* 300 起算：宽屏 3 列，卡片不至于拉得太宽，预览那一行也放得下两条标题 */
+    grid-template-columns: repeat(auto-fill, minmax(min(300px, 100%), 1fr));
     gap: 0.6rem;
     /* 和里面条目列同一个宽度上限，否则条带比下面的卡片宽出一圈 */
     max-width: min(1160px, 96%);
@@ -3531,16 +3532,24 @@ html[data-theme='dark'] .cl-latest {
     flex-direction: column;
 }
 
-/* 收起的卡片排成两行：上面是三角 + 标题，下面是条数。
-   和条目卡片同一套骨架（标题在上、信息在下），一眼能看出这是「一张卡」而不是一条空条带。 */
+/* 收起的卡片：上行「三角 + 标题 + 条数」，下行是这一组前两条标题。
+   条数贴右上、预览占住下面的空当，卡片里就不会空出一大块；条数在卡片里不画胶囊
+   （胶囊留给展开的条带），只留一个淡色数字，不跟标题抢注意力 */
 .group-grid > .item-group.folded > .item-group-toggle {
     flex: 1;
     display: grid;
-    grid-template-columns: auto minmax(0, 1fr);
-    align-content: center;
-    row-gap: 0.55rem;
-    padding: 0.85rem 1rem;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    column-gap: 0.5rem;
+    row-gap: 0.42rem;
+    padding: 0.72rem 0.9rem;
     border-radius: 14px;
+}
+
+/* 和条目卡片一样，悬停轻轻抬一下，才像一张卡而不是表格行 */
+.group-grid > .item-group.folded > .item-group-toggle:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 10px 20px -16px rgba(28, 27, 24, 0.5);
 }
 
 .group-grid > .item-group.folded .item-group-caret {
@@ -3549,19 +3558,40 @@ html[data-theme='dark'] .cl-latest {
 
 .group-grid > .item-group.folded .item-group-title {
     grid-area: 1 / 2;
+    min-width: 0;
 }
 
 .group-grid > .item-group.folded .item-group-count {
-    grid-area: 2 / 2;
-    justify-self: start;
-    margin-left: 0;
-    padding: 0.12rem 0.55rem;
-    font-size: 0.74rem;
+    grid-area: 1 / 3;
+    padding: 0;
+    font-size: 1rem;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+    color: var(--fg-3);
+    background: none;
+    border: 0;
+    border-radius: 0;
 }
 
 .group-grid > .item-group.folded > .item-group-toggle:hover .item-group-count {
     color: var(--accent);
-    border-color: var(--accent);
+}
+
+/* 预览行：淡、单行、放不下就截断 */
+.group-grid > .item-group.folded .item-group-preview {
+    grid-area: 2 / 2 / 3 / 4;
+    min-width: 0;
+    font-size: 0.78rem;
+    line-height: 1.5;
+    color: var(--fg-3);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* 展开时是整行条带，下面就是卡片，预览用不上 */
+.item-group:not(.folded) .item-group-preview {
+    display: none;
 }
 
 .group-grid > .item-group:not(.folded) {

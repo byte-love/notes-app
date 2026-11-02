@@ -186,7 +186,8 @@ sudo /opt/deploy/sync-db.sh    # 正式库整库覆盖到测试库
   实际命中的元素，必要时截一张图；只读 `el.hidden`、只读 JS 返回值都会骗人
 - **列表页是「两级」结构，改样式前先看这段**（2026-11-02 定的）：
   - 一级 = 分组标题条（`.item-group-toggle`：`bg-2` 底 + 描边 + 圆角 12 + 计数胶囊），整行可点；
-    收起后退成一张两行的卡片（上行三角 + 标题，下行条数），跟同样收起的其他分类并排成两列
+    收起后退成一张两行的卡片（上行：三角 + 标题 + 右侧条数；下行：这组前两条标题的预览），
+    跟同样收起的其他分类并排成多列（宽屏 3 列）
     （见下面「收起的一级排成卡片网格」）
   - 二级 = 该组卡片的**筛选标签**（`.subgroup-chip`：胶囊 + 计数），**永远有一档选中**（服务端先把第一档标 `on`），
     所以点开任何一组看到的都是卡片，不会再出现「点开是又一层分类列表」
@@ -195,10 +196,15 @@ sudo /opt/deploy/sync-db.sh    # 正式库整库覆盖到测试库
     只拆出一档就不拆。加新组只要往 json 里加一段，不用动数据库
   - 展开状态：一级记 `group-fold:<组标题>`，二级记 `sub-open:<组标题>`（存 chip 的 `data-chip`）
   - **收起的一级排成卡片网格**（2026-11-02 定的）：分组外层是 `.group-grid`
-    （`repeat(auto-fill, minmax(320px, 1fr))`，窄屏一列，宽度上限和条目列一样是 `min(1160px, 96%)`）；
-    `.item-group` 默认 `grid-column: 1 / -1` 占满整行，挂了 `.folded` 才回到网格里跟别的分类并排。
+    （`repeat(auto-fill, minmax(min(300px, 100%), 1fr))`，窄屏一列，宽度上限和条目列一样是
+    `min(1160px, 96%)`）；`.item-group` 默认 `grid-column: 1 / -1` 占满整行，
+    挂了 `.folded` 才回到网格里跟别的分类并排。
+    卡片本体是 3 列 × 2 行的 grid：`三角 / 标题 / 条数` 在上，`.item-group-preview` 在下（跨到右边缘）。
     所以：**新增页面渲染 `groupSections` 片段的，外面要包一层 `.group-grid`**，
     否则「加载更多」插进来的新分组不会进网格；`.list-more` 锚点已按 `grid-column: 1 / -1` 处理
+  - **预览行来自 `ItemGroup.preview`**：`PublicController.previewOf()` 取该组前两条的标题拼成
+    `A · B`，收起时显示、展开时整条藏掉（`.item-group:not(.folded) .item-group-preview`）；
+    组里只有一条就是一行标题，标题为空串时这一行不占位
   - **坑一：Thymeleaf 的 `th:replace` 优先级高于 `th:each`**。写
     `<th:block th:each="i : ${items}" th:replace="~{... card(${i})}">` 时 fragment 里拿到的是 null
     （列表页 500，报 `Property or field 'id' cannot be found on null`）。必须拆成两层 th:block

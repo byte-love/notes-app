@@ -454,9 +454,10 @@ public class PublicController {
     /**
      * 一个分类下的卡片；整页没有分类时就是一组，标题为空、不显示小标题。
      * subGroups 非空时页面多一层小标题（条目太多的小节才拆），subGroups 为空就平铺。
+     * preview 是这一组前两条的标题，收起时用它在卡片里撑住右边的空当。
      */
     public record ItemGroup(String title, String slug, List<ContentItem> items,
-                            List<SubGroupService.SubGroup> subGroups) {
+                            List<SubGroupService.SubGroup> subGroups, String preview) {
         public boolean hasSub() {
             return subGroups != null && !subGroups.isEmpty();
         }
@@ -559,12 +560,28 @@ public class PublicController {
                     ContentItem parent = byId.get(id);
                     List<ContentItem> list = buckets.get(id);
                     result.add(new ItemGroup(parent.getTitle(), parent.getSlug(), list,
-                            subGroups.split(parent.getSlug(), list)));
+                            subGroups.split(parent.getSlug(), list), previewOf(list)));
                 });
         if (buckets.containsKey(0L)) {
-            result.add(new ItemGroup(null, null, buckets.get(0L), List.of()));
+            result.add(new ItemGroup(null, null, buckets.get(0L), List.of(), ""));
         }
         return result;
+    }
+
+    /** 组内前两条标题，拼成一行给收起时的卡片用；标题太长由 CSS 截断。 */
+    private static String previewOf(List<ContentItem> list) {
+        StringBuilder sb = new StringBuilder();
+        int n = 0;
+        for (ContentItem item : list) {
+            if (n++ > 0) {
+                sb.append(" · ");
+            }
+            sb.append(item.getTitle());
+            if (n == 2) {
+                break;
+            }
+        }
+        return sb.toString();
     }
 
     /**

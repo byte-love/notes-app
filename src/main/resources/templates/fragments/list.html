@@ -29,6 +29,8 @@
             <span class="item-group-caret" aria-hidden="true"></span>
             <h2 class="item-group-title" th:text="${g.title()}">分类</h2>
             <span class="item-group-count" th:text="${#lists.size(g.items())}">0</span>
+            <!-- 收起时这一行填住卡片右边的空当：组里前两条的标题；展开时用不着，CSS 里藏掉 -->
+            <span class="item-group-preview" th:if="${g.preview() != null}" th:text="${g.preview()}"></span>
         </button>
         <h2 class="item-group-title" th:unless="${g.title() != null}" th:text="${g.title()}">分类</h2>
 
