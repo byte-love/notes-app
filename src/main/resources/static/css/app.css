@@ -3159,38 +3159,74 @@ html[data-theme='dark'] .cl-latest {
 }
 
 .with-tree .item-list {
-    max-width: min(1000px, 92%);
+    max-width: min(1160px, 96%);
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
-    gap: 1.2rem;
+    grid-template-columns: repeat(auto-fill, minmax(258px, 1fr));
+    gap: 1.1rem;
 }
 
-/* 每条一块卡片，不再用横线分隔 */
+/* 每条一块卡片：只动形状和间距，底色 / 边框 / 悬停色都用原来的变量，不另配颜色 */
 .with-tree .item-list li {
+    display: flex;
+    flex-direction: column;
     border: 1px solid var(--line);
-    border-radius: 10px;
-    padding: 0.8rem 0.85rem;
+    border-radius: 14px;
+    padding: 1.05rem 1.15rem 0.85rem;
     background: var(--bg-2);
+    transition: transform 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease;
 }
 
 .with-tree .item-list li:hover {
+    transform: translateY(-2px);
     border-color: var(--fg-3);
+    box-shadow: 0 12px 26px -18px rgba(28, 27, 24, 0.45);
 }
 
-/* 卡片窄，写不下的地方截断加省略号，高度才齐 */
 .with-tree .item-title {
-    font-size: 1rem;
+    font-size: 1.02rem;
+    line-height: 1.45;
+    letter-spacing: -0.01em;
     display: -webkit-box;
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
     overflow: hidden;
 }
 
+/* 卡片窄，写不下的地方截断加省略号，高度才齐 */
 .with-tree .item-summary {
+    margin: 0.45rem 0 0;
+    color: var(--fg-2);
+    font-size: 0.88rem;
+    line-height: 1.65;
     display: -webkit-box;
     -webkit-line-clamp: 3;
     -webkit-box-orient: vertical;
     overflow: hidden;
+}
+
+/* 日期落到底部，悬停时右侧浮出一个淡箭头，暗示整张卡可点 */
+.with-tree .item-date {
+    margin-top: auto;
+    padding-top: 0.7rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 0.72rem;
+    letter-spacing: 0.02em;
+    color: var(--fg-3);
+}
+
+.with-tree .item-date::after {
+    content: "→";
+    opacity: 0;
+    transform: translateX(-4px);
+    transition: opacity 0.16s ease, transform 0.16s ease;
+    color: var(--accent);
+}
+
+.with-tree .item-list li:hover .item-date::after {
+    opacity: 1;
+    transform: translateX(0);
 }
 
 /* 右栏没有目录时列同分类条目：长列表要能自己滚，不然撑出屏幕 */
@@ -3237,8 +3273,8 @@ html[data-theme='dark'] .cl-latest {
 }
 
 .item-group-title {
-    margin: 0 0 0.8rem;
-    font-size: 0.92rem;
+    margin: 0;
+    font-size: 0.95rem;
     font-weight: 600;
     color: var(--accent-2);
     letter-spacing: 0.01em;
@@ -3405,19 +3441,27 @@ html[data-theme='dark'] .cl-latest {
     color: var(--danger);
 }
 /* 分类标题做成可点的折叠条：左边小三角 + 标题 + 条数 */
+/* 一级分组标题：整行条带（浅底 + 描边 + 圆角 + 计数胶囊），和二级的 chips 同一套材料，
+   只是更大更重，层级一眼能看出来。整行可点，收起后只剩这条。 */
 .item-group-toggle {
     display: flex;
     align-items: center;
-    gap: 0.45rem;
+    gap: 0.6rem;
     width: 100%;
-    margin: 0 0 0.8rem;
-    padding: 0;
+    margin: 0 0 0.9rem;
+    padding: 0.62rem 0.85rem;
     font: inherit;
     text-align: left;
     color: inherit;
-    background: none;
-    border: 0;
+    background: var(--bg-2);
+    border: 1px solid var(--line);
+    border-radius: 12px;
     cursor: pointer;
+    transition: border-color 0.14s ease, background 0.14s ease, transform 0.14s ease, box-shadow 0.14s ease;
+}
+
+.item-group-toggle:hover {
+    border-color: var(--fg-3);
 }
 
 .item-group-caret {
@@ -3436,14 +3480,23 @@ html[data-theme='dark'] .cl-latest {
 }
 
 .item-group-toggle:hover .item-group-title {
-    text-decoration: underline;
-    text-underline-offset: 3px;
+    color: var(--accent);
 }
 
+/* 计数做成胶囊徽标，和二级 chip 里的计数是同一套样子 */
 .item-group-count {
-    font-size: 0.76rem;
-    color: var(--fg-3);
+    margin-left: auto;
+    padding: 0.1rem 0.5rem;
+    font-size: 0.72rem;
     font-variant-numeric: tabular-nums;
+    color: var(--fg-3);
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+}
+
+.item-group-toggle:hover .item-group-count {
+    color: var(--fg-2);
 }
 
 .item-group.folded .item-list {
@@ -3452,6 +3505,175 @@ html[data-theme='dark'] .cl-latest {
 
 .item-group.folded .item-group-toggle {
     margin-bottom: 0;
+}
+
+/* 收起态的排列：收起的分组并排成卡片网格，展开的那组占满整行。
+   以前每条都占满整行、组间还留 2.6rem，一屏只有几条空条带，很空；
+   现在收起的并成多列（窄屏一列），一屏能扫完所有分类，展开的那组仍是整行条带 + 卡片。
+   参考 shadcn 的 Card Collapsible（标题 + 计数徽标 + 可折叠内容）与 GitHub topics 的卡片网格。 */
+.group-grid {
+    display: grid;
+    /* 300 起算：宽屏 3 列，卡片不至于拉得太宽，预览那一行也放得下两条标题 */
+    grid-template-columns: repeat(auto-fill, minmax(min(300px, 100%), 1fr));
+    gap: 0.6rem;
+    /* 和里面条目列同一个宽度上限，否则条带比下面的卡片宽出一圈 */
+    max-width: min(1160px, 96%);
+}
+
+.group-grid > .item-group {
+    grid-column: 1 / -1;
+    margin-top: 0;
+}
+
+/* 收起的分组退回网格，跟旁边的分类并排；撑满整行的格子，高度才齐 */
+.group-grid > .item-group.folded {
+    grid-column: auto;
+    display: flex;
+    flex-direction: column;
+}
+
+/* 收起的卡片：上行「三角 + 标题 + 条数」，下行是这一组前两条标题。
+   条数贴右上、预览占住下面的空当，卡片里就不会空出一大块；条数在卡片里不画胶囊
+   （胶囊留给展开的条带），只留一个淡色数字，不跟标题抢注意力 */
+.group-grid > .item-group.folded > .item-group-toggle {
+    flex: 1;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    column-gap: 0.5rem;
+    row-gap: 0.42rem;
+    padding: 0.72rem 0.9rem;
+    border-radius: 14px;
+}
+
+/* 和条目卡片一样，悬停轻轻抬一下，才像一张卡而不是表格行 */
+.group-grid > .item-group.folded > .item-group-toggle:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 10px 20px -16px rgba(28, 27, 24, 0.5);
+}
+
+.group-grid > .item-group.folded .item-group-caret {
+    grid-area: 1 / 1;
+}
+
+.group-grid > .item-group.folded .item-group-title {
+    grid-area: 1 / 2;
+    min-width: 0;
+}
+
+.group-grid > .item-group.folded .item-group-count {
+    grid-area: 1 / 3;
+    padding: 0;
+    font-size: 1rem;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+    color: var(--fg-3);
+    background: none;
+    border: 0;
+    border-radius: 0;
+}
+
+.group-grid > .item-group.folded > .item-group-toggle:hover .item-group-count {
+    color: var(--accent);
+}
+
+/* 预览行：淡、单行、放不下就截断 */
+.group-grid > .item-group.folded .item-group-preview {
+    grid-area: 2 / 2 / 3 / 4;
+    min-width: 0;
+    font-size: 0.78rem;
+    line-height: 1.5;
+    color: var(--fg-3);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* 展开时是整行条带，下面就是卡片，预览用不上 */
+.item-group:not(.folded) .item-group-preview {
+    display: none;
+}
+
+.group-grid > .item-group:not(.folded) {
+    margin-bottom: 1.2rem;
+}
+
+/* 外层已经限过宽了，里面的条目列别再缩 4%（96% of 96%），否则卡片比条带窄一圈 */
+.group-grid > .item-group .item-list {
+    max-width: 100%;
+}
+
+/* 收起的卡片把三角往右挪一点，暗示点开是「展开」 */
+.group-grid > .item-group.folded .item-group-toggle:hover .item-group-caret {
+    transform: rotate(0deg) translateX(2px);
+}
+
+/* 「取下一批」的锚点别单独占一个网格格子 */
+.group-grid > .list-more {
+    grid-column: 1 / -1;
+}
+
+/* 二级分档：一行标签（chip），点开才在下面展开那一档的卡片；一次只开一档。
+   参考 shadcn 的 filter-chip 做法：胶囊 + 计数，选中态用强调色 */
+.subgroup-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin: 0.5rem 0 0;
+}
+
+.subgroup-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font: inherit;
+    font-size: 0.82rem;
+    line-height: 1;
+    padding: 0.42rem 0.75rem;
+    color: var(--fg-2);
+    background: var(--bg-2);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    cursor: pointer;
+    transition: color 0.14s ease, border-color 0.14s ease, background 0.14s ease;
+}
+
+.subgroup-chip:hover {
+    color: var(--fg);
+    border-color: var(--fg-3);
+}
+
+.subgroup-chip.on {
+    color: var(--accent);
+    border-color: var(--accent);
+    background: var(--accent-soft);
+}
+
+.subgroup-chip-count {
+    font-size: 0.72rem;
+    color: var(--fg-3);
+    font-variant-numeric: tabular-nums;
+}
+
+.subgroup-chip.on .subgroup-chip-count {
+    color: var(--accent);
+}
+
+.subgroup-panels {
+    margin-top: 0.8rem;
+}
+
+.subgroup-panel {
+    display: none;
+}
+
+.subgroup-panel.on {
+    display: block;
+}
+
+/* 外层分组收起时，标签行和展开面板一起收掉（之前只藏 .item-list，标签还留着） */
+.item-group.folded .item-group-body {
+    display: none;
 }
 /* 「已加入」状态：同类按钮，但不可点 */
 .btn-small.on,

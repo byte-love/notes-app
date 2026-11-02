@@ -12,6 +12,7 @@ import cn.bytelove.notes.service.MarkdownRenderer;
 import cn.bytelove.notes.service.ProjectMetaService;
 import cn.bytelove.notes.service.ReadingPositionService;
 import cn.bytelove.notes.service.NoteTreeService;
+import cn.bytelove.notes.service.SubGroupService;
 import cn.bytelove.notes.service.ViewerService;
 import cn.bytelove.notes.service.VisibilityService;
 import cn.bytelove.notes.service.VisibilityService.Viewer;
@@ -56,13 +57,14 @@ public class PublicController {
     private final BookmarkService bookmarks;
     private final MarkdownRenderer markdown;
     private final NoteTreeService tree;
+    private final SubGroupService subGroups;
     private final CommentService comments;
     private final CommentFilter commentFilter;
     private final CommentRateLimiter commentLimiter;
 
     public PublicController(ContentItemRepository items, VisibilityService visibility, ViewerService viewers,
                             ContentStarService stars, ProjectMetaService meta, ReadingPositionService positions, BookmarkService bookmarks,
-                            MarkdownRenderer markdown, NoteTreeService tree,
+                            MarkdownRenderer markdown, NoteTreeService tree, SubGroupService subGroups,
                             CommentService comments, CommentFilter commentFilter,
                             CommentRateLimiter commentLimiter) {
         this.items = items;
@@ -74,6 +76,7 @@ public class PublicController {
         this.bookmarks = bookmarks;
         this.markdown = markdown;
         this.tree = tree;
+        this.subGroups = subGroups;
         this.comments = comments;
         this.commentFilter = commentFilter;
         this.commentLimiter = commentLimiter;
@@ -448,8 +451,16 @@ public class PublicController {
         return kind -> ctx + basePath(kind);
     }
 
-    /** 一个分类下的卡片；整页没有分类时就是一组，标题为空、不显示小标题。 */
-    public record ItemGroup(String title, List<ContentItem> items) {
+    /**
+     * 一个分类下的卡片；整页没有分类时就是一组，标题为空、不显示小标题。
+     * subGroups 非空时页面多一层小标题（条目太多的小节才拆），subGroups 为空就平铺。
+     * preview 是这一组前两条的标题，收起时用它在卡片里撑住右边的空当。
+     */
+    public record ItemGroup(String title, String slug, List<ContentItem> items,
+                            List<SubGroupService.SubGroup> subGroups, String preview) {
+        public boolean hasSub() {
+            return subGroups != null && !subGroups.isEmpty();
+        }
     }
 
     /** 树超过这么多节点就改成「顶层 + 当前路径」，其余展开时再取。 */
@@ -545,11 +556,32 @@ public class PublicController {
                 .filter(id -> id != 0L)
                 .sorted(Comparator.comparingInt((Long id) -> byId.get(id).getSortOrder())
                         .thenComparing(id -> byId.get(id).getTitle(), Comparator.nullsLast(String::compareTo)))
-                .forEach(id -> result.add(new ItemGroup(byId.get(id).getTitle(), buckets.get(id))));
+                .forEach(id -> {
+                    ContentItem parent = byId.get(id);
+                    List<ContentItem> list = buckets.get(id);
+                    result.add(new ItemGroup(parent.getTitle(), parent.getSlug(), list,
+                            subGroups.split(parent.getSlug(), list), previewOf(list)));
+                });
         if (buckets.containsKey(0L)) {
-            result.add(new ItemGroup(null, buckets.get(0L)));
+            result.add(new ItemGroup(null, null, buckets.get(0L), List.of(), ""));
         }
         return result;
+    }
+
+    /** 组内前两条标题，拼成一行给收起时的卡片用；标题太长由 CSS 截断。 */
+    private static String previewOf(List<ContentItem> list) {
+        StringBuilder sb = new StringBuilder();
+        int n = 0;
+        for (ContentItem item : list) {
+            if (n++ > 0) {
+                sb.append(" · ");
+            }
+            sb.append(item.getTitle());
+            if (n == 2) {
+                break;
+            }
+        }
+        return sb.toString();
     }
 
     /**

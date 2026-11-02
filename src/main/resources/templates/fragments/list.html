@@ -2,7 +2,26 @@
 <html xmlns:th="http://www.thymeleaf.org">
 <body>
 
-<!-- 一个分类小节 + 卡片；列表页和「加载更多」的分片请求共用这一段 -->
+<!-- 一张卡片；分类小节和二级小节共用 -->
+<th:block th:fragment="card(i, basePath)">
+    <li>
+        <div class="item-main">
+            <a th:unless="${lockedIds.contains(i.id)}" class="item-title"
+               th:href="${basePath + '/' + i.slug}" th:text="${i.title}">标题</a>
+            <a th:if="${lockedIds.contains(i.id)}" class="item-title locked"
+               th:href="@{/login}" title="需要登录后查看">
+                <span th:text="${i.title}"></span>
+            </a>
+        </div>
+        <p class="item-summary" th:if="${i.summary != null and !lockedIds.contains(i.id)}"
+           th:text="${i.summary}">摘要</p>
+        <time class="item-date" th:unless="${lockedIds.contains(i.id)}"
+              th:text="${#temporals.format(i.updatedAt, 'yyyy-MM-dd')}">2026-01-01</time>
+    </li>
+</th:block>
+
+<!-- 一个分类小节 + 卡片；列表页和「加载更多」的分片请求共用这一段。
+     条目多的小节（subGroups 非空）在组内再分一层，二级小节默认收起。 -->
 <th:block th:fragment="groupSections(groups, basePath, nextFrom)">
     <section class="item-group" th:each="g : ${groups}" th:attr="data-key=${g.title()}">
         <!-- 分类标题点一下收起 / 展开，状态记在 localStorage（内容多了以后一眼能扫） -->
@@ -10,24 +29,42 @@
             <span class="item-group-caret" aria-hidden="true"></span>
             <h2 class="item-group-title" th:text="${g.title()}">分类</h2>
             <span class="item-group-count" th:text="${#lists.size(g.items())}">0</span>
+            <!-- 收起时这一行填住卡片右边的空当：组里前两条的标题；展开时用不着，CSS 里藏掉 -->
+            <span class="item-group-preview" th:if="${g.preview() != null}" th:text="${g.preview()}"></span>
         </button>
         <h2 class="item-group-title" th:unless="${g.title() != null}" th:text="${g.title()}">分类</h2>
 
-        <ul class="item-list">
-            <li th:each="i : ${g.items()}">
-                <div class="item-main">
-                    <a th:unless="${lockedIds.contains(i.id)}" class="item-title"
-                       th:href="${basePath + '/' + i.slug}" th:text="${i.title}">标题</a>
-                    <a th:if="${lockedIds.contains(i.id)}" class="item-title locked"
-                       th:href="@{/login}" title="需要登录后查看">
-                        <span th:text="${i.title}"></span>
-                    </a>
+        <th:block th:if="${g.hasSub()}">
+            <div class="item-group-body">
+                <!-- 二级分档是这组卡片的筛选标签：服务端先把第一档标成选中，没 JS 时也能看到卡片；
+                     点了以后由 list.js 换档，选中状态按分组记在浏览器里 -->
+                <div class="subgroup-chips">
+                    <button type="button" class="subgroup-chip" th:each="sg, it : ${g.subGroups()}"
+                            th:classappend="${it.index == 0} ? 'on'"
+                            th:attr="data-chip=${(g.slug() == null ? '' : g.slug()) + '::' + sg.name()}">
+                        <span th:text="${sg.name()}">小分类</span>
+                        <span class="subgroup-chip-count" th:text="${#lists.size(sg.items())}">0</span>
+                    </button>
                 </div>
-                <p class="item-summary" th:if="${i.summary != null and !lockedIds.contains(i.id)}"
-                   th:text="${i.summary}">摘要</p>
-                <time class="item-date" th:unless="${lockedIds.contains(i.id)}"
-                      th:text="${#temporals.format(i.updatedAt, 'yyyy-MM-dd')}">2026-01-01</time>
-            </li>
+                <div class="subgroup-panels">
+                    <section class="subgroup-panel" th:each="sg, it : ${g.subGroups()}"
+                             th:classappend="${it.index == 0} ? 'on'"
+                             th:attr="data-panel=${(g.slug() == null ? '' : g.slug()) + '::' + sg.name()}">
+                        <ul class="item-list">
+                            <!-- 注意：th:replace 的优先级比 th:each 高，必须分成两层，否则 fragment 里拿到的是 null -->
+                            <th:block th:each="i : ${sg.items()}">
+                                <th:block th:replace="~{fragments/list :: card(${i}, ${basePath})}"></th:block>
+                            </th:block>
+                        </ul>
+                    </section>
+                </div>
+            </div>
+        </th:block>
+
+        <ul class="item-list" th:unless="${g.hasSub()}">
+            <th:block th:each="i : ${g.items()}">
+                <th:block th:replace="~{fragments/list :: card(${i}, ${basePath})}"></th:block>
+            </th:block>
         </ul>
     </section>
 

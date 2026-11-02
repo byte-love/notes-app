@@ -25,11 +25,14 @@
 
         <p class="empty" th:if="${#lists.isEmpty(tree)}">暂无内容</p>
 
-        <th:block th:replace="~{fragments/list :: groupSections(${groups}, ${basePath}, ${nextFrom})}"/>
+        <!-- 分组外层：收起的分组在这里并排成卡片网格，展开的那组占满整行 -->
+        <div class="group-grid">
+            <th:block th:replace="~{fragments/list :: groupSections(${groups}, ${basePath}, ${nextFrom})}"/>
+        </div>
     </main>
 </div>
 
-<script th:src="@{/js/list.js(v=3)}" defer></script>
+<script th:src="@{/js/list.js(v=6)}" defer></script>
 <footer th:replace="~{fragments/layout :: foot}"></footer>
 </body>
 </html>
