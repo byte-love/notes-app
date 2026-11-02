@@ -41,15 +41,18 @@
                     <span class="item-group-count" th:text="${#lists.size(sg.items())}">0</span>
                 </button>
                 <ul class="item-list">
-                    <th:block th:each="i : ${sg.items()}"
-                              th:replace="~{fragments/list :: card(${i}, ${basePath})}"></th:block>
+                    <!-- 注意：th:replace 的优先级比 th:each 高，必须分成两层，否则 fragment 里拿到的是 null -->
+                    <th:block th:each="i : ${sg.items()}">
+                        <th:block th:replace="~{fragments/list :: card(${i}, ${basePath})}"></th:block>
+                    </th:block>
                 </ul>
             </section>
         </th:block>
 
         <ul class="item-list" th:unless="${g.hasSub()}">
-            <th:block th:each="i : ${g.items()}"
-                      th:replace="~{fragments/list :: card(${i}, ${basePath})}"></th:block>
+            <th:block th:each="i : ${g.items()}">
+                <th:block th:replace="~{fragments/list :: card(${i}, ${basePath})}"></th:block>
+            </th:block>
         </ul>
     </section>
 
