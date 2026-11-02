@@ -1527,6 +1527,7 @@ button:hover,
 
 .tree-num {
     display: inline-block;
+    text-indent: 0;
     width: 1.1rem;
     margin-right: 0.3rem;
     font-family: var(--mono);
@@ -1598,12 +1599,12 @@ button:hover,
 }
 
 .tree > li {
-    margin-top: 1.1rem;
+    margin-top: 0.85rem;
 }
 
 /* 组和组之间加一条极淡的分隔线：条目多的页面（笔记有 5 组）才不会糊成一片 */
 .tree > li + li {
-    padding-top: 0.9rem;
+    padding-top: 0.6rem;
     border-top: 1px solid var(--line);
 }
 
@@ -1619,7 +1620,7 @@ button:hover,
     font-weight: 600;
     font-size: 0.9rem;
     letter-spacing: 0.01em;
-    padding: 0.44rem 0.6rem;
+    padding: 0.36rem 0.6rem;
 }
 
 .tree > li > a,
@@ -1638,7 +1639,7 @@ button:hover,
     font-size: 0.85rem;
     color: var(--fg);
     /* 左侧留出箭头的位，否则 padding 简写会把 .tree-group 的 padding-left 覆盖掉，箭头压到文字上 */
-    padding: 0.36rem 0.6rem 0.36rem 1.15rem;
+    padding: 0.28rem 0.6rem 0.28rem 1.15rem;
 }
 
 /* 没有嵌套子目录时（项目区那种两层结构），靠字号和间距撑出层次 */
@@ -1649,9 +1650,9 @@ button:hover,
 .tree ul > li > .locked {
     font-weight: 400;
     font-size: 0.83rem;
-    line-height: 1.45;
+    line-height: 1.4;
     color: var(--fg-2);
-    padding: 0.34rem 0.6rem 0.34rem 2rem;
+    padding: 0.22rem 0.6rem 0.22rem 2rem;
     text-indent: -1.4rem;
 }
 
