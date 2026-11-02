@@ -202,6 +202,13 @@ sudo /opt/deploy/sync-db.sh    # 正式库整库覆盖到测试库
     卡片本体是 3 列 × 2 行的 grid：`三角 / 标题 / 条数` 在上，`.item-group-preview` 在下（跨到右边缘）。
     所以：**新增页面渲染 `groupSections` 片段的，外面要包一层 `.group-grid`**，
     否则「加载更多」插进来的新分组不会进网格；`.list-more` 锚点已按 `grid-column: 1 / -1` 处理
+  - **补充笔记（`supplement_of_id`）不单独占位置**：列表里并进「本体」那张卡片的内嵌附件行
+    （`.card-attach`），左树里直接不渲染它，正文末尾给一张附件卡（`.attach-card`），
+    补充笔记页标题下面给一条「本体」回链（`.doc-origin`）。层级上两者同级（`parent_id` 相同）
+  - **左树样式**（2026-11-02 改）：不再画整列竖线 + 每行短横线（`.tree ul` 的 border-left 和
+    `li::before` 都删了），层级靠缩进 + 字重；行是圆角 8 的块，hover 浅底、当前项浅底 + 强调色 +
+    左侧 2px 强调色；二级条目长标题用悬挂缩进（`padding-left` + 负 `text-indent`）对齐；
+    顶层分组之间用 `border-top` 出一条极淡分隔线
   - **预览行来自 `ItemGroup.preview`**：`PublicController.previewOf()` 取该组前两条的标题拼成
     `A · B`，收起时显示、展开时整条藏掉（`.item-group:not(.folded) .item-group-preview`）；
     组里只有一条就是一行标题，标题为空串时这一行不占位

@@ -15,6 +15,23 @@
         </div>
         <p class="item-summary" th:if="${i.summary != null and !lockedIds.contains(i.id)}"
            th:text="${i.summary}">摘要</p>
+        <!-- 补充笔记挂在卡片里，不单独占一张卡：这是它的附件行 -->
+        <th:block th:with="atts=${cardAttachments == null ? null : cardAttachments.get(i.id)}">
+            <a class="card-attach" th:each="n : ${atts}" th:href="${basePath + '/' + n.slug()}">
+                <span class="card-attach-icon" aria-hidden="true">&lt;/&gt;</span>
+                <span class="card-attach-main">
+                    <span class="card-attach-title" th:text="${n.title()}">补充笔记</span>
+                    <span class="card-attach-size" th:text="${n.size()}">9.1 KB</span>
+                </span>
+                <span class="card-attach-eye" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor"
+                         stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M1.9 12S5.6 5.6 12 5.6 22.1 12 22.1 12 18.4 18.4 12 18.4 1.9 12 1.9 12Z"/>
+                        <circle cx="12" cy="12" r="3.1"/>
+                    </svg>
+                </span>
+            </a>
+        </th:block>
         <time class="item-date" th:unless="${lockedIds.contains(i.id)}"
               th:text="${#temporals.format(i.updatedAt, 'yyyy-MM-dd')}">2026-01-01</time>
     </li>

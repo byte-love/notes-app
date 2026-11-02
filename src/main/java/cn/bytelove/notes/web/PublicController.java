@@ -155,6 +155,30 @@ public class PublicController {
             }
         }
 
+        // 补充笔记不单独占一张卡：作为附件挂到它的「本体」卡片里（本体不可见时才退回当普通卡片）
+        Map<Long, List<ContentItem>> supplementsOf = new LinkedHashMap<>();
+        List<ContentItem> plainLeaves = new ArrayList<>();
+        for (ContentItem i : leaves) {
+            Long suppOf = i.getSupplementOfId();
+            if (suppOf != null && !suppOf.equals(i.getId())) {
+                supplementsOf.computeIfAbsent(suppOf, k -> new ArrayList<>()).add(i);
+            } else {
+                plainLeaves.add(i);
+            }
+        }
+        leaves = plainLeaves;
+        Map<Long, List<AttachedNote>> cardAttachments = new LinkedHashMap<>();
+        supplementsOf.forEach((parentId, list) -> {
+            list.sort(Comparator.comparingInt(ContentItem::getSortOrder)
+                    .thenComparing(ContentItem::getTitle, Comparator.nullsLast(String::compareTo)));
+            List<AttachedNote> notes = new ArrayList<>(list.size());
+            for (ContentItem s : list) {
+                notes.add(new AttachedNote(s.getTitle(), s.getSlug(), sizeOf(s.getBody())));
+            }
+            cardAttachments.put(parentId, notes);
+        });
+        model.addAttribute("cardAttachments", cardAttachments);
+
         // 分片：先给够 BATCH 条（按整组切，分类标题不会被劈开），剩下的滚到底再取
         List<ItemGroup> grouped = groups(all, leaves);
         int start = (from == null || from < 0) ? 0 : Math.min(from, grouped.size());

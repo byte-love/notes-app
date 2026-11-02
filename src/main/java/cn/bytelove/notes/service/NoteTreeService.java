@@ -44,6 +44,11 @@ public class NoteTreeService {
         Map<Long, List<ContentItem>> childrenOf = new LinkedHashMap<>();
         List<ContentItem> roots = new ArrayList<>();
         for (ContentItem item : items) {
+            // 补充笔记不单独上一个目录行：它跟在「本体」的卡片 / 正文里，目录里只剩本体那一行
+            Long suppOf = item.getSupplementOfId();
+            if (suppOf != null && byId.containsKey(suppOf) && !suppOf.equals(item.getId())) {
+                continue;
+            }
             Long pid = item.getParentId();
             // 父节点不可见（比如 PRIVATE 被游客访问）时，把子节点提到顶层，而不是让它消失
             if (pid == null || !byId.containsKey(pid) || pid.equals(item.getId())) {
