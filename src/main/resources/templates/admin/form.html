@@ -146,12 +146,14 @@
             <span class="error" th:if="${#fields.hasErrors('body')}" th:errors="*{body}"></span>
         </div>
 
-        <div class="field">
+        <div class="field field-supplement">
             <div class="field-label">
                 <span>补充笔记</span>
                 <span class="help" role="button" tabindex="0"
                       th:attr="data-help-img=@{/img/guide/attach-card.png}"
                       data-help="直接在这里写，或者把 AI 整理好的一段贴进来；保存后正文末尾会生成一张卡片，点开就是这一篇。留空就不挂，原来挂着的那篇会进回收站。">?</span>
+                <button type="button" class="field-link" id="supplement-clear"
+                        th:hidden="${#strings.isEmpty(form.supplementBody)}">清除</button>
             </div>
             <input type="text" th:field="*{supplementTitle}" placeholder="标题，留空取正文第一行">
             <textarea th:field="*{supplementBody}" rows="12" spellcheck="false"></textarea>
@@ -166,6 +168,6 @@
 </main>
 
 <footer th:replace="~{fragments/layout :: foot}"></footer>
-<script th:src="@{/js/admin-editor.js(v=3)}"></script>
+<script th:src="@{/js/admin-editor.js(v=4)}"></script>
 </body>
 </html>

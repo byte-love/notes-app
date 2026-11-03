@@ -2401,6 +2401,29 @@ html[data-read-size='lg'] .markdown {
     gap: 0.4rem;
 }
 
+/* 补充笔记单独算一段：正文编辑器是块大色块，紧挨着下面再挂一行标签太挤 */
+.field-supplement {
+    margin-top: 1.2rem;
+    padding-top: 1.4rem;
+    border-top: 1px solid var(--line);
+}
+
+/* 字段行末的小按钮（清除补充笔记这类） */
+.field-link {
+    margin-left: auto;
+    font: inherit;
+    font-size: 0.8rem;
+    color: var(--fg-3);
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+}
+
+.field-link:hover {
+    color: var(--accent);
+}
+
 .field-label {
     display: flex;
     align-items: center;
