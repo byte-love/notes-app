@@ -7,19 +7,12 @@
 <main class="wrap wide">
     <div class="section-head">
         <h1>管理</h1>
-        <!-- 操作按钮统一靠右排一起，别一个中间一个右边 -->
-        <div class="head-actions">
-            <form th:action="@{/admin/retag}" method="post" class="inline">
-                <input type="hidden" name="_csrf" th:value="${_csrf.token}">
-                <button type="submit" class="btn-quiet">重新生成标签</button>
-            </form>
-            <a th:href="@{/admin/new}" class="btn-new">
-                <svg class="plus" viewBox="0 0 16 16" aria-hidden="true">
-                    <path d="M8 3.5v9M3.5 8h9" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
-                </svg>
-                新建
-            </a>
-        </div>
+        <a th:href="@{/admin/new}" class="btn-new">
+            <svg class="plus" viewBox="0 0 16 16" aria-hidden="true">
+                <path d="M8 3.5v9M3.5 8h9" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+            </svg>
+            新建
+        </a>
     </div>
 
     <div class="filters">
