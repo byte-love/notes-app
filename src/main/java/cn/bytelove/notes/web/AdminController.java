@@ -452,6 +452,20 @@ public class AdminController {
         }
     }
 
+    /** 正文页上的「插入笔记卡片」：只收标题和正文，挂到这一篇下面。 */
+    @PostMapping("/{id}/supplement")
+    public String saveSupplement(@PathVariable Long id,
+                                 @RequestParam(name = "supplementTitle", required = false) String title,
+                                 @RequestParam(name = "supplementBody", required = false) String body,
+                                 Authentication auth) {
+        ContentItem item = owned(id, viewers.current(auth));
+        ContentForm form = new ContentForm();
+        form.setSupplementTitle(title);
+        form.setSupplementBody(body);
+        applySupplement(item, form);
+        return "redirect:" + basePathOf(item) + "/" + item.getSlug();
+    }
+
     /** 就地改正文：正文页上直接改，保存后留在这一页。标题 / 可见性 / 目录那些还走完整编辑页。 */
     @PostMapping("/{id}/body")
     public String saveBody(@PathVariable Long id,
