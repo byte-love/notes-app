@@ -23,7 +23,7 @@
             } catch (e) {}
         })();
     </script>
-    <link rel="stylesheet" th:href="@{/css/app.css(v=134)}">
+    <link rel="stylesheet" th:href="@{/css/app.css(v=137)}">
 </head>
 <body>
 
@@ -72,6 +72,8 @@
 </div>
 
 <th:block th:fragment="foot">
+<script th:src="@{/js/confirm.js(v=1)}"></script>
+
 <script>
     // 自制下拉：原生 select 的弹层是系统画的，改不动样式，所以自己实现一个
     (() => {

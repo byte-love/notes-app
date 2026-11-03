@@ -94,7 +94,7 @@
 
             <!-- 正文末尾挂的补充笔记：像附件卡一样列出来，点开就是那篇；右边给个删除 -->
             <section class="attach-list" th:if="${attachedNotes != null and !#lists.isEmpty(attachedNotes)}">
-                <div class="attach-row" th:each="n : ${attachedNotes}">
+                <div class="attach-item" th:each="n : ${attachedNotes}">
                     <a class="attach-card" th:href="${basePath + '/' + n.slug()}">
                         <span class="attach-icon" aria-hidden="true">&lt;/&gt;</span>
                         <span class="attach-main">
@@ -110,10 +110,10 @@
                         </span>
                     </a>
                     <form th:if="${canRate == true}" th:action="@{/admin/{id}/supplement/delete(id=${item.id})}"
-                          method="post" class="attach-del">
+                          method="post" class="attach-del"
+                          data-confirm="删掉这张笔记卡片？它本身会进回收站，30 天内能恢复。">
                         <input type="hidden" name="_csrf" th:value="${_csrf.token}">
-                        <button type="submit" class="attach-del-btn" title="删掉这张卡片"
-                                onclick="return confirm('删掉这张笔记卡片？它本身会进回收站，30 天内能恢复。');">×</button>
+                        <button type="submit" class="attach-del-btn" title="删掉这张卡片">×</button>
                     </form>
                 </div>
             </section>
@@ -134,9 +134,9 @@
     <script th:src="@{/js/code.js(v=1)}"></script>
     <script th:src="@{/js/detail.js(v=9)}"></script>
     <script th:src="@{/js/rate.js(v=2)}"></script>
-<script th:src="@{/js/tree-admin.js(v=2)}"></script>
+<script th:src="@{/js/tree-admin.js(v=3)}"></script>
 <script th:src="@{/js/body-edit.js(v=1)}"></script>
-<script th:src="@{/js/doc-edit.js(v=4)}"></script>
+<script th:src="@{/js/doc-edit.js(v=5)}"></script>
 
 <footer th:replace="~{fragments/layout :: foot}"></footer>
 
