@@ -452,12 +452,81 @@ public class AdminController {
         }
     }
 
-    @PostMapping("/{id}/delete")
-    public String delete(@PathVariable Long id, Authentication auth) {
+    /**
+     * 树上就地新建：只给一个名字，其余全自动（slug 自动生成、排在同层最后、正文留空）。
+     * 先建成空节点，之后在它下面接着建就成了分类，写正文就是一篇笔记。
+     */
+    @PostMapping("/quick")
+    public String quickCreate(@RequestParam(name = "parentId", required = false) Long parentId,
+                              @RequestParam(name = "kind", required = false) String kind,
+                              @RequestParam(name = "title") String title,
+                              @RequestParam(name = "back", required = false) String back,
+                              Authentication auth) {
+        Viewer viewer = viewers.current(auth);
+        Long ownerId = viewer.userId();
+        String name = title == null ? "" : title.trim();
+        if (name.isEmpty()) {
+            return "redirect:" + safeBack(back, "/admin");
+        }
+        ContentKind k = parseKind(kind);
+        if (k == null) {
+            k = ContentKind.NOTE;
+        }
+        ContentItem parent = null;
+        if (parentId != null) {
+            parent = items.findById(parentId).filter(i -> ownerId.equals(i.getOwnerId())).orElse(null);
+            if (parent != null) {
+                k = parent.getKind();
+            }
+        }
+        ContentItem item = new ContentItem(ownerId, k, quickSlug(ownerId),
+                name.length() > 200 ? name.substring(0, 200) : name, null, "", Visibility.MEMBER);
+        item.setParentId(parent == null ? null : parent.getId());
+        item.setSortOrder(nextSortOrder(ownerId, item.getParentId(), k));
+        item.setRecommended(viewer.admin());
+        item.setFolder(false);
+        items.save(item);
+        return "redirect:" + safeBack(back, "/admin");
+    }
+
+    /** 就地改名：只动标题，slug 不变（老链接照旧）。 */
+    @PostMapping("/{id}/rename")
+    public String rename(@PathVariable Long id, @RequestParam(name = "title") String title,
+                         @RequestParam(name = "back", required = false) String back,
+                         Authentication auth) {
         ContentItem item = owned(id, viewers.current(auth));
+        String name = title == null ? "" : title.trim();
+        if (!name.isEmpty()) {
+            item.setTitle(name.length() > 200 ? name.substring(0, 200) : name);
+            items.save(item);
+        }
+        return "redirect:" + safeBack(back, "/admin");
+    }
+
+    /** 就地新建节点的地址：`f-20261103-1a2b3c4d`，人不用管，也别去改。 */
+    private String quickSlug(Long ownerId) {
+        String stamp = DateTimeFormatter.ofPattern("yyyyMMdd").format(java.time.LocalDate.now());
+        for (int n = 0; n < 8; n++) {
+            String slug = "f-" + stamp + "-" + UUID.randomUUID().toString().replace("-", "").substring(0, 8);
+            if (!items.existsByOwnerIdAndSlug(ownerId, slug)) {
+                return slug;
+            }
+        }
+        throw new ResponseStatusException(HttpStatus.CONFLICT, "生成地址失败了，重试一次");
+    }
+
+    @PostMapping("/{id}/delete")
+    public String delete(@PathVariable Long id,
+                         @RequestParam(name = "back", required = false) String back,
+                         Authentication auth) {
+        ContentItem item = owned(id, viewers.current(auth));
+        // 连子节点一起进回收站：只删目录本身会留下孤儿节点（父没了，子还挂在树顶上）
+        for (Long childId : tree.descendantIds(allFor(item.getOwnerId()), item.getId())) {
+            trash.softDelete(childId, item.getOwnerId());
+        }
         // 进回收站，不是真删；30 天后由 TrashService 定时清理
         trash.softDelete(item.getId(), item.getOwnerId());
-        return "redirect:/admin";
+        return "redirect:" + safeBack(back, "/admin");
     }
 
     /** 只能碰自己的；管理员不受限。 */

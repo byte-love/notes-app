@@ -5,9 +5,12 @@
 <header th:replace="~{fragments/layout :: nav}"></header>
 
 <div class="with-tree" th:classappend="${#lists.isEmpty(tree)} ? 'no-tree' : ''">
-    <aside class="tree-pane" th:if="${!#lists.isEmpty(tree)}">
-        <a sec:authorize="isAuthenticated()" class="tree-new"
-           th:href="@{/admin/new(kind=${#strings.toLowerCase(kind.name())})}">+ 新建</a>
+    <aside class="tree-pane" th:attr="data-kind=${#strings.toLowerCase(kind.name())}" th:if="${!#lists.isEmpty(tree)}">
+        <div class="tree-head">
+            <span class="tree-head-text">我的目录</span>
+            <button sec:authorize="isAuthenticated()" type="button" class="tree-act tree-add"
+                    data-parent="" title="在最外层新建">+</button>
+        </div>
         <ul th:replace="~{fragments/tree :: nodes(${tree})}"></ul>
     </aside>
 
@@ -76,6 +79,7 @@
 
 <script th:src="@{/js/list.js(v=8)}" defer></script>
 <script th:src="@{/js/rate.js(v=2)}" defer></script>
+<script th:src="@{/js/tree-admin.js(v=1)}" defer></script>
 <footer th:replace="~{fragments/layout :: foot}"></footer>
 </body>
 </html>

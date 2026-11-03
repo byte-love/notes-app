@@ -5,12 +5,15 @@
 <header th:replace="~{fragments/layout :: nav}"></header>
 
 <div class="with-tree" th:classappend="${item.kind.name() != 'PROJECT'} ? 'has-tree' : ''">
-    <aside class="tree-pane" th:if="${item.kind.name() != 'PROJECT' and tree != null}">
+    <aside class="tree-pane" th:attr="data-kind=${#strings.toLowerCase(item.kind.name())}" th:if="${item.kind.name() != 'PROJECT' and tree != null}">
         <p class="tree-hint" th:if="${lockedCount > 0}">
             登录后可查看其余 <span th:text="${lockedCount}">0</span> 篇
         </p>
-        <a sec:authorize="isAuthenticated()" class="tree-new"
-           th:href="@{/admin/new(kind=${#strings.toLowerCase(item.kind.name())})}">+ 新建</a>
+        <div class="tree-head">
+            <span class="tree-head-text">我的目录</span>
+            <button sec:authorize="isAuthenticated()" type="button" class="tree-act tree-add"
+                    data-parent="" title="在最外层新建">+</button>
+        </div>
         <ul th:replace="~{fragments/tree :: nodes(${tree})}"></ul>
     </aside>
 
@@ -96,6 +99,7 @@
     <script th:src="@{/js/code.js(v=1)}"></script>
     <script th:src="@{/js/detail.js(v=9)}"></script>
     <script th:src="@{/js/rate.js(v=2)}"></script>
+<script th:src="@{/js/tree-admin.js(v=1)}"></script>
 
 <footer th:replace="~{fragments/layout :: foot}"></footer>
 

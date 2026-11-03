@@ -291,9 +291,14 @@ sudo /opt/deploy/sync-db.sh    # 正式库整库覆盖到测试库
     不进 `leaves`（所以不占卡片），但 `groups()` 会给它留一个空分组——新建完立刻能在列表上看到
     「Python 0 条」。有子条目时跟普通分类一样是分组标题。`body` 允许为空（`ContentForm.body` 去掉了
     `@NotBlank`，由 `AdminController` 按 `folder` 判断）。
-    - **三个入口**：左树每行末尾的「+」（`.tree-add`，`/admin/new?parent=<id>&kind=<kind>`）、
-      树顶的「+ 新建」（`.tree-new`，加在最外层）、`/admin` 右上角「新建」。`/admin/new` 会按 query
-      预填类型 / 父节点，并把 `sortOrder` 算成「同一个父节点下最大值 + 1」，新条目排在最后
+    - **四个入口**：左树顶上那一行的「+」（`tree-head`，加到最外层）、每行末尾的「+」（加到这一行下面）、
+      行末「⋯」菜单里没有新建、`/admin` 右上角「新建」（带全部字段的表单）。
+      前两个走 `POST /admin/quick`（只收 title / parentId / kind，slug 自动生成 `f-YYYYMMDD-xxxxxxxx`、
+      正文留空、排在同层最后），页面上是就地弹一个输入框，回车提交后整页刷新；`/admin/new` 那个表单
+      留着给需要填正文 / 摘要 / 项目字段的场合，也会按 query 预填类型 / 父节点并算好 sortOrder
+    - **行末「⋯」菜单**（`tree-admin.js`）：重命名（`POST /admin/{id}/rename`，只改标题不动 slug）、
+      编辑（跳编辑页）、复制链接、删除（`POST /admin/{id}/delete`，**连子节点一起软删**，
+      不然会留下父没了、子挂在树顶的孤儿）
     - **AI 也能建目录**：`note_create` 带 `folder=true`（`body` 可空），返回的 slug 直接拿去当
       下一次 `note_create` 的 `parent`；`notes_folders` 现在也把「空目录」列出来（以前只列当过父节点的）
   - **补充笔记（`supplement_of_id`）不单独占位置**：列表里并进「本体」那张卡片的内嵌附件行
