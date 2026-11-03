@@ -59,9 +59,19 @@ claude mcp add --transport http byte-love-notes \
 
 ## 第 3 步：直接跟 AI 说话
 
-> 把咱们刚才聊的整理成一篇笔记，标题叫「线程池参数怎么调」，放到「多线程」目录下，不公开。
+> 把咱们刚才聊的整理成一篇笔记，标题叫「线程池参数怎么调」，放到「多线程」目录下。
 >
 > 存之前先看看站里是不是已经有类似的笔记，有就拿给我看，别自己覆盖。
+
+存之前 AI 会问你**这篇给什么权限**（除非你已经说了）：
+
+| 档 | 谁能看 | 会不会进技术广场 |
+|---|---|---|
+| `PUBLIC` | 任何人，包括没登录的游客 | ✅ |
+| `MEMBER` | 只有你把链接发给对方、他注册登录之后能看 | ❌ |
+| `PRIVATE` | 只有你自己 | ❌ |
+
+服务端也把这条钉死了：`note_create` 不带 `visibility` 会直接 400 并要求先问用户，不会有“默认值”悄悄替你决定。
 
 ## 工具一览
 
@@ -70,7 +80,7 @@ claude mcp add --transport http byte-love-notes \
 | `notes_folders` | 列出我的目录，挑 `parent` 用 |
 | `notes_search` | 在自己笔记里搜关键词（查重） |
 | `note_get` | 读一篇的完整 Markdown |
-| `note_create` | 新建（**永不覆盖**；标题像已有笔记时会在 `similar` 里列出来，让 AI 问你） |
+| `note_create` | 新建（**永不覆盖**；`visibility` 必填，AI 会先问你；标题像已有笔记时会在 `similar` 里列出来，让 AI 问你） |
 | `note_update` | 覆盖（必须 `confirm: true`；服务端先把旧版本存进 `content_revision`） |
 | `note_delete` | 软删进回收站（必须 `confirm: true`，30 天内可恢复） |
 | `note_upload_image` | 仅本地版：上传本地图片，返回可写进 Markdown 的地址 |

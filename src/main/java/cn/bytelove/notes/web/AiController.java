@@ -241,7 +241,7 @@ public class AiController {
         if (in.summary() != null) {
             item.setSummary(summaryOf(in.summary(), item.getBody()));
         }
-        if (in.visibility() != null) {
+        if (in.visibility() != null && !in.visibility().isBlank()) {
             item.setVisibility(visibilityOf(in.visibility()));
         }
         if (in.parent() != null) {
@@ -369,14 +369,23 @@ public class AiController {
         }
     }
 
+    /**
+     * 可见性没有默认值：必须由用户先决定。
+     * 传空就报错并说清楚三档是什么意思，逼着 AI 回去问一句，而不是替用户拍板。
+     */
     private static Visibility visibilityOf(String visibility) {
         if (visibility == null || visibility.isBlank()) {
-            return Visibility.MEMBER;
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "缺 visibility：请先问用户这篇给什么权限，再带上参数重试 ——"
+                            + " PUBLIC 任何用户可见（会进技术广场）；"
+                            + " MEMBER 登录可见（只有用户把链接发给别人、对方登录后才能看，不进技术广场）；"
+                            + " PRIVATE 仅自己");
         }
         try {
             return Visibility.valueOf(visibility.trim().toUpperCase(Locale.ROOT));
         } catch (IllegalArgumentException e) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "visibility 只能是 PUBLIC / MEMBER / PRIVATE");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "visibility 只能是 PUBLIC / MEMBER / PRIVATE");
         }
     }
 

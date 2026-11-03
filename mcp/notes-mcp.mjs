@@ -74,7 +74,10 @@ const TOOLS = [
     name: 'note_create',
     description:
       '新建一篇笔记。只新建、绝不覆盖。返回里的 similar 不为空时，说明站里有标题相近的旧笔记，' +
-      '必须把这几篇念给用户听，问他是「新建」还是「去改那一篇」，不要自己决定。',
+      '必须把这几篇念给用户听，问他是「新建」还是「去改那一篇」，不要自己决定。' +
+      'visibility 必填：先问用户这篇给什么权限 —— PUBLIC 任何用户可见（会进技术广场）；' +
+      'MEMBER 登录可见（只有用户把链接发给别人、对方注册登录后才能看，不进技术广场）；PRIVATE 仅自己。' +
+      '用户已经说过了就直接用那个值，不要再问一遍。',
     inputSchema: {
       type: 'object',
       properties: {
@@ -84,12 +87,14 @@ const TOOLS = [
         parent: { type: 'string', description: '父目录 slug（可用 notes_folders 查），不填放顶层' },
         visibility: {
           type: 'string',
-          description: '可见性：PUBLIC 任何用户可见 / MEMBER 登录可见（默认）/ PRIVATE 仅自己',
+          description:
+            '必填。PUBLIC 任何用户可见（进技术广场）/ MEMBER 登录可见（不进广场，只有拿到链接的人登录后能看）/ PRIVATE 仅自己。' +
+            '用户没说就先问，说了就别再问',
           enum: ['PUBLIC', 'MEMBER', 'PRIVATE'],
         },
         kind: { type: 'string', description: '内容类型，默认 note', enum: ['note', 'bagu', 'algo', 'project'] },
       },
-      required: ['title', 'body'],
+      required: ['title', 'body', 'visibility'],
     },
   },
   {
