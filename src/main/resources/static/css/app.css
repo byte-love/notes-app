@@ -1856,21 +1856,23 @@ button:hover,
     text-decoration: none;
 }
 
-/* 一行 = 标题 + 行末的「+」；平时淡出，鼠标移到这一行才显出来 */
-.tree-row {
+/* 一行 = 标题 + 行末的「+」；平时淡出，鼠标移到这一行才显出来。
+   注意要压过上面 `.tree a { width: 100% }` 那种老规则，所以这里选择器多带一层 .tree */
+.tree .tree-row {
     display: flex;
     align-items: center;
     gap: 0.15rem;
 }
 
-.tree-row > .tree-group,
-.tree-row > a:not(.tree-add) {
-    flex: 1;
+.tree .tree-row > .tree-group,
+.tree .tree-row > a:not(.tree-add) {
+    flex: 1 1 auto;
     min-width: 0;
+    width: auto;
 }
 
-.tree-add {
-    flex: none;
+.tree .tree-row .tree-add {
+    flex: 0 0 18px;
     width: 18px;
     height: 18px;
     display: grid;
@@ -1879,6 +1881,7 @@ button:hover,
     color: var(--fg-3);
     font-size: 0.9rem;
     line-height: 1;
+    padding: 0;
     opacity: 0;
     transition: opacity 0.12s ease;
 }
