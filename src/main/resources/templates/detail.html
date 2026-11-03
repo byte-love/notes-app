@@ -44,14 +44,17 @@
                                 th:classappend="${bookmarked} ? 'on'"
                                 th:text="${bookmarked} ? '已加书签' : '加书签'">加书签</button>
                     </form>
-                    <!-- 只有自己的内容才给编辑入口：这里直接在正文位置改，不再跳表单页；
-                         可见性 / 上级目录 / 补充笔记这些走左树「⋯」里的「编辑」 -->
-                    <button th:if="${canRate == true}" type="button" class="star-btn" id="body-edit">编辑</button>
+                    <!-- 自己的内容：正文直接可改（点进去打字，停手自动存）；
+                         超大文档降级成「编辑」按钮 + 源码框；可见性 / 上级目录走左树「⋯」里的「编辑」 -->
+                    <button th:if="${canRate == true and item.body != null and #strings.length(item.body) > 65536}"
+                            type="button" class="star-btn" id="body-edit">编辑</button>
+                    <button th:if="${canRate == true}" type="button" class="star-btn" data-act="supplement">插入笔记卡片</button>
                 </div>
             </header>
 
-            <!-- 就地改正文：Markdown 源码直接在正文的位置编辑 -->
-            <div class="body-editor" id="body-editor" hidden th:if="${canRate == true}"
+            <!-- 超长正文的降级编辑（正常情况用不到，正文本身就是可编辑的） -->
+            <div class="body-editor" id="body-editor" hidden
+                 th:if="${canRate == true and item.body != null and #strings.length(item.body) > 65536}"
                  th:attr="data-save=@{/admin/{id}/body(id=${item.id})}">
                 <textarea class="body-source" spellcheck="false" th:text="${item.body}"></textarea>
                 <div class="body-editor-actions">
@@ -59,6 +62,18 @@
                     <button type="button" class="btn-ghost" data-act="cancel">取消</button>
                 </div>
             </div>
+
+            <!-- 插入笔记卡片：正文末尾那张附件卡，标题 + 一段正文 -->
+            <form class="supp-form" id="supp-form" hidden th:if="${canRate == true}"
+                  th:action="@{/admin/{id}/supplement(id=${item.id})}" method="post">
+                <input type="hidden" name="_csrf" th:value="${_csrf.token}">
+                <input type="text" name="supplementTitle" placeholder="卡片标题，留空取正文第一行">
+                <textarea name="supplementBody" rows="8" placeholder="卡片正文（Markdown）"></textarea>
+                <div class="supp-form-actions">
+                    <button type="submit" class="btn-primary">挂上</button>
+                    <button type="button" class="btn-ghost" data-act="supplement-cancel">取消</button>
+                </div>
+            </form>
 
             <!-- 自动打的标签：点一下就是把列表按这个标签筛一遍 -->
             <p class="doc-tags" th:if="${itemTags != null and !#lists.isEmpty(itemTags)}">
@@ -73,7 +88,9 @@
             </p>
 
             <div class="markdown" th:utext="${html}"
-                 th:attr="data-slug=${item.slug},data-anchors=${bookmarkAnchorCsv},data-resume=${resumeProgress}"></div>
+                 th:attr="data-slug=${item.slug},data-anchors=${bookmarkAnchorCsv},data-resume=${resumeProgress},
+                          data-save=${canRate == true} ? @{/admin/{id}/body(id=${item.id})} : null,
+                          contenteditable=${canRate == true and item.body != null and #strings.length(item.body) <= 65536} ? 'true' : null"></div>
 
             <!-- 正文末尾挂的补充笔记：像附件卡一样列出来，点开就是那篇 -->
             <section class="attach-list" th:if="${attachedNotes != null and !#lists.isEmpty(attachedNotes)}">
@@ -111,6 +128,7 @@
     <script th:src="@{/js/rate.js(v=2)}"></script>
 <script th:src="@{/js/tree-admin.js(v=2)}"></script>
 <script th:src="@{/js/body-edit.js(v=1)}"></script>
+<script th:src="@{/js/doc-edit.js(v=2)}"></script>
 
 <footer th:replace="~{fragments/layout :: foot}"></footer>
 

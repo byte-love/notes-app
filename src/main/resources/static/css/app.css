@@ -3680,6 +3680,54 @@ html[data-theme='dark'] .cl-latest {
     margin-top: 0.8rem;
 }
 
+/* 自己的正文直接可改：不出焦点框，点进去就能打字 */
+.doc .markdown[contenteditable='true'] {
+    outline: none;
+    caret-color: var(--accent);
+    cursor: text;
+}
+
+/* 正文页上的「插入笔记卡片」小表单 */
+.supp-form {
+    margin: 1.2rem 0 0;
+    padding: 1rem 1.1rem;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: var(--bg-2);
+}
+
+.supp-form input[type='text'],
+.supp-form textarea {
+    display: block;
+    width: 100%;
+    font: inherit;
+    font-size: 0.9rem;
+    padding: 0.5rem 0.65rem;
+    margin-bottom: 0.6rem;
+    color: var(--fg);
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    outline: none;
+    resize: vertical;
+}
+
+.supp-form textarea {
+    font-family: var(--mono);
+    line-height: 1.7;
+}
+
+.supp-form input[type='text']:focus,
+.supp-form textarea:focus {
+    border-color: var(--accent);
+}
+
+.supp-form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.6rem;
+}
+
 /* ---------- 错误页 ---------- */
 
 .err-box {
