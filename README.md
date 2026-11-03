@@ -20,6 +20,7 @@
 - **重点高亮**：选中文字标五色底纹，只给标的人自己看；底纹用 CSS Custom Highlight API 画，不往 DOM 塞 span。
 - **星级与标签**：每条内容可以标 1–3 星（点星/键盘 1·2·3），列表按 `★★★ / ★★以上 / 收藏 / 未评` 筛；标签由 `resources/tags.json` 的固定词表自动打（标题 3 分、正文 1 分，取前 5），列表可按标签筛、并能和星级叠着用。
 - **正文在线编辑**：正文页标题下有「编辑」（只对自己内容显示），编辑页左写 Markdown、右栏用同一个渲染器实时预览，可上传插图，保存后回跳到这篇文章。
+- **AI 接入**：「我的」页生成个人 token，本机 AI（Claude Code / Cursor / Claude Desktop）通过 MCP 直接往里存笔记。两种接法：远程 `POST /app/mcp`（填地址 + token），或本地 `mcp/notes-mcp.mjs`（stdio，零依赖）。只能操作自己的条目；覆盖 / 删除必须带 `confirm`，覆盖前留旧版本快照，新建永不覆盖；可见性由 AI 先问用户（服务端强制）。
 - **收藏 / 书签 / 回收站 / 推荐栏 / 更新日志**：收藏和个人书签落在用户自己名下；删除先进回收站（30 天）；管理员标为推荐的内容进「推荐」栏给游客看。
 - **管理后台**：可新建 / 编辑内容、改可见性、调整父子关系，并对已有内容重打标签。
 - **`/app/api/me`**：给同源静态作品集页读登录态和 CSRF token，作品集页据此渲染「登录 / 后台 / 退出」。
@@ -55,17 +56,22 @@ src/main/java/cn/bytelove/notes/
   security/   UserDetailsService
   service/    AccountSeeder、LoginAttemptService、VisibilityService、NoteTreeService、
               MarkdownRenderer、GlossaryService、CommentService、HighlightService、
-              RatingService、TagService、ChangelogService、TrashService、RecommendService…
+              RatingService、TagService、ApiTokenService、ChangelogService、TrashService、
+              RecommendService…
   web/        PublicController、AdminController、AuthController、ApiController、
+              AiController（/api/ai/*）、McpController（/mcp）、
               GlossaryEditController、ChangelogController…
 src/main/resources/
   application.yml        全部配置；密码只从环境变量读；上传上限也在这里
-  db/migration/          Flyway 脚本（V1 建表 … V27 标签，共 27 个）
+  db/migration/          Flyway 脚本（V1 建表 … V28 AI token，共 28 个）
   glossary.json          术语表种子（表为空时导入，之后以库里为准）
   tags.json              标签词表：{标签: [关键词…]}
   subgroups.json         大分类的二级分档规则
   templates/             Thymeleaf 模板
   static/css/app.css     全部样式，手写，无框架
+mcp/
+  notes-mcp.mjs          本地 stdio MCP（零依赖 Node），给 AI 客户端调
+  README.md              两种接法（远程 / 本地）的配置写法
 ```
 
 ## 部署

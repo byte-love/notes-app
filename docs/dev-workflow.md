@@ -218,6 +218,27 @@ sudo /opt/deploy/sync-db.sh    # 正式库整库覆盖到测试库
   `SecurityConfig` 里放行。上传的 CSRF 走 **`X-CSRF-TOKEN` 请求头**：multipart 的 body 在过滤器那一层
   还读不到 `_csrf` 参数。上传上限在 `application.yml`（`spring.servlet.multipart.max-file-size: 8MB`）。
 
+- **AI 接入（V28）**：目标是「跟 AI 聊完 → 让它整理成 Markdown → 直接存进站里」。
+  - **个人 token**：`app_user.api_token_hash / api_token_hint / api_token_created_at`，
+    明文只在「我的 → AI 接入 → 生成 Token」那一刻显示一次，库里存 SHA-256（高熵随机串，不用 bcrypt）；
+    重新生成会把旧的顶掉，撤销就是清空这三列。
+  - **接口**：`/app/api/ai/**`，认证一律 `Authorization: Bearer <token>`，**不走会话 cookie**。
+    `SecurityConfig` 里 `/api/**` 和 `/mcp` 是 permitAll，鉴权在 `AiController.requireUser()` 自己做；
+    这两个前缀**排除了 CSRF**（机器调用没有 cookie 可伪造），主站表单照旧校验。
+  - **两个 MCP 壳**：远程 `POST /app/mcp`（`McpController`，JSON-RPC：initialize / tools/list / tools/call，
+    protocolVersion 2025-06-18，直接回 JSON 不用 SSE）；本地 `mcp/notes-mcp.mjs`（零依赖 Node，stdio，
+    只读 `NOTES_BASE` + `NOTES_TOKEN`），客户端配置写法在 `mcp/README.md`。
+  - **可见性必须由用户决定**：`note_create` 的 `visibility` 是必填参数，传空服务端直接 400，返回里明说
+    「先去问用户」。三档含义见 `Visibility` 枚举；`MEMBER` 是「用户把链接发给别人、对方登录后才能看」，
+    **不进技术广场**（广场以后只收 `PUBLIC`）。改可见性语义先读 `VisibilityService`——别人能不能看还有
+    `recommended` 这道门，别只看 visibility。
+  - **危险操作由服务端拦，不靠 AI 自觉**：`note_update` / `note_delete` 少 `confirm: true` 直接拒绝；
+    覆盖前把旧版本写进 `content_revision`。新建永不覆盖（slug 由服务端生成 `ai-YYYYMMDD-xxxxxxxx`）。
+  - **查重只提示不执行**：`similar` 用标题二元组 Jaccard（阈值 0.5），最多 3 条，让 AI 拿去问用户；
+    别改成自动覆盖。
+  - **限流**：每人 10 分钟最多 60 次写操作。上传走 `/api/ai/upload`，落
+    `/srv/data/uploads/media/notes/`，和正文编辑器同一套目录。
+
 - 「加入我的空间」是**幂等**的：`copyTo` 先查 `(owner_id, copied_from_id)` 有没有复制过，有就返回 0；
   页面上已加入的卡片显示「已加入」。重复复制产生的脏数据用
   `partition by owner_id, copied_from_id` 保留最小 id 清掉
@@ -367,5 +388,14 @@ grep 命中就退出，`tee` 收到 SIGPIPE，整个管道退出码变成 141，
 **CSRF 的 meta 标签要读 `.content`，读 `.value` 永远是 `undefined`**：`<meta name="_csrf" content="…">`
 不是表单控件。2026-11-02 两次栽在这：`rate.js` 打星时 token 是空串 → 403（点了星页面没反应，看着像 JS 没跑），
 浏览器里临时拼登录脚本时同理。抄 `comments.js` 里 `const csrf = () => meta.content` 那行就不会错。
+
+**测试脚本取 JSON 字段别用贪婪 `sed 's/.*"slug":"//'`**：2026-11-03 我用它从 `note_create` 的返回里取 slug，
+结果匹配到了 `similar` 数组里的最后一个 slug，于是后续的「带 confirm 覆盖」改错了对象、清理时又用同一个变量
+拼 `delete ... where slug='$SLUG'`，把测试库里别人（我自己的另一篇八股）的一条笔记删掉了。
+规矩：① 取字段用能锚定上下文的写法（`"created":true,"slug":"([^"]*)"`）或 `jq`；
+② **清理语句里不要用变量拼 slug 做删除条件**，先 `select` 出 id 人工看一眼再按 id 删。
+
+**`docker exec` 跑 psql 要带 `-i`**：`-f -` 从 stdin 灌 SQL 时少了 `-i` 会静默什么都不执行（没有报错、
+也没有输出），2026-11-03 因此一度以为恢复脚本无效。
 
 
