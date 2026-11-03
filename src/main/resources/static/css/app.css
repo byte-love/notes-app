@@ -2220,6 +2220,53 @@ html.tree-no-count .tree-count {
 /* 没有内容时不显示左侧目录列，空态文案落在正文区 */
 .with-tree.no-tree {
     grid-template-columns: minmax(0, 720px);
+    /* 没有目录时内容居中，别贴着最左边挂一排 */
+    justify-content: center;
+}
+
+/* 附件卡一行：卡片 + 右侧删除按钮 */
+.attach-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.attach-row .attach-card {
+    flex: 1;
+    min-width: 0;
+}
+
+.attach-del {
+    flex: none;
+    margin: 0;
+}
+
+.attach-del-btn {
+    width: 24px;
+    height: 24px;
+    display: grid;
+    place-items: center;
+    border: 1px solid var(--line);
+    background: none;
+    border-radius: 6px;
+    color: var(--fg-3);
+    font-size: 0.95rem;
+    line-height: 1;
+    padding: 0;
+    cursor: pointer;
+}
+
+.attach-del-btn:hover {
+    color: var(--danger);
+    border-color: var(--danger);
+}
+
+/* 标题也能直接改：不要焦点框 */
+.doc-head h1[contenteditable='true'],
+.project-head h1[contenteditable='true'] {
+    outline: none;
+    caret-color: var(--accent);
+    cursor: text;
 }
 
 /* 有树时正文不再单独居中。右栏宽 12%（按截图量的比例），gap 是正文到右栏的留白（2.4rem→9rem），
