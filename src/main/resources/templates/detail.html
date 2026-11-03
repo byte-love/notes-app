@@ -29,7 +29,7 @@
             </nav>
 
             <header class="doc-head">
-                <h1 th:text="${item.title}">标题</h1>
+                <h1 th:text="${item.title}" th:attr="contenteditable=${canRate == true} ? 'true' : null, data-item-id=${canRate == true} ? ${item.id} : null">标题</h1>
                 <div class="doc-meta">
                     <th:block th:replace="~{fragments/rate :: stars(${item.slug}, ${item.rating}, ${canRate == true})}"></th:block>
                     <time th:text="${#temporals.format(item.updatedAt, 'yyyy-MM-dd')}">2026-01-01</time>
@@ -92,22 +92,30 @@
                           data-save=${canRate == true} ? @{/admin/{id}/body(id=${item.id})} : null,
                           contenteditable=${canRate == true and item.body != null and #strings.length(item.body) <= 65536} ? 'true' : null"></div>
 
-            <!-- 正文末尾挂的补充笔记：像附件卡一样列出来，点开就是那篇 -->
+            <!-- 正文末尾挂的补充笔记：像附件卡一样列出来，点开就是那篇；右边给个删除 -->
             <section class="attach-list" th:if="${attachedNotes != null and !#lists.isEmpty(attachedNotes)}">
-                <a class="attach-card" th:each="n : ${attachedNotes}" th:href="${basePath + '/' + n.slug()}">
-                    <span class="attach-icon" aria-hidden="true">&lt;/&gt;</span>
-                    <span class="attach-main">
-                        <span class="attach-title" th:text="${n.title()}">补充笔记</span>
-                        <span class="attach-size" th:text="${n.size()}">9.1 KB</span>
-                    </span>
-                    <span class="attach-eye" aria-hidden="true">
-                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor"
-                             stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M1.9 12S5.6 5.6 12 5.6 22.1 12 22.1 12 18.4 18.4 12 18.4 1.9 12 1.9 12Z"/>
-                            <circle cx="12" cy="12" r="3.1"/>
-                        </svg>
-                    </span>
-                </a>
+                <div class="attach-row" th:each="n : ${attachedNotes}">
+                    <a class="attach-card" th:href="${basePath + '/' + n.slug()}">
+                        <span class="attach-icon" aria-hidden="true">&lt;/&gt;</span>
+                        <span class="attach-main">
+                            <span class="attach-title" th:text="${n.title()}">补充笔记</span>
+                            <span class="attach-size" th:text="${n.size()}">9.1 KB</span>
+                        </span>
+                        <span class="attach-eye" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor"
+                                 stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M1.9 12S5.6 5.6 12 5.6 22.1 12 22.1 12 18.4 18.4 12 18.4 1.9 12 1.9 12Z"/>
+                                <circle cx="12" cy="12" r="3.1"/>
+                            </svg>
+                        </span>
+                    </a>
+                    <form th:if="${canRate == true}" th:action="@{/admin/{id}/supplement/delete(id=${item.id})}"
+                          method="post" class="attach-del">
+                        <input type="hidden" name="_csrf" th:value="${_csrf.token}">
+                        <button type="submit" class="attach-del-btn" title="删掉这张卡片"
+                                onclick="return confirm('删掉这张笔记卡片？它本身会进回收站，30 天内能恢复。');">×</button>
+                    </form>
+                </div>
             </section>
         </article>
 
@@ -128,7 +136,7 @@
     <script th:src="@{/js/rate.js(v=2)}"></script>
 <script th:src="@{/js/tree-admin.js(v=2)}"></script>
 <script th:src="@{/js/body-edit.js(v=1)}"></script>
-<script th:src="@{/js/doc-edit.js(v=3)}"></script>
+<script th:src="@{/js/doc-edit.js(v=4)}"></script>
 
 <footer th:replace="~{fragments/layout :: foot}"></footer>
 

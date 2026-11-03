@@ -15,7 +15,7 @@
 
     <article class="project">
         <header class="project-head">
-            <h1 th:text="${project != null and project.title != null} ? ${project.title} : ${item.title}">标题</h1>
+            <h1 th:text="${project != null and project.title != null} ? ${project.title} : ${item.title}" th:attr="contenteditable=${canRate == true} ? 'true' : null, data-item-id=${canRate == true} ? ${item.id} : null">标题</h1>
 
             <p class="project-sub" th:if="${project != null and project.subtitle != null}"
                th:text="${project.subtitle}">一句话说明</p>
@@ -92,10 +92,11 @@
             <a th:href="${project.repo}" class="btn-quiet" target="_blank" rel="noopener">仓库</a>
         </p>
 
-        <div class="markdown" th:if="${project == null}" th:utext="${html}"></div>
+        <div class="markdown" th:if="${project == null}" th:utext="${html}" th:attr="data-save=${canRate == true} ? @{/admin/{id}/body(id=${item.id})} : null, contenteditable=${canRate == true} ? 'true' : null"></div>
     </article>
 </main>
 
 <footer th:replace="~{fragments/layout :: foot}"></footer>
+<script th:src="@{/js/doc-edit.js(v=4)}"></script>
 </body>
 </html>
