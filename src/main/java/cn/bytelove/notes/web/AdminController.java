@@ -205,10 +205,40 @@ public class AdminController {
         }
     }
 
+    /** 同一个父节点下已有的最大排序号 +1：新条目默认排在最后，不用手填。 */
+    private int nextSortOrder(Long ownerId, Long parentId, ContentKind kind) {
+        int max = 0;
+        for (ContentItem i : allFor(ownerId)) {
+            if (i.getKind() != kind) {
+                continue;
+            }
+            boolean sameParent = parentId == null ? i.getParentId() == null : parentId.equals(i.getParentId());
+            if (sameParent) {
+                max = Math.max(max, i.getSortOrder());
+            }
+        }
+        return max + 1;
+    }
+
     @GetMapping("/new")
-    public String createForm(Model model, Authentication auth) {
-        Long ownerId = viewers.current(auth).userId();
-        model.addAttribute("form", new ContentForm());
+    public String createForm(@RequestParam(name = "parent", required = false) Long parent,
+                             @RequestParam(name = "kind", required = false) String kind,
+                             @RequestParam(name = "folder", defaultValue = "false") boolean folder,
+                             Model model, Authentication auth) {
+        Viewer viewer = viewers.current(auth);
+        Long ownerId = viewer.userId();
+        ContentForm form = new ContentForm();
+        // 从左树上的「+」点进来时，父节点和类型已经定好了，不用再挑
+        ContentKind k = parseKind(kind);
+        if (k != null) {
+            form.setKind(k);
+        }
+        if (parent != null && items.findById(parent).filter(i -> ownerId.equals(i.getOwnerId())).isPresent()) {
+            form.setParentId(parent);
+        }
+        form.setFolder(folder);
+        form.setSortOrder(nextSortOrder(ownerId, form.getParentId(), form.getKind()));
+        model.addAttribute("form", form);
         model.addAttribute("editing", false);
         model.addAttribute("parents", parentOptions(null, ownerId));
         return "admin/form";
@@ -224,15 +254,20 @@ public class AdminController {
         if (!meta.isValid(form.getProjectDoc())) {
             binding.rejectValue("projectDoc", "invalid", "项目字段不是合法的 JSON");
         }
+        // 目录可以不写正文，普通条目必须写
+        if (!form.isFolder() && (form.getBody() == null || form.getBody().isBlank())) {
+            binding.rejectValue("body", "blank", "正文不能为空");
+        }
         if (binding.hasErrors()) {
             model.addAttribute("editing", false);
             model.addAttribute("parents", parentOptions(null, viewer.userId()));
             return "admin/form";
         }
         ContentItem item = new ContentItem(viewer.userId(), form.getKind(), form.getSlug(), form.getTitle(),
-                form.getSummary(), form.getBody(), form.getVisibility());
+                form.getSummary(), bodyOf(form), form.getVisibility());
         item.setParentId(form.getParentId());
         item.setSortOrder(form.getSortOrder() == null ? 0 : form.getSortOrder());
+        item.setFolder(form.isFolder());
         // 管理员的公开内容就是站点的推荐栏；普通用户的内容先只留给自己
         item.setRecommended(viewer.admin());
         ContentItem saved = items.save(item);
@@ -240,6 +275,12 @@ public class AdminController {
         applySupplement(saved, form);
         tags.retag(saved.getId(), saved.getTitle(), saved.getBody());
         return "redirect:/admin";
+    }
+
+    /** 目录的正文可以空，落库时统一成空串（列是 not null）。 */
+    private static String bodyOf(ContentForm form) {
+        String body = form.getBody();
+        return body == null ? "" : body;
     }
 
     @GetMapping("/{id}/edit")
@@ -258,6 +299,7 @@ public class AdminController {
         form.setParentId(item.getParentId());
         form.setSortOrder(item.getSortOrder());
         form.setProjectDoc(meta.findDoc(item.getId()).orElse(null));
+        form.setFolder(item.isFolder());
         ContentItem attached = attachedNote(item);
         if (attached != null) {
             form.setSupplementTitle(attached.getTitle());
@@ -296,6 +338,9 @@ public class AdminController {
         if (!meta.isValid(form.getProjectDoc())) {
             binding.rejectValue("projectDoc", "invalid", "项目字段不是合法的 JSON");
         }
+        if (!form.isFolder() && (form.getBody() == null || form.getBody().isBlank())) {
+            binding.rejectValue("body", "blank", "正文不能为空");
+        }
         String backPath = safeBack(back, basePathOf(item) + "/" + item.getSlug());
         if (binding.hasErrors()) {
             model.addAttribute("editing", true);
@@ -312,10 +357,11 @@ public class AdminController {
         item.setSlug(form.getSlug());
         item.setTitle(form.getTitle());
         item.setSummary(form.getSummary());
-        item.setBody(form.getBody());
+        item.setBody(bodyOf(form));
         item.setVisibility(form.getVisibility());
         item.setParentId(form.getParentId());
         item.setSortOrder(form.getSortOrder() == null ? 0 : form.getSortOrder());
+        item.setFolder(form.isFolder());
         if (kindChanged) {
             item.setSupplementOfId(null);
         }

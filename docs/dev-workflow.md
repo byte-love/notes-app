@@ -287,6 +287,15 @@ sudo /opt/deploy/sync-db.sh    # 正式库整库覆盖到测试库
     卡片本体是 3 列 × 2 行的 grid：`三角 / 标题 / 条数` 在上，`.item-group-preview` 在下（跨到右边缘）。
     所以：**新增页面渲染 `groupSections` 片段的，外面要包一层 `.group-grid`**，
     否则「加载更多」插进来的新分组不会进网格；`.list-more` 锚点已按 `grid-column: 1 / -1` 处理
+  - **目录（`is_folder`，V29）**：勾上「当目录用」的条目只做分类，`PublicController.listing` 里
+    不进 `leaves`（所以不占卡片），但 `groups()` 会给它留一个空分组——新建完立刻能在列表上看到
+    「Python 0 条」。有子条目时跟普通分类一样是分组标题。`body` 允许为空（`ContentForm.body` 去掉了
+    `@NotBlank`，由 `AdminController` 按 `folder` 判断）。
+    - **三个入口**：左树每行末尾的「+」（`.tree-add`，`/admin/new?parent=<id>&kind=<kind>`）、
+      树顶的「+ 新建」（`.tree-new`，加在最外层）、`/admin` 右上角「新建」。`/admin/new` 会按 query
+      预填类型 / 父节点，并把 `sortOrder` 算成「同一个父节点下最大值 + 1」，新条目排在最后
+    - **AI 也能建目录**：`note_create` 带 `folder=true`（`body` 可空），返回的 slug 直接拿去当
+      下一次 `note_create` 的 `parent`；`notes_folders` 现在也把「空目录」列出来（以前只列当过父节点的）
   - **补充笔记（`supplement_of_id`）不单独占位置**：列表里并进「本体」那张卡片的内嵌附件行
     （`.card-attach`），左树里直接不渲染它，正文末尾给一张附件卡（`.attach-card`），
     补充笔记页标题下面给一条「本体」回链（`.doc-origin`）。层级上原来的约定是同级（`parent_id` 相同），

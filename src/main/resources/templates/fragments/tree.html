@@ -1,32 +1,39 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org">
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
 <body>
 <ul th:fragment="nodes(nodes)" class="tree">
     <li th:each="n : ${nodes}" th:classappend="${n.hasChildren()} ? 'has-kids' : ''">
-        <button th:if="${n.hasChildren() or n.lazy()}" type="button" class="tree-group"
-                th:attr="data-key=${n.item.slug},data-lazy=${n.lazy()} ? ${treeBase + '?parent=' + n.item.slug} : null"
-                th:classappend="${activeId != null and activeId == n.item.id} ? 'on'">
-            <span class="tree-group-title" th:text="${n.item.title}">分组</span>
-            <!-- 分组标题右侧给个条数，一行里有点信息量，不至于只有一串标题 -->
-            <span class="tree-count" th:if="${!n.lazy()}" th:text="${#lists.size(n.children)}">0</span>
-        </button>
-        <a th:unless="${n.hasChildren() or n.lazy() or n.locked()}"
-           th:href="${basePath + '/' + n.item.slug}"
-           th:classappend="${activeId != null and activeId == n.item.id} ? 'on'"><span
-                class="tree-num" th:text="${#numbers.formatInteger(n.ordinal(), 2)}">01</span><span
-                class="tree-lastread" th:if="${lastReadId != null and lastReadId == n.item.id}"
-                title="上次看到这里"></span><span
-                class="tree-bookmark" th:if="${bookmarkIds != null and bookmarkIds.contains(n.item.id)}"
-                title="已加书签"></span><span
-                class="tree-star" th:if="${starIds != null and starIds.contains(n.item.id)}">★</span><span
-                class="tree-rate"
-                th:attr="data-slug=${n.item.slug},data-v=${n.item.rating}"
-                th:text="${n.item.rating == 1 ? '★' : (n.item.rating == 2 ? '★★' : '★★★')}"></span><span
-                th:text="${n.item.title}"></span></a>
-        <a th:if="${not n.hasChildren() and n.locked()}" class="locked" th:href="@{/login}" title="需要登录后查看">
-            <span class="tree-num" th:text="${#numbers.formatInteger(n.ordinal(), 2)}">01</span><span
-                th:text="${n.item.title}"></span>
-        </a>
+        <!-- 一行 = 标题（分组按钮 / 条目链接）+ 右边的「+」；「+」是在这一行下面新建 -->
+        <div class="tree-row">
+            <button th:if="${n.hasChildren() or n.lazy()}" type="button" class="tree-group"
+                    th:attr="data-key=${n.item.slug},data-lazy=${n.lazy()} ? ${treeBase + '?parent=' + n.item.slug} : null"
+                    th:classappend="${activeId != null and activeId == n.item.id} ? 'on'">
+                <span class="tree-group-title" th:text="${n.item.title}">分组</span>
+                <!-- 分组标题右侧给个条数，一行里有点信息量，不至于只有一串标题 -->
+                <span class="tree-count" th:if="${!n.lazy()}" th:text="${#lists.size(n.children)}">0</span>
+            </button>
+            <a th:unless="${n.hasChildren() or n.lazy() or n.locked()}"
+               th:href="${basePath + '/' + n.item.slug}"
+               th:classappend="${activeId != null and activeId == n.item.id} ? 'on'"><span
+                    class="tree-num" th:text="${#numbers.formatInteger(n.ordinal(), 2)}">01</span><span
+                    class="tree-lastread" th:if="${lastReadId != null and lastReadId == n.item.id}"
+                    title="上次看到这里"></span><span
+                    class="tree-bookmark" th:if="${bookmarkIds != null and bookmarkIds.contains(n.item.id)}"
+                    title="已加书签"></span><span
+                    class="tree-star" th:if="${starIds != null and starIds.contains(n.item.id)}">★</span><span
+                    class="tree-rate"
+                    th:attr="data-slug=${n.item.slug},data-v=${n.item.rating}"
+                    th:text="${n.item.rating == 1 ? '★' : (n.item.rating == 2 ? '★★' : '★★★')}"></span><span
+                    th:text="${n.item.title}"></span></a>
+            <a th:if="${not n.hasChildren() and n.locked()}" class="locked" th:href="@{/login}" title="需要登录后查看">
+                <span class="tree-num" th:text="${#numbers.formatInteger(n.ordinal(), 2)}">01</span><span
+                    th:text="${n.item.title}"></span>
+            </a>
+            <a sec:authorize="isAuthenticated()" th:unless="${n.locked()}" class="tree-add"
+               th:href="@{/admin/new(parent=${n.item.id},kind=${#strings.toLowerCase(n.item.kind.name())})}"
+               th:title="|在「${n.item.title}」下面新建|" aria-label="在这一项下面新建">+</a>
+        </div>
         <th:block th:if="${n.hasChildren()}">
             <ul th:replace="~{fragments/tree :: nodes(${n.children})}"></ul>
         </th:block>

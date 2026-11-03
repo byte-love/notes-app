@@ -73,16 +73,18 @@ const TOOLS = [
   {
     name: 'note_create',
     description:
-      '新建一篇笔记。只新建、绝不覆盖。返回里的 similar 不为空时，说明站里有标题相近的旧笔记，' +
+      '新建一篇笔记（或者一个目录）。只新建、绝不覆盖。返回里的 similar 不为空时，说明站里有标题相近的旧笔记，' +
       '必须把这几篇念给用户听，问他是「新建」还是「去改那一篇」，不要自己决定。' +
       'visibility 必填：先问用户这篇给什么权限 —— PUBLIC 任何用户可见（会进技术广场）；' +
       'MEMBER 登录可见（只有用户把链接发给别人、对方注册登录后才能看，不进技术广场）；PRIVATE 仅自己。' +
-      '用户已经说过了就直接用那个值，不要再问一遍。',
+      '用户已经说过了就直接用那个值，不要再问一遍。' +
+      '要开新分类（比如用户学的 Python、现有目录全是 Java）就传 folder=true：title 是分类名、body 可留空，' +
+      '建好后用返回的 slug 当下一次 note_create 的 parent。',
     inputSchema: {
       type: 'object',
       properties: {
-        title: { type: 'string', description: '标题' },
-        body: { type: 'string', description: '正文，Markdown' },
+        title: { type: 'string', description: '标题（folder=true 时是分类名）' },
+        body: { type: 'string', description: '正文，Markdown；folder=true 时可留空' },
         summary: { type: 'string', description: '摘要，可不填（自动取正文开头）' },
         parent: { type: 'string', description: '父目录 slug（可用 notes_folders 查），不填放顶层' },
         visibility: {
@@ -93,8 +95,9 @@ const TOOLS = [
           enum: ['PUBLIC', 'MEMBER', 'PRIVATE'],
         },
         kind: { type: 'string', description: '内容类型，默认 note', enum: ['note', 'bagu', 'algo', 'project'] },
+        folder: { type: 'boolean', description: '只当目录用（分类）：列表里不占卡片，可在其下继续新建。建分类时传 true' },
       },
-      required: ['title', 'body', 'visibility'],
+      required: ['title', 'visibility'],
     },
   },
   {

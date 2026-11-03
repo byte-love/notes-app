@@ -6,6 +6,8 @@
 
 <div class="with-tree" th:classappend="${#lists.isEmpty(tree)} ? 'no-tree' : ''">
     <aside class="tree-pane" th:if="${!#lists.isEmpty(tree)}">
+        <a sec:authorize="isAuthenticated()" class="tree-new"
+           th:href="@{/admin/new(kind=${#strings.toLowerCase(kind.name())})}">+ 新建</a>
         <ul th:replace="~{fragments/tree :: nodes(${tree})}"></ul>
     </aside>
 

@@ -87,11 +87,12 @@ public class McpController {
             case "note_get" -> ai.get(auth, str(args, "slug"), request);
             case "note_create" -> ai.create(auth, new AiController.NoteIn(
                     str(args, "title"), str(args, "body"), str(args, "summary"), null,
-                    str(args, "parent"), str(args, "visibility"), str(args, "kind"), null), request);
+                    str(args, "parent"), str(args, "visibility"), str(args, "kind"), null,
+                    Boolean.TRUE.equals(args.get("folder"))), request);
             case "note_update" -> ai.update(auth, str(args, "slug"), new AiController.NoteIn(
                     str(args, "title"), str(args, "body"), str(args, "summary"), null,
                     str(args, "parent"), str(args, "visibility"), str(args, "kind"),
-                    Boolean.TRUE.equals(args.get("confirm"))), request);
+                    Boolean.TRUE.equals(args.get("confirm")), null), request);
             case "note_delete" -> ai.delete(auth, str(args, "slug"),
                     Boolean.TRUE.equals(args.get("confirm")));
             default -> throw new Rpc(-32602, "没有这个工具: " + name);
@@ -113,20 +114,24 @@ public class McpController {
                 props(Map.of("q", str("关键词，可留空表示全部")))));
         tools.add(tool("note_get", "读一篇我自己笔记的完整内容。",
                 props(Map.of("slug", str("笔记的 slug")), "slug")));
-        tools.add(tool("note_create", "新建一篇笔记。永远只会新建，不会覆盖任何已有内容；如果返回里 similar 不为空，"
+        tools.add(tool("note_create", "新建一篇笔记（或者一个目录）。永远只会新建，不会覆盖任何已有内容；如果返回里 similar 不为空，"
                         + "说明站里有标题相近的旧笔记，要把这几篇告诉用户，问他是新建还是去改旧的。"
                         + "**visibility 必填**：先问用户这篇给什么权限 —— PUBLIC 任何用户可见（会进技术广场）；"
                         + "MEMBER 登录可见（只有用户把链接发给别人、对方注册登录后才能看，不进技术广场）；"
-                        + "PRIVATE 仅自己。用户已经说过了就直接用那个值，不要再问一遍。",
+                        + "PRIVATE 仅自己。用户已经说过了就直接用那个值，不要再问一遍。"
+                        + "**要开新分类（比如用户学的 Python，现有目录全是 Java）就传 folder=true**："
+                        + "这时 title 就是分类名、body 可以留空；建好以后返回的 slug 拿去当下一次 note_create 的 parent。",
                 props(Map.of(
-                        "title", str("标题"),
-                        "body", str("正文，Markdown"),
+                        "title", str("标题（folder=true 时是分类名）"),
+                        "body", str("正文，Markdown；folder=true 时可以留空"),
                         "summary", str("摘要，可不填（会自动取正文开头）"),
                         "parent", str("父目录 slug，可用 notes_folders 查；不填就放在顶层"),
                         "visibility", str("必填。PUBLIC 任何用户可见 / MEMBER 登录可见（不进广场） / PRIVATE 仅自己。"
                                 + "用户没说就先问，说了就别再问"),
-                        "kind", str("内容类型：note（默认）/ bagu / algo / project")),
-                        "title", "body", "visibility")));
+                        "kind", str("内容类型：note（默认）/ bagu / algo / project"),
+                        "folder", Map.of("type", "boolean",
+                                "description", str("只当目录用（分类）：列表里不占卡片，可以在它下面继续新建。新建分类时传 true"))),
+                        "title", "visibility")));
         tools.add(tool("note_update", "覆盖一篇已有笔记。**必须先把这个 slug 对应的标题念给用户、得到明确同意**，"
                         + "再把 confirm 传 true；服务端会先把旧版本存快照再覆盖。没带 confirm 会被拒绝。",
                 props(Map.of(

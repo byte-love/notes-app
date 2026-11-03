@@ -9,6 +9,8 @@
         <p class="tree-hint" th:if="${lockedCount > 0}">
             登录后可查看其余 <span th:text="${lockedCount}">0</span> 篇
         </p>
+        <a sec:authorize="isAuthenticated()" class="tree-new"
+           th:href="@{/admin/new(kind=${#strings.toLowerCase(item.kind.name())})}">+ 新建</a>
         <ul th:replace="~{fragments/tree :: nodes(${tree})}"></ul>
     </aside>
 

@@ -24,8 +24,11 @@ public class ContentForm {
     @Size(max = 500)
     private String summary;
 
-    @NotBlank
+    /** 正文：目录可以不填，普通条目在控制器里另外校验非空。 */
     private String body;
+
+    /** 只当目录用（分类 / 文件夹）：列表里不占卡片，可以在它下面继续新建。 */
+    private boolean folder;
 
     @NotNull
     private Visibility visibility = Visibility.MEMBER;
@@ -129,5 +132,13 @@ public class ContentForm {
 
     public void setSortOrder(Integer sortOrder) {
         this.sortOrder = sortOrder;
+    }
+
+    public boolean isFolder() {
+        return folder;
+    }
+
+    public void setFolder(boolean folder) {
+        this.folder = folder;
     }
 }

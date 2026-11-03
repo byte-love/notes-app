@@ -1839,6 +1839,68 @@ button:hover,
     padding-right: 0.4rem;
 }
 
+/* 左树顶上的「+ 新建」：在顶层再加一条 */
+.tree-new {
+    display: inline-flex;
+    align-items: center;
+    margin: 0 0 0.5rem 0.2rem;
+    padding: 2px 8px;
+    border-radius: 6px;
+    color: var(--fg-3);
+    font-size: 0.82rem;
+}
+
+.tree-new:hover {
+    color: var(--accent);
+    background: var(--bg-2);
+    text-decoration: none;
+}
+
+/* 一行 = 标题 + 行末的「+」；平时淡出，鼠标移到这一行才显出来 */
+.tree-row {
+    display: flex;
+    align-items: center;
+    gap: 0.15rem;
+}
+
+.tree-row > .tree-group,
+.tree-row > a:not(.tree-add) {
+    flex: 1;
+    min-width: 0;
+}
+
+.tree-add {
+    flex: none;
+    width: 18px;
+    height: 18px;
+    display: grid;
+    place-items: center;
+    border-radius: 4px;
+    color: var(--fg-3);
+    font-size: 0.9rem;
+    line-height: 1;
+    opacity: 0;
+    transition: opacity 0.12s ease;
+}
+
+.tree-row:hover .tree-add,
+.tree-add:focus-visible {
+    opacity: 1;
+}
+
+.tree-add:hover {
+    color: var(--accent);
+    background: var(--bg-2);
+    text-decoration: none;
+}
+
+/* 触摸屏没有 hover，直接常显 */
+@media (hover: none) {
+    .tree-add {
+        opacity: 1;
+    }
+}
+
 /* 左右两栏的滚动条跟正文窗口解耦：翻正文时它们不该变亮，
    只有鼠标移到这一栏上才显出来 */
 .tree-pane,
@@ -2406,6 +2468,29 @@ html[data-read-size='lg'] .markdown {
     margin-top: 1.2rem;
     padding-top: 1.4rem;
     border-top: 1px solid var(--line);
+}
+
+/* 表单里的单行勾选项（当目录用这类） */
+.field-check {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.86rem;
+    color: var(--fg-2);
+}
+
+.field-check label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    cursor: pointer;
+}
+
+.field-check input[type='checkbox'] {
+    width: 15px;
+    height: 15px;
+    accent-color: var(--accent);
+    cursor: pointer;
 }
 
 /* 字段行末的小按钮（清除补充笔记这类） */

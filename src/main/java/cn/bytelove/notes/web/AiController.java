@@ -93,7 +93,7 @@ public class AiController {
 
     /** 新建或更新请求体；字段都可选，只有 title/body 是新建时必填。 */
     public record NoteIn(String title, String body, String summary, String slug,
-                         String parent, String visibility, String kind, Boolean confirm) {
+                         String parent, String visibility, String kind, Boolean confirm, Boolean folder) {
     }
 
     @GetMapping("/me")
@@ -111,7 +111,7 @@ public class AiController {
         return out;
     }
 
-    /** 可以挂的目录：自己名下当过父节点的条目，带完整路径。 */
+    /** 可以挂的目录：自己名下当过父节点的条目 + 标成「当目录用」的，带完整路径。 */
     @GetMapping("/folders")
     public List<Map<String, Object>> folders(@RequestHeader(name = "Authorization", required = false) String auth) {
         Long userId = requireUser(auth);
@@ -128,7 +128,7 @@ public class AiController {
         }
         List<Map<String, Object>> out = new ArrayList<>();
         for (ContentItem i : mine) {
-            if (!parentIds.contains(i.getId())) {
+            if (!parentIds.contains(i.getId()) && !i.isFolder()) {
                 continue;
             }
             Map<String, Object> row = new LinkedHashMap<>();
@@ -188,26 +188,34 @@ public class AiController {
         return out;
     }
 
-    /** 新建一篇。永远不覆盖任何东西；标题像已有笔记时只在 warnings 里提示。 */
+    /** 新建一篇（或者一个目录）。永远不覆盖任何东西；标题像已有笔记时只在 warnings 里提示。 */
     @PostMapping("/notes")
     public Map<String, Object> create(@RequestHeader(name = "Authorization", required = false) String auth,
                                       @RequestBody NoteIn in, HttpServletRequest request) {
         Long userId = requireUser(auth);
         write(userId);
         String title = clean(in.title(), "标题");
-        String body = bodyOf(in.body());
+        // 目录只用来分类，正文可以不写；普通条目正文必填
+        boolean folder = Boolean.TRUE.equals(in.folder());
+        String body = folder
+                ? (in.body() == null ? "" : in.body().strip())
+                : bodyOf(in.body());
         ContentKind kind = kindOf(in.kind());
         ContentItem item = new ContentItem(userId, kind, freeSlug(userId),
                 title, summaryOf(in.summary(), body), body, visibilityOf(in.visibility()));
         item.setParentId(parentIdOf(userId, in.parent()));
         item.setSortOrder(nextSortOrder(userId));
+        item.setFolder(folder);
         item.setRecommended(false);
         ContentItem saved = items.save(item);
-        tags.retag(saved.getId(), saved.getTitle(), saved.getBody());
+        if (!body.isEmpty()) {
+            tags.retag(saved.getId(), saved.getTitle(), saved.getBody());
+        }
 
         Map<String, Object> out = new LinkedHashMap<>();
         out.put("ok", true);
         out.put("created", true);
+        out.put("folder", folder);
         out.put("slug", saved.getSlug());
         out.put("url", urlOf(saved, request));
         out.put("tags", tags.of(List.of(saved.getId())).getOrDefault(saved.getId(), List.of()));
