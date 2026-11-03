@@ -103,7 +103,7 @@ public class PublicController {
 
     @GetMapping("/")
     public String home(Model model, Authentication auth) {
-        return listing(ContentKind.NOTE, "笔记", model, auth, null, false, null, null);
+        return listing(ContentKind.NOTE, "闪念", model, auth, null, false, null, null);
     }
 
     @GetMapping("/notes")
@@ -112,7 +112,7 @@ public class PublicController {
                         @RequestParam(name = "fragment", defaultValue = "false") boolean fragment,
                         @RequestParam(name = "rate", required = false) String rate,
                         @RequestParam(name = "tag", required = false) String tag) {
-        return listing(ContentKind.NOTE, "笔记", model, auth, from, fragment, rate, tag);
+        return listing(ContentKind.NOTE, "闪念", model, auth, from, fragment, rate, tag);
     }
 
     @GetMapping("/bagu")
@@ -169,7 +169,7 @@ public class PublicController {
         List<ContentItem> all = filtered(poolForListing(kind, viewer), viewer, lockedIds);
         Set<Long> starIds = stars.starredIds(viewer.userId());
 
-        // 目录节点只出现在左侧树里，不混进右侧正文列表
+        // 目录节点只出现在左侧树里，不混进右侧正文列表；标成「当目录用」的也一样
         Set<Long> parentIds = new LinkedHashSet<>();
         for (ContentItem i : all) {
             if (i.getParentId() != null) {
@@ -178,7 +178,7 @@ public class PublicController {
         }
         List<ContentItem> leaves = new ArrayList<>();
         for (ContentItem i : all) {
-            if (!parentIds.contains(i.getId())) {
+            if (!parentIds.contains(i.getId()) && !i.isFolder()) {
                 leaves.add(i);
             }
         }
@@ -835,6 +835,12 @@ public class PublicController {
             Long key = (pid != null && byId.containsKey(pid)) ? pid : 0L;
             buckets.computeIfAbsent(key, k -> new ArrayList<>()).add(leaf);
         }
+        // 目录即使还空着也占一个分组，新建完立刻能在列表上看到它
+        for (ContentItem item : all) {
+            if (item.isFolder()) {
+                buckets.computeIfAbsent(item.getId(), k -> new ArrayList<>());
+            }
+        }
 
         List<ItemGroup> result = new ArrayList<>();
         buckets.keySet().stream()
@@ -978,7 +984,7 @@ public class PublicController {
             case PROJECT:
                 return "项目";
             default:
-                return "笔记";
+                return "闪念";
         }
     }
 

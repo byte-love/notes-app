@@ -979,6 +979,32 @@ button:hover,
     letter-spacing: -0.01em;
 }
 
+/* 「我的笔记」的四个分区：当标题用，选中的那个满色加粗，其余压淡 */
+.mine-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 1.1rem;
+    font-size: 1.6rem;
+    letter-spacing: -0.01em;
+    line-height: 1.2;
+}
+
+.mine-tab {
+    color: var(--fg-3);
+    font-weight: 400;
+}
+
+.mine-tab:hover {
+    color: var(--fg);
+    text-decoration: none;
+}
+
+.mine-tab.on {
+    color: var(--fg);
+    font-weight: 600;
+}
+
 .count {
     color: var(--fg-3);
     font-size: 0.85rem;
@@ -1526,6 +1552,20 @@ button:hover,
     opacity: 1;
 }
 
+/* 表单里那句帮助后面跟一张示例图时，盒子放宽到能把卡片看清 */
+.gl-tip.has-img {
+    max-width: min(640px, calc(100vw - 32px));
+}
+
+.gl-tip.has-img img {
+    display: block;
+    width: 100%;
+    height: auto;
+    margin-top: 0.5rem;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+}
+
 /* 管理员点术语后浮出的编辑框：术语 / 语境关键词 / 解释 + 保存·删除·新增·取消 */
 .gl-admin .markdown .gl {
     cursor: pointer;
@@ -1799,6 +1839,141 @@ button:hover,
     padding-right: 0.4rem;
 }
 
+/* 左树顶上那一行：左边一句小字，右边「+」 */
+.tree-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.4rem;
+    padding: 0 0.2rem 0.45rem 0.4rem;
+    margin-bottom: 0.2rem;
+    border-bottom: 1px solid var(--line);
+}
+
+.tree-head-text {
+    color: var(--fg-3);
+    font-size: 0.78rem;
+    letter-spacing: 0.02em;
+}
+
+/* 行末的小图标按钮：+ 和 ⋯，平时淡出，鼠标移到这一行才显 */
+.tree-act {
+    flex: none;
+    width: 22px;
+    height: 22px;
+    display: grid;
+    place-items: center;
+    border: none;
+    background: none;
+    padding: 0;
+    border-radius: 5px;
+    color: var(--fg-3);
+    font-size: 1.05rem;
+    line-height: 1;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.12s ease;
+}
+
+.tree-head .tree-act {
+    opacity: 1;
+}
+
+.tree-row:hover .tree-act,
+.tree-act:focus-visible {
+    opacity: 1;
+}
+
+.tree-act:hover {
+    color: var(--accent);
+    background: var(--bg-2);
+}
+
+/* 就地新建 / 改名用的输入框 */
+.tree-edit-row {
+    list-style: none;
+}
+
+.tree-input {
+    width: 100%;
+    font: inherit;
+    font-size: 0.88rem;
+    padding: 0.28rem 0.5rem;
+    margin: 0.1rem 0;
+    color: var(--fg);
+    background: var(--bg);
+    border: 1px solid var(--accent);
+    border-radius: 6px;
+    outline: none;
+}
+
+/* ⋯ 弹出的菜单 */
+.tree-menu {
+    position: fixed;
+    z-index: 60;
+    min-width: 128px;
+    padding: 4px;
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.18);
+}
+
+.tree-menu-item {
+    display: block;
+    width: 100%;
+    text-align: left;
+    font: inherit;
+    font-size: 0.86rem;
+    padding: 6px 10px;
+    border: none;
+    border-radius: 6px;
+    background: none;
+    color: var(--fg-2);
+    cursor: pointer;
+}
+
+.tree-menu-item:hover {
+    background: var(--bg-2);
+    color: var(--fg);
+}
+
+.tree-menu-item.danger {
+    color: var(--danger);
+}
+
+.tree-menu-item.danger:hover {
+    background: var(--danger-soft, var(--bg-2));
+    color: var(--danger);
+}
+
+/* 一行 = 标题 + 行末的「+」；平时淡出，鼠标移到这一行才显出来。
+   注意要压过上面 `.tree a { width: 100% }` 那种老规则，所以这里选择器多带一层 .tree */
+.tree .tree-row {
+    display: flex;
+    align-items: center;
+    gap: 0.15rem;
+}
+
+.tree .tree-row > .tree-group,
+.tree .tree-row > a:not(.tree-act) {
+    flex: 1 1 auto;
+    min-width: 0;
+    width: auto;
+}
+
+.tree-row:hover .tree-add,
+.tree-add:focus-visible {
+    opacity: 1;
+}
+
+/* 触摸屏没有 hover，直接常显 */
+@media (hover: none) {
+    .tree-act {
+        opacity: 1;
+    }
+}
+
 /* 左右两栏的滚动条跟正文窗口解耦：翻正文时它们不该变亮，
    只有鼠标移到这一栏上才显出来 */
 .tree-pane,
@@ -1893,10 +2068,16 @@ button:hover,
 
 .tree-count {
     flex: none;
+    margin-right: 0.4rem;
     font-family: var(--mono);
     font-size: 0.66rem;
     font-variant-numeric: tabular-nums;
     color: var(--fg-3);
+}
+
+/* 数字默认不显示：⋯ 菜单里可以打开（存在 localStorage，见 tree-admin.js） */
+html.tree-no-count .tree-count {
+    display: none;
 }
 
 .tree .tree-group.on .tree-count {
@@ -2270,6 +2451,38 @@ button:hover,
     font-size: 0.88rem;
 }
 
+/* AI 接入：Token 和 MCP 地址要能一眼复制，等宽字体、可换行 */
+.me-note {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+    margin: 0 0 0.4rem;
+}
+
+.me-token {
+    font-family: var(--mono);
+    font-size: 0.82rem;
+    padding: 0.2rem 0.5rem;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--bg-2);
+    overflow-wrap: anywhere;
+}
+
+.me-hint {
+    color: var(--fg-3);
+    font-size: 0.8rem;
+    line-height: 1.6;
+    margin: 0.4rem 0 0;
+}
+
+/* 复制按钮别被地址挤成两行 */
+.me-copy {
+    flex: none;
+    white-space: nowrap;
+}
+
 .seg {
     display: flex;
     flex-wrap: wrap;
@@ -2327,6 +2540,52 @@ html[data-read-size='lg'] .markdown {
     display: flex;
     flex-direction: column;
     gap: 0.4rem;
+}
+
+/* 补充笔记单独算一段：正文编辑器是块大色块，紧挨着下面再挂一行标签太挤 */
+.field-supplement {
+    margin-top: 1.2rem;
+    padding-top: 1.4rem;
+    border-top: 1px solid var(--line);
+}
+
+/* 表单里的单行勾选项（当目录用这类） */
+.field-check {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.86rem;
+    color: var(--fg-2);
+}
+
+.field-check label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    cursor: pointer;
+}
+
+.field-check input[type='checkbox'] {
+    width: 15px;
+    height: 15px;
+    accent-color: var(--accent);
+    cursor: pointer;
+}
+
+/* 字段行末的小按钮（清除补充笔记这类） */
+.field-link {
+    margin-left: auto;
+    font: inherit;
+    font-size: 0.8rem;
+    color: var(--fg-3);
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+}
+
+.field-link:hover {
+    color: var(--accent);
 }
 
 .field-label {
@@ -3388,7 +3647,88 @@ html[data-theme='dark'] .cl-latest {
     border-top: none;
 }
 
-/* ---- 错误页 ---- */
+/* ---------- 正文就地编辑 ---------- */
+
+.body-editor {
+    margin: 1rem 0 0;
+}
+
+.body-source {
+    display: block;
+    width: 100%;
+    min-height: 45vh;
+    font-family: var(--mono);
+    font-size: 0.92rem;
+    line-height: 1.75;
+    padding: 1rem 1.1rem;
+    color: var(--fg);
+    background: var(--bg-2);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    resize: vertical;
+    outline: none;
+}
+
+.body-source:focus {
+    border-color: var(--accent);
+}
+
+.body-editor-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.6rem;
+    margin-top: 0.8rem;
+}
+
+/* 自己的正文直接可改：不出焦点框，点进去就能打字 */
+.doc .markdown[contenteditable='true'] {
+    outline: none;
+    caret-color: var(--accent);
+    cursor: text;
+}
+
+/* 正文页上的「插入笔记卡片」小表单 */
+.supp-form {
+    margin: 1.2rem 0 0;
+    padding: 1rem 1.1rem;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: var(--bg-2);
+}
+
+.supp-form input[type='text'],
+.supp-form textarea {
+    display: block;
+    width: 100%;
+    font: inherit;
+    font-size: 0.9rem;
+    padding: 0.5rem 0.65rem;
+    margin-bottom: 0.6rem;
+    color: var(--fg);
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    outline: none;
+    resize: vertical;
+}
+
+.supp-form textarea {
+    font-family: var(--mono);
+    line-height: 1.7;
+}
+
+.supp-form input[type='text']:focus,
+.supp-form textarea:focus {
+    border-color: var(--accent);
+}
+
+.supp-form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.6rem;
+}
+
+/* ---------- 错误页 ---------- */
 
 .err-box {
     max-width: 30rem;

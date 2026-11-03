@@ -24,8 +24,11 @@ public class ContentForm {
     @Size(max = 500)
     private String summary;
 
-    @NotBlank
+    /** 正文：目录可以不填，普通条目在控制器里另外校验非空。 */
     private String body;
+
+    /** 只当目录用（分类 / 文件夹）：列表里不占卡片，可以在它下面继续新建。 */
+    private boolean folder;
 
     @NotNull
     private Visibility visibility = Visibility.MEMBER;
@@ -36,6 +39,28 @@ public class ContentForm {
 
     /** 项目的结构化字段（中英双语、action/result 是数组），存 project_meta.doc，只在类型为 PROJECT 时生效。 */
     private String projectDoc;
+
+    /** 正文末尾挂的那张补充笔记卡片：标题和正文直接在编辑页里写，保存时建成挂在本文下面的一篇。 */
+    private String supplementTitle;
+
+    /** 补充笔记的正文（Markdown）。留空就是不挂。 */
+    private String supplementBody;
+
+    public String getSupplementTitle() {
+        return supplementTitle;
+    }
+
+    public void setSupplementTitle(String supplementTitle) {
+        this.supplementTitle = supplementTitle;
+    }
+
+    public String getSupplementBody() {
+        return supplementBody;
+    }
+
+    public void setSupplementBody(String supplementBody) {
+        this.supplementBody = supplementBody;
+    }
 
     public String getProjectDoc() {
         return projectDoc;
@@ -107,5 +132,13 @@ public class ContentForm {
 
     public void setSortOrder(Integer sortOrder) {
         this.sortOrder = sortOrder;
+    }
+
+    public boolean isFolder() {
+        return folder;
+    }
+
+    public void setFolder(boolean folder) {
+        this.folder = folder;
     }
 }

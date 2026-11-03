@@ -2,8 +2,8 @@ package cn.bytelove.notes.service;
 
 import cn.bytelove.notes.domain.ContentItem;
 import cn.bytelove.notes.domain.ContentKind;
+import cn.bytelove.notes.domain.Visibility;
 import cn.bytelove.notes.repo.ContentItemRepository;
-import cn.bytelove.notes.service.VisibilityService.Viewer;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,38 +18,27 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * 推荐栏：把公开的推荐内容当成模板，复制一份到自己的空间。
+ * 技术广场：把公开的推荐内容当成模板，复制一份到自己的空间。
  * 复制出来的是一条独立副本（copiedFromId 记来源），之后各改各的，原版更新不影响副本。
  */
 @Service
 public class RecommendService {
 
     private final ContentItemRepository items;
-    private final VisibilityService visibility;
     private final TagService tags;
+    private final HighlightService highlights;
 
-    public RecommendService(ContentItemRepository items, VisibilityService visibility, TagService tags) {
+    public RecommendService(ContentItemRepository items, TagService tags, HighlightService highlights) {
         this.items = items;
-        this.visibility = visibility;
         this.tags = tags;
+        this.highlights = highlights;
     }
 
-    /** 推荐栏的一张卡片。count 是这条加它下面所有子孙的条数。 */
+    /** 广场上的一张卡片。count 是这条加它下面所有子孙的条数。 */
     public record Card(ContentItemRepository.CardRow item, long count) {
         public boolean isContainer() {
             return count > 1;
         }
-    }
-
-    /** 当前分区的所有可读推荐内容。 */
-    public List<ContentItem> readable(ContentKind kind, Viewer viewer) {
-        List<ContentItem> out = new ArrayList<>();
-        for (ContentItem item : items.findByKindAndRecommendedTrueOrderBySortOrderAscIdAsc(kind)) {
-            if (visibility.canRead(item, viewer)) {
-                out.add(item);
-            }
-        }
-        return out;
     }
 
     /** 当前分区的全部推荐内容，不看可见性。结构、条数、复制都按这个算，才和实际复制量一致。 */
@@ -58,10 +47,11 @@ public class RecommendService {
     }
 
     /**
-     * 顶层卡片：父节点不在推荐集合里的那些。
+     * 技术广场的顶层卡片：父节点不在推荐集合里的那些。
      * 条数按完整子树算——卡片上写 70 条，点「加入我的空间」就真的进来 70 条。
+     * 只收公开的：广场上摆的是谁都能看的东西，会员可见的靠链接分享，不在这里挂着。
      */
-    public List<Card> cards(ContentKind kind, Viewer viewer) {
+    public List<Card> cards(ContentKind kind) {
         // 只查需要的列：body 是表里最大的列，算数量和看标题用不到它
         List<ContentItemRepository.CardRow> pool = items.findCardRows(kind);
         Set<Long> ids = new HashSet<>();
@@ -78,7 +68,7 @@ public class RecommendService {
         List<Card> cards = new ArrayList<>();
         for (ContentItemRepository.CardRow item : pool) {
             boolean top = item.getParentId() == null || !ids.contains(item.getParentId());
-            if (top && canRead(item, viewer)) {
+            if (top && item.getVisibility() == Visibility.PUBLIC) {
                 Set<Long> seen = new HashSet<>();
                 collect(item.getId(), childrenOf, seen);
                 cards.add(new Card(item, seen.size()));
@@ -87,37 +77,18 @@ public class RecommendService {
         return cards;
     }
 
-    /** 和 VisibilityService.canRead 同一套判断，只是对象换成了投影。 */
-    private boolean canRead(ContentItemRepository.CardRow row, Viewer viewer) {
-        if (viewer.userId() != null && viewer.userId().equals(row.getOwnerId())) {
-            return true;
-        }
-        if (viewer.admin()) {
-            return true;
-        }
-        if (!row.isRecommended()) {
-            return false;
-        }
-        return switch (row.getVisibility()) {
-            case PUBLIC -> true;
-            case MEMBER -> viewer.authenticated();
-            case PRIVATE -> false;
-        };
-    }
-
     /**
      * 一个分组里的全部条目（含它自己），按层级顺序。
-     * 不过滤可见性：游客看不全的那部分在页面上显示成锁住的标题。
+     * 只有公开的分组摆在广场上；组里的条目本身不过滤可见性，
+     * 游客看不全的那部分在页面上显示成锁住的标题。
      */
     public List<ContentItem> group(ContentKind kind, String slug) {
         List<ContentItem> pool = all(kind);
         ContentItem root = null;
-        boolean visible = false;
         for (ContentItem i : pool) {
-            if (i.getSlug().equals(slug)) {
-                if (root == null) {
-                    root = i;
-                }
+            if (i.getSlug().equals(slug) && i.getVisibility() == Visibility.PUBLIC) {
+                root = i;
+                break;
             }
         }
         if (root == null) {
@@ -190,6 +161,8 @@ public class RecommendService {
             copy.setCopiedFromId(src.getId());
             ContentItem saved = items.save(copy);
             tags.copy(src.getId(), saved.getId());
+            // 高亮也跟着走：原作者标在正文里的重点，复制过来还看得见
+            highlights.copy(src.getId(), saved.getId(), src.getOwnerId(), userId);
             newIdOf.put(src.getId(), saved.getId());
             copied++;
         }

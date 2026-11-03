@@ -205,11 +205,42 @@ public class AdminController {
         }
     }
 
+    /** 同一个父节点下已有的最大排序号 +1：新条目默认排在最后，不用手填。 */
+    private int nextSortOrder(Long ownerId, Long parentId, ContentKind kind) {
+        int max = 0;
+        for (ContentItem i : allFor(ownerId)) {
+            if (i.getKind() != kind) {
+                continue;
+            }
+            boolean sameParent = parentId == null ? i.getParentId() == null : parentId.equals(i.getParentId());
+            if (sameParent) {
+                max = Math.max(max, i.getSortOrder());
+            }
+        }
+        return max + 1;
+    }
+
     @GetMapping("/new")
-    public String createForm(Model model, Authentication auth) {
-        model.addAttribute("form", new ContentForm());
+    public String createForm(@RequestParam(name = "parent", required = false) Long parent,
+                             @RequestParam(name = "kind", required = false) String kind,
+                             @RequestParam(name = "folder", defaultValue = "false") boolean folder,
+                             Model model, Authentication auth) {
+        Viewer viewer = viewers.current(auth);
+        Long ownerId = viewer.userId();
+        ContentForm form = new ContentForm();
+        // 从左树上的「+」点进来时，父节点和类型已经定好了，不用再挑
+        ContentKind k = parseKind(kind);
+        if (k != null) {
+            form.setKind(k);
+        }
+        if (parent != null && items.findById(parent).filter(i -> ownerId.equals(i.getOwnerId())).isPresent()) {
+            form.setParentId(parent);
+        }
+        form.setFolder(folder);
+        form.setSortOrder(nextSortOrder(ownerId, form.getParentId(), form.getKind()));
+        model.addAttribute("form", form);
         model.addAttribute("editing", false);
-        model.addAttribute("parents", parentOptions(null, viewers.current(auth).userId()));
+        model.addAttribute("parents", parentOptions(null, ownerId));
         return "admin/form";
     }
 
@@ -223,21 +254,33 @@ public class AdminController {
         if (!meta.isValid(form.getProjectDoc())) {
             binding.rejectValue("projectDoc", "invalid", "项目字段不是合法的 JSON");
         }
+        // 目录可以不写正文，普通条目必须写
+        if (!form.isFolder() && (form.getBody() == null || form.getBody().isBlank())) {
+            binding.rejectValue("body", "blank", "正文不能为空");
+        }
         if (binding.hasErrors()) {
             model.addAttribute("editing", false);
             model.addAttribute("parents", parentOptions(null, viewer.userId()));
             return "admin/form";
         }
         ContentItem item = new ContentItem(viewer.userId(), form.getKind(), form.getSlug(), form.getTitle(),
-                form.getSummary(), form.getBody(), form.getVisibility());
+                form.getSummary(), bodyOf(form), form.getVisibility());
         item.setParentId(form.getParentId());
         item.setSortOrder(form.getSortOrder() == null ? 0 : form.getSortOrder());
+        item.setFolder(form.isFolder());
         // 管理员的公开内容就是站点的推荐栏；普通用户的内容先只留给自己
         item.setRecommended(viewer.admin());
         ContentItem saved = items.save(item);
         saveProjectDoc(saved, form);
+        applySupplement(saved, form);
         tags.retag(saved.getId(), saved.getTitle(), saved.getBody());
         return "redirect:/admin";
+    }
+
+    /** 目录的正文可以空，落库时统一成空串（列是 not null）。 */
+    private static String bodyOf(ContentForm form) {
+        String body = form.getBody();
+        return body == null ? "" : body;
     }
 
     @GetMapping("/{id}/edit")
@@ -256,6 +299,12 @@ public class AdminController {
         form.setParentId(item.getParentId());
         form.setSortOrder(item.getSortOrder());
         form.setProjectDoc(meta.findDoc(item.getId()).orElse(null));
+        form.setFolder(item.isFolder());
+        ContentItem attached = attachedNote(item);
+        if (attached != null) {
+            form.setSupplementTitle(attached.getTitle());
+            form.setSupplementBody(attached.getBody());
+        }
         model.addAttribute("form", form);
         model.addAttribute("itemId", id);
         model.addAttribute("editing", true);
@@ -289,6 +338,9 @@ public class AdminController {
         if (!meta.isValid(form.getProjectDoc())) {
             binding.rejectValue("projectDoc", "invalid", "项目字段不是合法的 JSON");
         }
+        if (!form.isFolder() && (form.getBody() == null || form.getBody().isBlank())) {
+            binding.rejectValue("body", "blank", "正文不能为空");
+        }
         String backPath = safeBack(back, basePathOf(item) + "/" + item.getSlug());
         if (binding.hasErrors()) {
             model.addAttribute("editing", true);
@@ -299,16 +351,23 @@ public class AdminController {
             return "admin/form";
         }
 
+        // 换了类型就跟原来的本体不是一类了：卡片只在同类型之间渲染，留着这条关系等于断链
+        boolean kindChanged = form.getKind() != item.getKind();
         item.setKind(form.getKind());
         item.setSlug(form.getSlug());
         item.setTitle(form.getTitle());
         item.setSummary(form.getSummary());
-        item.setBody(form.getBody());
+        item.setBody(bodyOf(form));
         item.setVisibility(form.getVisibility());
         item.setParentId(form.getParentId());
         item.setSortOrder(form.getSortOrder() == null ? 0 : form.getSortOrder());
+        item.setFolder(form.isFolder());
+        if (kindChanged) {
+            item.setSupplementOfId(null);
+        }
         ContentItem saved = items.save(item);
         saveProjectDoc(saved, form);
+        applySupplement(saved, form);
         tags.retag(saved.getId(), saved.getTitle(), saved.getBody());
         // 保存后直接回文章页看效果，不用再从列表里找一遍
         return "redirect:" + safeBack(back, basePathOf(saved) + "/" + saved.getSlug());
@@ -393,12 +452,110 @@ public class AdminController {
         }
     }
 
-    @PostMapping("/{id}/delete")
-    public String delete(@PathVariable Long id, Authentication auth) {
+    /** 正文页上的「插入笔记卡片」：只收标题和正文，挂到这一篇下面。 */
+    @PostMapping("/{id}/supplement")
+    public String saveSupplement(@PathVariable Long id,
+                                 @RequestParam(name = "supplementTitle", required = false) String title,
+                                 @RequestParam(name = "supplementBody", required = false) String body,
+                                 Authentication auth) {
         ContentItem item = owned(id, viewers.current(auth));
+        ContentForm form = new ContentForm();
+        form.setSupplementTitle(title);
+        form.setSupplementBody(body);
+        applySupplement(item, form);
+        return "redirect:" + basePathOf(item) + "/" + item.getSlug();
+    }
+
+    /** 就地改正文：正文页上直接改，保存后留在这一页。标题 / 可见性 / 目录那些还走完整编辑页。 */
+    @PostMapping("/{id}/body")
+    public String saveBody(@PathVariable Long id,
+                           @RequestParam(name = "body", required = false) String body,
+                           @RequestParam(name = "back", required = false) String back,
+                           Authentication auth) {
+        ContentItem item = owned(id, viewers.current(auth));
+        if (body != null) {
+            item.setBody(body);
+            ContentItem saved = items.save(item);
+            tags.retag(saved.getId(), saved.getTitle(), saved.getBody());
+        }
+        return "redirect:" + safeBack(back, basePathOf(item) + "/" + item.getSlug());
+    }
+
+    /**
+     * 树上就地新建：只给一个名字，其余全自动（slug 自动生成、排在同层最后、正文留空）。
+     * 先建成空节点，之后在它下面接着建就成了分类，写正文就是一篇笔记。
+     */
+    @PostMapping("/quick")
+    public String quickCreate(@RequestParam(name = "parentId", required = false) Long parentId,
+                              @RequestParam(name = "kind", required = false) String kind,
+                              @RequestParam(name = "title") String title,
+                              @RequestParam(name = "back", required = false) String back,
+                              Authentication auth) {
+        Viewer viewer = viewers.current(auth);
+        Long ownerId = viewer.userId();
+        String name = title == null ? "" : title.trim();
+        if (name.isEmpty()) {
+            return "redirect:" + safeBack(back, "/admin");
+        }
+        ContentKind k = parseKind(kind);
+        if (k == null) {
+            k = ContentKind.NOTE;
+        }
+        ContentItem parent = null;
+        if (parentId != null) {
+            parent = items.findById(parentId).filter(i -> ownerId.equals(i.getOwnerId())).orElse(null);
+            if (parent != null) {
+                k = parent.getKind();
+            }
+        }
+        ContentItem item = new ContentItem(ownerId, k, quickSlug(ownerId),
+                name.length() > 200 ? name.substring(0, 200) : name, null, "", Visibility.MEMBER);
+        item.setParentId(parent == null ? null : parent.getId());
+        item.setSortOrder(nextSortOrder(ownerId, item.getParentId(), k));
+        item.setRecommended(viewer.admin());
+        item.setFolder(false);
+        items.save(item);
+        return "redirect:" + safeBack(back, "/admin");
+    }
+
+    /** 就地改名：只动标题，slug 不变（老链接照旧）。 */
+    @PostMapping("/{id}/rename")
+    public String rename(@PathVariable Long id, @RequestParam(name = "title") String title,
+                         @RequestParam(name = "back", required = false) String back,
+                         Authentication auth) {
+        ContentItem item = owned(id, viewers.current(auth));
+        String name = title == null ? "" : title.trim();
+        if (!name.isEmpty()) {
+            item.setTitle(name.length() > 200 ? name.substring(0, 200) : name);
+            items.save(item);
+        }
+        return "redirect:" + safeBack(back, "/admin");
+    }
+
+    /** 就地新建节点的地址：`f-20261103-1a2b3c4d`，人不用管，也别去改。 */
+    private String quickSlug(Long ownerId) {
+        String stamp = DateTimeFormatter.ofPattern("yyyyMMdd").format(java.time.LocalDate.now());
+        for (int n = 0; n < 8; n++) {
+            String slug = "f-" + stamp + "-" + UUID.randomUUID().toString().replace("-", "").substring(0, 8);
+            if (!items.existsByOwnerIdAndSlug(ownerId, slug)) {
+                return slug;
+            }
+        }
+        throw new ResponseStatusException(HttpStatus.CONFLICT, "生成地址失败了，重试一次");
+    }
+
+    @PostMapping("/{id}/delete")
+    public String delete(@PathVariable Long id,
+                         @RequestParam(name = "back", required = false) String back,
+                         Authentication auth) {
+        ContentItem item = owned(id, viewers.current(auth));
+        // 连子节点一起进回收站：只删目录本身会留下孤儿节点（父没了，子还挂在树顶上）
+        for (Long childId : tree.descendantIds(allFor(item.getOwnerId()), item.getId())) {
+            trash.softDelete(childId, item.getOwnerId());
+        }
         // 进回收站，不是真删；30 天后由 TrashService 定时清理
         trash.softDelete(item.getId(), item.getOwnerId());
-        return "redirect:/admin";
+        return "redirect:" + safeBack(back, "/admin");
     }
 
     /** 只能碰自己的；管理员不受限。 */
@@ -432,5 +589,85 @@ public class AdminController {
         all.sort(Comparator.comparing(ContentItem::getKind)
                 .thenComparing(ContentItem::getTitle, Comparator.nullsLast(String::compareTo)));
         return all;
+    }
+
+    /** 这篇下面挂着的那篇补充笔记（有多篇时取排最前面的那条）。 */
+    private ContentItem attachedNote(ContentItem item) {
+        ContentItem found = null;
+        for (ContentItem i : allFor(item.getOwnerId())) {
+            if (item.getId().equals(i.getSupplementOfId())
+                    && (found == null || i.getSortOrder() < found.getSortOrder())) {
+                found = i;
+            }
+        }
+        return found;
+    }
+
+    /**
+     * 「补充笔记」：编辑页里当场写一段（通常是 AI 整理好的），保存时建成挂在本文下面的一篇，
+     * 正文末尾就会多一张卡片。已经挂着的那篇就地更新；这次留空就把原来那篇挪进回收站。
+     */
+    private void applySupplement(ContentItem item, ContentForm form) {
+        String body = form.getSupplementBody() == null ? "" : form.getSupplementBody().trim();
+        ContentItem attached = attachedNote(item);
+        if (body.isEmpty()) {
+            if (attached != null) {
+                attached.setSupplementOfId(null);
+                items.save(attached);
+                trash.softDelete(attached.getId(), attached.getOwnerId());
+            }
+            return;
+        }
+        String title = supplementTitleOf(form.getSupplementTitle(), body, item);
+        if (attached == null) {
+            // 类型、可见性、排序都跟着本体走：卡片只在同类型之间渲染，权限也不该比本体更宽
+            ContentItem note = new ContentItem(item.getOwnerId(), item.getKind(),
+                    uniqueSupplementSlug(item.getOwnerId(), item.getSlug() + "-detail"),
+                    title, null, body, item.getVisibility());
+            note.setParentId(item.getParentId());
+            note.setSortOrder(item.getSortOrder());
+            note.setRecommended(item.isRecommended());
+            note.setSupplementOfId(item.getId());
+            ContentItem saved = items.save(note);
+            tags.retag(saved.getId(), saved.getTitle(), saved.getBody());
+            return;
+        }
+        attached.setKind(item.getKind());
+        attached.setTitle(title);
+        attached.setBody(body);
+        attached.setVisibility(item.getVisibility());
+        attached.setRecommended(item.isRecommended());
+        ContentItem saved = items.save(attached);
+        tags.retag(saved.getId(), saved.getTitle(), saved.getBody());
+    }
+
+    /** 标题留空就用正文第一行（去掉 Markdown 的井号、星号），第一行也没字就叫「补充笔记」。 */
+    private static String supplementTitleOf(String raw, String body, ContentItem parent) {
+        if (raw != null && !raw.isBlank()) {
+            return raw.trim();
+        }
+        for (String line : body.split("\\R")) {
+            String text = line.replaceFirst("^\\s*#{1,6}\\s*", "")
+                    .replaceAll("[*_`>#\\-]+", " ").trim();
+            if (!text.isEmpty()) {
+                return text.length() > 40 ? text.substring(0, 40) : text;
+            }
+        }
+        return parent.getTitle() + " · 补充";
+    }
+
+    /** 补充笔记的地址：本体 slug 后面接 -detail，重名了往后挂数字。 */
+    private String uniqueSupplementSlug(Long ownerId, String base) {
+        String slug = base.length() > 60 ? base.substring(0, 60) : base;
+        if (!items.existsByOwnerIdAndSlug(ownerId, slug)) {
+            return slug;
+        }
+        for (int i = 2; i < 1000; i++) {
+            String candidate = slug + "-" + i;
+            if (!items.existsByOwnerIdAndSlug(ownerId, candidate)) {
+                return candidate;
+            }
+        }
+        throw new ResponseStatusException(HttpStatus.CONFLICT, "同名的补充笔记太多了");
     }
 }

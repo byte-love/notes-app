@@ -1,17 +1,22 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org" lang="zh-CN">
-<head th:replace="~{fragments/layout :: head('笔记 · byte-love')}"></head>
+<head th:replace="~{fragments/layout :: head(${pageTitle + ' · byte-love'})}"></head>
 <body>
 <header th:replace="~{fragments/layout :: nav}"></header>
 
 <div class="with-tree" th:classappend="${#lists.isEmpty(tree)} ? 'no-tree' : ''">
-    <aside class="tree-pane" th:if="${!#lists.isEmpty(tree)}">
+    <aside class="tree-pane" th:attr="data-kind=${#strings.toLowerCase(kind.name())}" th:if="${!#lists.isEmpty(tree)}">
+        <div class="tree-head">
+            <span class="tree-head-text">我的目录</span>
+            <button sec:authorize="isAuthenticated()" type="button" class="tree-act tree-add"
+                    data-parent="" aria-label="在最外层新建">+</button>
+        </div>
         <ul th:replace="~{fragments/tree :: nodes(${tree})}"></ul>
     </aside>
 
     <main class="tree-main">
         <div class="page-head">
-            <h1 th:text="${pageTitle}">笔记</h1>
+            <nav th:replace="~{fragments/layout :: mineTabs}"></nav>
             <span class="count" th:text="${#lists.size(items)} + ' 篇'">0 篇</span>
         </div>
 
@@ -74,6 +79,7 @@
 
 <script th:src="@{/js/list.js(v=8)}" defer></script>
 <script th:src="@{/js/rate.js(v=2)}" defer></script>
+<script th:src="@{/js/tree-admin.js(v=2)}" defer></script>
 <footer th:replace="~{fragments/layout :: foot}"></footer>
 </body>
 </html>

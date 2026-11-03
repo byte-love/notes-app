@@ -23,17 +23,21 @@ public class SecurityConfig {
     public SecurityFilterChain filterChain(HttpSecurity http, LoginAttemptService attempts) throws Exception {
         http
                 .authorizeHttpRequests(auth -> auth
-                        // 推荐栏和更新记录对游客开放，写操作要登录
+                        // 技术广场、用户指南和更新记录对游客开放，写操作要登录
                         .requestMatchers(HttpMethod.POST, "/explore/copy/**").authenticated()
-                                                .requestMatchers("/explore", "/explore/**", "/changelog", "/updates").permitAll()
+                                                .requestMatchers("/explore", "/explore/**", "/guide",
+                                                        "/changelog", "/updates").permitAll()
                         .requestMatchers("/", "/notes", "/notes/**", "/projects", "/projects/**",
                                 "/bagu", "/bagu/**", "/algo", "/algo/**",
-                                "/login", "/register", "/api/**", "/css/**", "/js/**", "/media/**", "/favicon.ico",
-                                "/error").permitAll()
+                                // /api/ai/** 和 /mcp 是给本地 AI 用的，没有会话，靠 Bearer token 自己鉴权
+                                "/login", "/register", "/api/**", "/mcp", "/css/**", "/js/**", "/img/**",
+                                "/media/**", "/favicon.ico", "/error").permitAll()
                         .requestMatchers("/admin/**").authenticated()
                         .requestMatchers("/star/**", "/rate/**", "/memo").authenticated()
                         .anyRequest().authenticated()
                 )
+                // 机器调用的接口不靠 cookie，也就没有 CSRF 可言：主站表单仍然照旧校验
+                .csrf(csrf -> csrf.ignoringRequestMatchers("/api/ai/**", "/mcp"))
                 .formLogin(login -> login
                         .loginPage("/login")
                         .successHandler((request, response, authentication) -> {

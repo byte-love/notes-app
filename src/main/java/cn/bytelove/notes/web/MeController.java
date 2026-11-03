@@ -1,9 +1,11 @@
 package cn.bytelove.notes.web;
 
+import cn.bytelove.notes.config.AppProperties;
 import cn.bytelove.notes.domain.AppUser;
 import cn.bytelove.notes.domain.ContentKind;
 import cn.bytelove.notes.repo.AppUserRepository;
 import cn.bytelove.notes.repo.ContentItemRepository;
+import cn.bytelove.notes.service.ApiTokenService;
 import cn.bytelove.notes.service.BookmarkService;
 import cn.bytelove.notes.service.ContentStarService;
 import cn.bytelove.notes.service.RatingService;
@@ -11,11 +13,15 @@ import cn.bytelove.notes.service.TrashService;
 import cn.bytelove.notes.service.UserBadge;
 import cn.bytelove.notes.service.ViewerService;
 import cn.bytelove.notes.service.VisibilityService.Viewer;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
+import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 import org.springframework.web.server.ResponseStatusException;
 
 @Controller
@@ -28,10 +34,13 @@ public class MeController {
     private final TrashService trash;
     private final BookmarkService bookmarks;
     private final RatingService ratings;
+    private final ApiTokenService tokens;
+    private final AppProperties props;
 
     public MeController(AppUserRepository users, ContentItemRepository items,
                         ContentStarService stars, ViewerService viewers, TrashService trash,
-                        BookmarkService bookmarks, RatingService ratings) {
+                        BookmarkService bookmarks, RatingService ratings, ApiTokenService tokens,
+                        AppProperties props) {
         this.users = users;
         this.items = items;
         this.stars = stars;
@@ -39,10 +48,12 @@ public class MeController {
         this.trash = trash;
         this.bookmarks = bookmarks;
         this.ratings = ratings;
+        this.tokens = tokens;
+        this.props = props;
     }
 
     @GetMapping("/me")
-    public String me(Model model, Authentication auth) {
+    public String me(Model model, Authentication auth, HttpServletRequest request) {
         Viewer viewer = viewers.current(auth);
         AppUser user = users.findByUsername(auth.getName())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
@@ -62,7 +73,74 @@ public class MeController {
         model.addAttribute("bookmarkCount", bookmarks.count(viewer.userId()));
         model.addAttribute("ratingSummary", ratings.summary(viewer.userId()));
 
+        // AI 接入：只展示 token 的前几位，明文在生成那一刻由 flash 带过来一次
+        tokens.describe(viewer.userId()).ifPresent(t -> {
+            model.addAttribute("tokenHint", t[0]);
+            model.addAttribute("tokenCreatedAt", t[1]);
+        });
+        // MCP 地址给绝对地址：用户要往别的客户端里贴，带域名的才能直接用。
+        // 配了 notes.mcp-url 就用它（测试环境指到正式站，不会把 8180 复制出去）
+        String mcpUrl = mcpUrl(request);
+        model.addAttribute("mcpUrl", mcpUrl);
+        model.addAttribute("apiBase", mcpUrl.replaceAll("/mcp$", "") + "/api/ai");
+        // 刚生成 token 时，顺手把「复制给 AI 的整段话」也备好，用户不用自己拼
+        Object fresh = model.getAttribute("newToken");
+        if (fresh instanceof String token) {
+            model.addAttribute("mcpPrompt", aiPrompt(mcpUrl, token));
+        }
+
         model.addAttribute("tabActive", "me");
         return "me";
+    }
+
+    /** MCP 地址：配了 notes.mcp-url 用配置的，没配就按当前请求的 scheme://host:port/app 拼。 */
+    private String mcpUrl(HttpServletRequest request) {
+        String configured = props.mcpUrl();
+        if (configured != null && !configured.isBlank()) {
+            return configured.trim();
+        }
+        return ServletUriComponentsBuilder.fromCurrentContextPath().toUriString() + "/mcp";
+    }
+
+    /** 一段可以直接粘给 AI 的说明：地址、token、配法，以及「先问权限、别自己覆盖」的约定。 */
+    private static String aiPrompt(String mcpUrl, String token) {
+        String cmd = "claude mcp add --transport http byte-love-notes " + mcpUrl
+                + " --header \"Authorization: Bearer " + token + "\"";
+        String json = "{\"mcpServers\":{\"byte-love-notes\":{\"type\":\"http\",\"url\":\"" + mcpUrl
+                + "\",\"headers\":{\"Authorization\":\"Bearer " + token + "\"}}}}";
+        return String.join("\n",
+                "我有个笔记站，帮我把它的 MCP 配到你这儿，配好之后我说「存成笔记」你就直接存进去。",
+                "",
+                "MCP 地址（HTTP）：" + mcpUrl,
+                "认证头：Authorization: Bearer " + token,
+                "",
+                "Claude Code 用这条命令：",
+                cmd,
+                "",
+                "Cursor / Claude Desktop 往配置文件里加：",
+                json,
+                "",
+                "配好之后按这个来：",
+                "1. 存之前先用 notes_folders 看目录、notes_search 查重；有相近的旧笔记，"
+                        + "先把那几篇标题念给我，由我决定新建还是覆盖。"
+                        + "目录里没有合适的分类就先建一个（note_create 带 folder=true），别硬塞进不相关的目录。",
+                "2. 存之前问我这篇给什么权限：PUBLIC 任何用户可见（会进技术广场）；"
+                        + "MEMBER 登录可见（只有我把链接发给朋友、对方注册登录后才能看，不进广场）；"
+                        + "PRIVATE 仅自己。我已经说过了就直接用，别再问。",
+                "3. 覆盖和删除必须我明确同意。");
+    }
+
+    /** 生成（或重新生成）个人 token；旧的立即作废。 */
+    @PostMapping("/me/token")
+    public String issueToken(Authentication auth, RedirectAttributes redirect) {
+        Viewer viewer = viewers.current(auth);
+        redirect.addFlashAttribute("newToken", tokens.issue(viewer.userId()));
+        return "redirect:/me";
+    }
+
+    @PostMapping("/me/token/delete")
+    public String revokeToken(Authentication auth) {
+        tokens.revoke(viewers.current(auth).userId());
+        return "redirect:/me";
     }
 }

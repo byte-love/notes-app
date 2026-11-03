@@ -20,7 +20,7 @@
             <div class="field-label">
                 <span>类型</span>
                 <span class="help" role="button" tabindex="0"
-                      data-help="笔记是学习记录和踩坑总结；八股是面试题和答案；算法是题解和思路；项目是自己做过的作品，会出现在作品集里">?</span>
+                      data-help="闪念是随手记的想法和踩坑总结；八股是面试题和答案；算法是题解和思路；项目是自己做过的作品，会出现在作品集里">?</span>
             </div>
             <div class="select">
                 <button type="button" class="select-btn">
@@ -35,6 +35,15 @@
                 </div>
                 <input type="hidden" th:field="*{kind}">
             </div>
+        </div>
+
+        <div class="field-check">
+            <label>
+                <input type="checkbox" th:field="*{folder}">
+                <span>当目录用</span>
+            </label>
+            <span class="help" role="button" tabindex="0"
+                  data-help="只当分类用：列表里不占一张卡片，可以在它下面继续新建条目；正文可以留空。">?</span>
         </div>
 
         <div class="field">
@@ -146,6 +155,19 @@
             <span class="error" th:if="${#fields.hasErrors('body')}" th:errors="*{body}"></span>
         </div>
 
+        <div class="field field-supplement">
+            <div class="field-label">
+                <span>补充笔记</span>
+                <span class="help" role="button" tabindex="0"
+                      th:attr="data-help-img=@{/img/guide/attach-card.png}"
+                      data-help="直接在这里写，或者把 AI 整理好的一段贴进来；保存后正文末尾会生成一张卡片，点开就是这一篇。留空就不挂，原来挂着的那篇会进回收站。">?</span>
+                <button type="button" class="field-link" id="supplement-clear"
+                        th:hidden="${#strings.isEmpty(form.supplementBody)}">清除</button>
+            </div>
+            <input type="text" th:field="*{supplementTitle}" placeholder="标题，留空取正文第一行">
+            <textarea th:field="*{supplementBody}" rows="12" spellcheck="false"></textarea>
+        </div>
+
         <div class="form-actions">
             <button type="submit" class="btn-primary">保存</button>
             <a th:if="${backUrl != null}" th:href="${backUrl}" class="btn-ghost">取消</a>
@@ -155,6 +177,6 @@
 </main>
 
 <footer th:replace="~{fragments/layout :: foot}"></footer>
-<script th:src="@{/js/admin-editor.js(v=1)}"></script>
+<script th:src="@{/js/admin-editor.js(v=4)}"></script>
 </body>
 </html>

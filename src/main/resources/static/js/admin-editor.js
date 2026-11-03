@@ -76,4 +76,21 @@
             }
         });
     }
+
+    // 「补充笔记」行末的清除：把标题和正文清空，保存时那一篇就进回收站
+    const supClear = document.getElementById('supplement-clear');
+    const supBody = document.querySelector('form textarea[name="supplementBody"]');
+    if (supClear && supBody) {
+        const supTitle = document.querySelector('form input[name="supplementTitle"]');
+        const sync = () => {
+            supClear.hidden = supBody.value.trim() === '';
+        };
+        supClear.addEventListener('click', () => {
+            supBody.value = '';
+            if (supTitle) supTitle.value = '';
+            sync();
+        });
+        supBody.addEventListener('input', sync);
+        sync();
+    }
 })();

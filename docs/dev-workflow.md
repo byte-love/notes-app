@@ -135,8 +135,12 @@ sudo /opt/deploy/sync-db.sh    # 正式库整库覆盖到测试库
 从 V5 开始，每个用户有自己的项目/笔记/八股/算法空间。
 
 - `content_item.owner_id` 指向创建者；`slug` 只在本人范围内唯一（`uq_content_owner_slug`）
-- `recommended = true` 的内容才会出现在「推荐」里、对别人可见；管理员新建的内容自动是 `true`
-- `visibility` 只在「别人看推荐内容」时起作用：`PUBLIC` 谁都能看、`MEMBER` 要登录、`PRIVATE` 只有本人
+- `recommended = true` 的内容才会出现在「技术广场」里、对别人可见；管理员新建的内容自动是 `true`
+- `visibility` 只在「别人看推荐内容」时起作用：`PUBLIC` 谁都能看、`MEMBER` 要登录、`PRIVATE` 只有本人。
+  **技术广场（`/explore`）只收 `PUBLIC + recommended`**：卡片（`RecommendService.cards`）和分组页
+  （`RecommendService.group`）都按这个卡，`MEMBER` / `PRIVATE` 的分组进来是 404——那两种只走「作者把链接发出来」
+- 顶栏四项（我的笔记 / 技术广场 / 用户指南 / 更新日志）只改文案不动路由：闪念 = `NOTE`、地址仍是 `/notes`；
+  四类内容共用 `list.html`，页面上那排「闪念 / 项目 / 八股 / 算法」是 `fragments/layout :: mineTabs`
 - 收藏夹是 `content_star(user_id, item_id)`，不是内容上的一个布尔值——标记属于「谁标的」
 - 书签是 `content_bookmark(user_id, item_id, anchor)`：`anchor` 为空是整篇，非空是正文里某个标题
   （标题 id 由标题文字生成，见 `MarkdownRenderer.slugOf`；以前用 h1/h2 序位号，插标题会错位）
@@ -203,10 +207,12 @@ sudo /opt/deploy/sync-db.sh    # 正式库整库覆盖到测试库
 - **自动标签（V27）**：`content_tag(item_id, tag, score)`，词表在 `resources/tags.json`（20 个标签，
   写成 `{标签: [关键词…]}`）。打分规则：标题命中 3 分、正文命中 1 分（同一个词在正文里最多算 3 次），
   够 3 分才挂，最多 5 个；**英文缩写按左边界匹配**（`(?<![a-z0-9])`），否则 `ES` 会命中 `false`、
-  `AI` 会命中 `wait`。触发点：后台新建/保存、导入脚本（走同一张表单）、`POST /admin/retag`
-  （管理页「重新打标」，只重算自己名下）。**改完 `tags.json` 必须重新部署 + 点一次「重新打标」**，
-  否则存量 `content_tag` 还是旧词表算出来的。筛选：`?tag=Redis`，可以跟 `rate` 叠着用；
-  标签条数按「当前星级筛选后」的集合算。
+  `AI` 会命中 `wait`。触发点：后台新建/保存、导入脚本（走同一张表单）、`POST /admin/retag`。
+  **改完 `tags.json` 必须重新部署 + 调一次 `POST /admin/retag`**（带登录会话、CSRF 一起提交，
+  重算的是当前登录账号名下的所有条目），否则存量 `content_tag` 还是旧词表算出来的。
+  这个接口**不出现在页面上**（2026-11-03 把管理页那个「重新打标」按钮拿掉了：日常保存会自动重算当条，
+  用户根本用不到），要刷的时候用 curl 打接口，或者按 `TagService.compute` 的规则直接写 `content_tag`。
+  筛选：`?tag=Redis`，可以跟 `rate` 叠着用；标签条数按「当前星级筛选后」的集合算。
 
 - **正文编辑器**：正文页标题下面那排有「编辑」（只对自己内容显示），链接带 `back=<文章路径>`。
   编辑页左写右预览（`admin-editor.js`）：预览打 `POST /admin/preview`，用的是**服务端同一个
@@ -217,6 +223,30 @@ sudo /opt/deploy/sync-db.sh    # 正式库整库覆盖到测试库
   当静态目录挂了出来（所以文件在 `uploads/media/...` 下，URL 就是 `/media/...`），`/media/**` 在
   `SecurityConfig` 里放行。上传的 CSRF 走 **`X-CSRF-TOKEN` 请求头**：multipart 的 body 在过滤器那一层
   还读不到 `_csrf` 参数。上传上限在 `application.yml`（`spring.servlet.multipart.max-file-size: 8MB`）。
+
+- **AI 接入（V28）**：目标是「跟 AI 聊完 → 让它整理成 Markdown → 直接存进站里」。
+  - **个人 token**：`app_user.api_token_hash / api_token_hint / api_token_created_at`，
+    明文只在「我的 → AI 接入 → 生成 Token」那一刻显示一次，库里存 SHA-256（高熵随机串，不用 bcrypt）；
+    重新生成会把旧的顶掉，撤销就是清空这三列。
+  - **接口**：`/app/api/ai/**`，认证一律 `Authorization: Bearer <token>`，**不走会话 cookie**。
+    `SecurityConfig` 里 `/api/**` 和 `/mcp` 是 permitAll，鉴权在 `AiController.requireUser()` 自己做；
+    这两个前缀**排除了 CSRF**（机器调用没有 cookie 可伪造），主站表单照旧校验。
+  - **两个 MCP 壳**：远程 `POST /app/mcp`（`McpController`，JSON-RPC：initialize / tools/list / tools/call，
+    protocolVersion 2025-06-18，直接回 JSON 不用 SSE）；本地 `mcp/notes-mcp.mjs`（零依赖 Node，stdio，
+    只读 `NOTES_BASE` + `NOTES_TOKEN`），客户端配置写法在 `mcp/README.md`。
+  - **页面上的 MCP 地址走配置**：`notes.mcp-url`（环境变量 `MCP_URL`），两套 `app.env` 里都写死成
+    `http://47.104.210.93:8080/app/mcp`。不配的话才按当前请求的域名端口拼——测试站会拼出 `:8180`，
+    那条地址复制给 AI 就打到测试库上去了。**备案换成域名之后改这一处就行**（两个 `app.env` + 重启）。
+  - **可见性必须由用户决定**：`note_create` 的 `visibility` 是必填参数，传空服务端直接 400，返回里明说
+    「先去问用户」。三档含义见 `Visibility` 枚举；`MEMBER` 是「用户把链接发给别人、对方登录后才能看」，
+    **不进技术广场**（广场以后只收 `PUBLIC`）。改可见性语义先读 `VisibilityService`——别人能不能看还有
+    `recommended` 这道门，别只看 visibility。
+  - **危险操作由服务端拦，不靠 AI 自觉**：`note_update` / `note_delete` 少 `confirm: true` 直接拒绝；
+    覆盖前把旧版本写进 `content_revision`。新建永不覆盖（slug 由服务端生成 `ai-YYYYMMDD-xxxxxxxx`）。
+  - **查重只提示不执行**：`similar` 用标题二元组 Jaccard（阈值 0.5），最多 3 条，让 AI 拿去问用户；
+    别改成自动覆盖。
+  - **限流**：每人 10 分钟最多 60 次写操作。上传走 `/api/ai/upload`，落
+    `/srv/data/uploads/media/notes/`，和正文编辑器同一套目录。
 
 - 「加入我的空间」是**幂等**的：`copyTo` 先查 `(owner_id, copied_from_id)` 有没有复制过，有就返回 0；
   页面上已加入的卡片显示「已加入」。重复复制产生的脏数据用
@@ -257,13 +287,39 @@ sudo /opt/deploy/sync-db.sh    # 正式库整库覆盖到测试库
     卡片本体是 3 列 × 2 行的 grid：`三角 / 标题 / 条数` 在上，`.item-group-preview` 在下（跨到右边缘）。
     所以：**新增页面渲染 `groupSections` 片段的，外面要包一层 `.group-grid`**，
     否则「加载更多」插进来的新分组不会进网格；`.list-more` 锚点已按 `grid-column: 1 / -1` 处理
+  - **目录（`is_folder`，V29）**：勾上「当目录用」的条目只做分类，`PublicController.listing` 里
+    不进 `leaves`（所以不占卡片），但 `groups()` 会给它留一个空分组——新建完立刻能在列表上看到
+    「Python 0 条」。有子条目时跟普通分类一样是分组标题。`body` 允许为空（`ContentForm.body` 去掉了
+    `@NotBlank`，由 `AdminController` 按 `folder` 判断）。
+    - **四个入口**：左树顶上那一行的「+」（`tree-head`，加到最外层）、每行末尾的「+」（加到这一行下面）、
+      行末「⋯」菜单里没有新建、`/admin` 右上角「新建」（带全部字段的表单）。
+      前两个走 `POST /admin/quick`（只收 title / parentId / kind，slug 自动生成 `f-YYYYMMDD-xxxxxxxx`、
+      正文留空、排在同层最后），页面上是就地弹一个输入框，回车提交后整页刷新；`/admin/new` 那个表单
+      留着给需要填正文 / 摘要 / 项目字段的场合，也会按 query 预填类型 / 父节点并算好 sortOrder
+    - **行末「⋯」菜单**（`tree-admin.js`）：重命名（`POST /admin/{id}/rename`，只改标题不动 slug）、
+      编辑（跳编辑页）、复制链接、删除（`POST /admin/{id}/delete`，**连子节点一起软删**，
+      不然会留下父没了、子挂在树顶的孤儿）
+    - **AI 也能建目录**：`note_create` 带 `folder=true`（`body` 可空），返回的 slug 直接拿去当
+      下一次 `note_create` 的 `parent`；`notes_folders` 现在也把「空目录」列出来（以前只列当过父节点的）
   - **补充笔记（`supplement_of_id`）不单独占位置**：列表里并进「本体」那张卡片的内嵌附件行
     （`.card-attach`），左树里直接不渲染它，正文末尾给一张附件卡（`.attach-card`），
-    补充笔记页标题下面给一条「本体」回链（`.doc-origin`）。层级上两者同级（`parent_id` 相同）
-    - 再挂一条补充笔记的做法：新建一篇内容，`parent_id` 设成**本体的父节点**（同级而不是子节点），
-      `supplement_of_id` 设成本体 id，`sort_order` 排在本体后面；页面上的附件卡 / 内嵌行会自动出来
+    补充笔记页标题下面给一条「本体」回链（`.doc-origin`）。层级上原来的约定是同级（`parent_id` 相同），
+    但渲染只看 `supplement_of_id`，表单也不动 `parent_id`，所以别把它当硬约束
+    - **怎么挂（2026-11-03 起在编辑页里直接写，不用再写 SQL）**：编辑 / 新建页最底部（正文下面）有「补充笔记」——
+      一个标题输入框 + 一个正文文本框，当场写一段（通常是把 AI 整理好的整段贴进来）。保存时
+      `AdminController.applySupplement` 把它建成挂在本文下面的一篇：标题留空取正文第一行（去掉 `#` `*` 这些记号），
+      slug 是本体 slug 加 `-detail`（重名往后挂数字），`kind` / `visibility` / `sort_order` 全部跟本体走；
+      已经挂着的那篇就地更新（改标题、正文、类型、可见性）；文本框清空再保存，就把原来那篇挪进回收站。
+      行末「?」里有说明和一张卡片示例图（`static/img/guide/attach-card.png`，走 `data-help-img` 塞进浮窗，见本段最后一条）
+    - 关系记在**生成的那一篇**上（`supplement_of_id` = 本体 id），`parent_id` 抄本体的父节点。
+      渲染只看 `supplement_of_id`（`PublicController.attachedNotesOf`），所以层级怎么放都不影响卡片出不出现
+    - **卡片只在同类型之间渲染**（附件卡和列表内嵌行都按 `kind` 取兄弟条目），所以补充笔记的 `kind` 跟着本体走；
+      编辑时改了本体的「类型」，挂在它下面的那篇也会跟着改，不会变成「有记录但页面不显示」
     - 附件卡 / 内嵌行上那个体积（`9.1 KB`）是 `PublicController.sizeOf()` 按正文 UTF-8 字节折算的，
       只做量级参考；行号的来源见下面「左树每行带行号」那条
+    - **`?` 浮窗可以带图**：`layout.html` 的 `foot` 里那段脚本除了 `data-help`（一句话）还认 `data-help-img`
+      （站内图片地址），有图时给 `.gl-tip` 加 `has-img`（宽度放到 640px）并在文字下面插一张图；
+      图加载完会重新摆一次位置，`img.complete` 那句别删（缓存命中时 `load` 不会再来）
   - **左树样式**（2026-11-02 改）：不再画整列竖线 + 每行短横线（`.tree ul` 的 border-left 和
     `li::before` 都删了），层级靠缩进 + 字重；行是圆角 8 的块，hover 浅底、当前项浅底 + 强调色 +
     左侧 2px 强调色；二级条目长标题用悬挂缩进（`padding-left` + 负 `text-indent`）对齐；
@@ -367,5 +423,14 @@ grep 命中就退出，`tee` 收到 SIGPIPE，整个管道退出码变成 141，
 **CSRF 的 meta 标签要读 `.content`，读 `.value` 永远是 `undefined`**：`<meta name="_csrf" content="…">`
 不是表单控件。2026-11-02 两次栽在这：`rate.js` 打星时 token 是空串 → 403（点了星页面没反应，看着像 JS 没跑），
 浏览器里临时拼登录脚本时同理。抄 `comments.js` 里 `const csrf = () => meta.content` 那行就不会错。
+
+**测试脚本取 JSON 字段别用贪婪 `sed 's/.*"slug":"//'`**：2026-11-03 我用它从 `note_create` 的返回里取 slug，
+结果匹配到了 `similar` 数组里的最后一个 slug，于是后续的「带 confirm 覆盖」改错了对象、清理时又用同一个变量
+拼 `delete ... where slug='$SLUG'`，把测试库里别人（我自己的另一篇八股）的一条笔记删掉了。
+规矩：① 取字段用能锚定上下文的写法（`"created":true,"slug":"([^"]*)"`）或 `jq`；
+② **清理语句里不要用变量拼 slug 做删除条件**，先 `select` 出 id 人工看一眼再按 id 删。
+
+**`docker exec` 跑 psql 要带 `-i`**：`-f -` 从 stdin 灌 SQL 时少了 `-i` 会静默什么都不执行（没有报错、
+也没有输出），2026-11-03 因此一度以为恢复脚本无效。
 
 

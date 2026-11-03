@@ -17,7 +17,7 @@
     </div>
 
     <ul class="me-stats">
-        <li><a th:href="@{/notes}"><strong th:text="${noteCount}">0</strong><span>笔记</span></a></li>
+        <li><a th:href="@{/notes}"><strong th:text="${noteCount}">0</strong><span>闪念</span></a></li>
         <li><a th:href="@{/bagu}"><strong th:text="${baguCount}">0</strong><span>八股</span></a></li>
         <li><a th:href="@{/algo}"><strong th:text="${algoCount}">0</strong><span>算法</span></a></li>
         <li><a th:href="@{/projects}"><strong th:text="${projectCount}">0</strong><span>项目</span></a></li>
@@ -33,6 +33,52 @@
             <li><a th:href="@{/bagu(rate=2)}"><strong th:text="${ratingSummary.r2()}">0</strong><span>★★以上</span></a></li>
             <li><a th:href="@{/bagu(rate=0)}"><strong th:text="${ratingSummary.none()}">0</strong><span>未评</span></a></li>
         </ul>
+    </section>
+
+    <section class="me-section">
+        <h2>AI 接入</h2>
+
+        <p class="me-note" th:if="${newToken != null}">
+            <code class="me-token" th:text="${newToken}">bl_…</code>
+            <button type="button" class="btn-quiet me-copy" th:if="${mcpPrompt != null}"
+                    th:attr="data-copy=${mcpPrompt}">复制给 AI</button>
+            <span class="me-hint">只显示这一次，丢了就重新生成</span>
+        </p>
+        <p class="me-note" th:if="${newToken == null and tokenHint != null}">
+            Token <code th:text="${tokenHint}">bl_…</code>
+            生成于 <time th:text="${tokenCreatedAt}">2026-11-03 09:00</time>
+        </p>
+
+        <div class="me-row">
+            <span class="me-label">Token</span>
+            <form th:action="@{/me/token}" method="post" class="inline">
+                <input type="hidden" name="_csrf" th:value="${_csrf.token}">
+                <button type="submit" class="btn-quiet"
+                        th:text="${tokenHint == null} ? '生成 Token' : '重新生成'">生成 Token</button>
+            </form>
+            <form th:if="${tokenHint != null}" th:action="@{/me/token/delete}" method="post" class="inline">
+                <input type="hidden" name="_csrf" th:value="${_csrf.token}">
+                <button type="submit" class="btn-quiet">撤销</button>
+            </form>
+        </div>
+
+        <div class="me-row" th:if="${tokenHint != null}">
+            <span class="me-label">MCP 地址</span>
+            <code class="me-token" th:text="${mcpUrl}">/app/mcp</code>
+            <!-- 刚生成 token 时上面已经有「复制给 AI」（含地址），这里就不再重复一个复制按钮 -->
+            <button type="button" class="btn-quiet me-copy" th:if="${mcpPrompt == null}"
+                    th:attr="data-copy=${mcpUrl}">复制</button>
+        </div>
+
+        <p class="me-hint" th:if="${newToken != null}">
+            点上面的「复制给 AI」，把整段内容粘给你的 AI（Claude Code / Cursor / Claude Desktop 都行），
+            它会按里面的步骤把 MCP 配好。之后想存笔记，直接对它说
+            「帮我整理一下刚才的讨论，生成一篇笔记存到我账号里」这种话就行——存之前它会先查重，并问你这篇给谁看
+        </p>
+        <p class="me-hint" th:if="${newToken == null and tokenHint != null}">
+            上面只剩打码的 Token。要重新配置、或者换一个 AI 客户端，先点「重新生成」拿一次完整的「复制给 AI」内容；
+            平时直接跟 AI 说「帮我整理一下刚才的讨论，存到我账号里」就行
+        </p>
     </section>
 
     <section class="me-section">
@@ -64,6 +110,29 @@
 </main>
 
 <script>
+    // 复制 Token / MCP 地址
+    (() => {
+        const copy = (text) => {
+            if (navigator.clipboard) return navigator.clipboard.writeText(text);
+            const area = document.createElement('textarea');
+            area.value = text;
+            document.body.appendChild(area);
+            area.select();
+            try { document.execCommand('copy'); } finally { area.remove(); }
+            return Promise.resolve();
+        };
+        document.querySelectorAll('.me-copy').forEach((btn) => {
+            btn.addEventListener('click', async () => {
+                try {
+                    await copy(btn.dataset.copy || '');
+                    const old = btn.textContent;
+                    btn.textContent = '已复制';
+                    setTimeout(() => { btn.textContent = old; }, 1200);
+                } catch (e) {}
+            });
+        });
+    })();
+
     (() => {
         const root = document.documentElement;
         const mq = window.matchMedia('(prefers-color-scheme: dark)');

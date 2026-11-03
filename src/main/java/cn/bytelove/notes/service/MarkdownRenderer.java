@@ -123,7 +123,19 @@ public class MarkdownRenderer {
                 .nodeRendererFactory(TermNodeRenderer::new)
                 .attributeProviderFactory(context -> headingIds)
                 .build();
-        return renderer.render(document);
+        return stripPresentational(renderer.render(document));
+    }
+
+    /**
+     * 从别处（AI 对话、网页）整段粘进来的内容常带 raw HTML 和行内样式：
+     * `style="background:#fff;width:50%"` 这种会把我们的排版顶歪（白底块、表格溢出）。
+     * commonmark 默认放行 raw HTML，所以在出口把纯展示用的属性抹掉，只留结构。
+     */
+    private static String stripPresentational(String html) {
+        String out = html.replaceAll("\\s+(style|width|height|bgcolor|background|border|cellpadding|cellspacing|align|valign|face|color|size)\\s*=\\s*(\"[^\"]*\"|'[^']*'|[^\\s>]+)", "");
+        // 空的 <div> / <span> 包裹层（粘贴时常见）留出多余纵向空隙，一并去掉
+        out = out.replaceAll("<(div|span)\\s*>\\s*</\\1>", "");
+        return out;
     }
 
     /**

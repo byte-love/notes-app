@@ -68,6 +68,10 @@ public class ContentItem {
     @Column(name = "copied_from_id")
     private Long copiedFromId;
 
+    /** 只当目录用（分类 / 文件夹）：不进列表的卡片，可以在它下面继续新建条目。 */
+    @Column(name = "is_folder", nullable = false)
+    private boolean folder = false;
+
     /**
      * 补充笔记指向「本体」的那一条（例如八股正文下面挂的详解）。
      * 只表示内容关系，不影响层级：补充笔记的 parent_id 跟本体相同，二者在目录里是同级。
@@ -193,6 +197,14 @@ public class ContentItem {
 
     public void setRecommended(boolean recommended) {
         this.recommended = recommended;
+    }
+
+    public boolean isFolder() {
+        return folder;
+    }
+
+    public void setFolder(boolean folder) {
+        this.folder = folder;
     }
 
     public int getRating() {
