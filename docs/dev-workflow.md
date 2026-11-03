@@ -433,4 +433,22 @@ grep 命中就退出，`tee` 收到 SIGPIPE，整个管道退出码变成 141，
 **`docker exec` 跑 psql 要带 `-i`**：`-f -` 从 stdin 灌 SQL 时少了 `-i` 会静默什么都不执行（没有报错、
 也没有输出），2026-11-03 因此一度以为恢复脚本无效。
 
+**按字符串替换改 `app.css` 会静默不生效**：2026-11-03 我两次用「读全文 → `Replace(旧段, 新段)` → 写回」
+改样式，两处都没匹配上（文件里那段注释/缩进和我以为的不一样），但 `layout.html` 的版本号已经升了，
+于是线上「有新版本号、没新样式」，用户看到的是「你说的改了但没变化」。
+规矩：① 改 CSS/模板一律用 `edit` 工具定位；② **改完必须验证内容真的进去了**——
+`grep` 本地文件、再 `curl` 线上 `app.css?v=N` 搜关键选择器；只看版本号不算验证。
+
+**传大文件会被中途掐断，残缺包会编出坏 jar**：这台机器到 ECS 的 22 端口时通时断，
+`scp` 一个 900 KB 的源码包可能只传了 908 KB 就报 `connection closed`。`app.sh` 用残缺包解压后
+Maven 编译会产出损坏的 jar，服务起不来（`Error: Invalid or corrupt jarfile`）。
+规矩：① 大包切成 300 KB 分段，**每段 `stat -c %s` 核对远端大小**，重试到齐；
+② 服务器上 `cat` 拼回后**再核对总大小**；③ 真发挂了就用 `/opt/apps/<env>/notes-app.jar.bak` 还原
+（`app.sh` 每次都备份上一个包），本次就是这么救回来的。
+
+**本机 curl/.NET 报 TLS 握手失败 ≠ 站点坏了**：2026-11-03 域名上了 HTTPS 后，本机 `curl`（schannel）
+和 `Invoke-WebRequest` 对 `https://byte-love.cn` 全部 `000`（`failed to receive handshake`），
+但 ① 同一台机器 TCP 443 可达 ② 从服务器自己 `curl https://byte-love.cn/app/login` 是 200
+③ 浏览器正常打开。判断 HTTPS 是否可用要看**服务器侧 + 浏览器**，不要用本机 curl 一个结果下结论。
+
 

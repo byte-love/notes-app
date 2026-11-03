@@ -20,7 +20,8 @@
                     body: new URLSearchParams({ _csrf: metaCsrf, title: text, back: location.pathname }).toString(),
                 });
                 savedTitle = text;
-                document.title = text + ' · byte-love';
+                // 改完刷新一次：卡片标题、面包屑、左树都是服务端渲染的，光改 document.title 不够
+                location.reload();
             } catch (e) {}
         };
         titleEl.addEventListener('keydown', (e) => {
@@ -31,6 +32,11 @@
         });
         titleEl.addEventListener('blur', saveTitle);
     }
+
+    // 从浏览器「后退」缓存回来时页面是旧的（改名后卡片标题不同步就是这个）
+    window.addEventListener('pageshow', (e) => {
+        if (e.persisted) location.reload();
+    });
 
     const body = document.querySelector('.doc .markdown');
     if (!body || body.getAttribute('contenteditable') !== 'true' || !body.dataset.save) return;

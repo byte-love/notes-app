@@ -60,7 +60,7 @@
                 <span th:text="${r.count()} + ' 条'">1 条</span>
             </span>
             <form th:action="@{/admin/changelog/delete}" method="post" class="inline"
-                  onsubmit="return confirm('删掉这一整组？');">
+                  data-confirm="删掉这一整组？">
                 <input type="hidden" name="releasedOn" th:value="${r.releasedOn()}">
                 <input type="hidden" name="title" th:value="${r.title()}">
                 <button type="submit" class="link-button danger">删除整组</button>

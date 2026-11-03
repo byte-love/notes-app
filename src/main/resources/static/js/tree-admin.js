@@ -200,7 +200,9 @@
             } catch (e) {}
         }));
         const del = item('删除', async () => {
-            if (!confirm('删除「' + (row.dataset.title || '') + '」？进回收站，30 天内能恢复。')) return;
+            const ask = '删除「' + (row.dataset.title || '') + '」？进回收站，30 天内能恢复。';
+            const ok = window.uiConfirm ? await window.uiConfirm(ask) : confirm(ask);
+            if (!ok) return;
             await post('/admin/' + row.dataset.id + '/delete', {});
             location.reload();
         }, true);

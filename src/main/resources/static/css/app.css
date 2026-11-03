@@ -2220,6 +2220,65 @@ html.tree-no-count .tree-count {
 /* 没有内容时不显示左侧目录列，空态文案落在正文区 */
 .with-tree.no-tree {
     grid-template-columns: minmax(0, 720px);
+    /* 没有目录时内容居中，别贴着最左边挂一排 */
+    justify-content: center;
+}
+
+/* 附件卡：卡片占满一行，删除按钮浮在右上角，鼠标移到卡片上才出现 */
+.attach-item {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+}
+
+.attach-del {
+    position: absolute;
+    top: 0.35rem;
+    right: 0.35rem;
+    margin: 0;
+    opacity: 0;
+    transition: opacity 0.12s ease;
+}
+
+.attach-item:hover .attach-del,
+.attach-del:focus-within {
+    opacity: 1;
+}
+
+/* 触摸屏没有 hover，直接常显 */
+@media (hover: none) {
+    .attach-del {
+        opacity: 1;
+    }
+}
+
+.attach-del-btn {
+    width: 18px;
+    height: 18px;
+    display: grid;
+    place-items: center;
+    border: 1px solid var(--line);
+    background: none;
+    border-radius: 5px;
+    color: var(--fg-3);
+    font-size: 0.8rem;
+    line-height: 1;
+    padding: 0;
+    cursor: pointer;
+}
+
+.attach-del-btn:hover {
+    color: var(--danger);
+    border-color: var(--danger);
+}
+
+/* 标题也能直接改：不要焦点框 */
+.doc-head h1[contenteditable='true'],
+.project-head h1[contenteditable='true'] {
+    outline: none;
+    caret-color: var(--accent);
+    cursor: text;
 }
 
 /* 有树时正文不再单独居中。右栏宽 12%（按截图量的比例），gap 是正文到右栏的留白（2.4rem→9rem），
@@ -4700,4 +4759,103 @@ html[data-theme='dark'] .cl-latest {
 .card-attach:hover .card-attach-title,
 .card-attach:hover .card-attach-eye {
     color: var(--accent);
+}
+
+/* ---------- 确认弹窗 ---------- */
+/* 原生 confirm() 是系统画的，配色和站里完全不搭，所以换成这一套：
+   元素上写 data-confirm="…"（表单 / 按钮都认）或 JS 里 await uiConfirm('…')。
+   按钮统一靠右，主按钮在右，删除类操作是危险色。 */
+.dlg-mask {
+    position: fixed;
+    inset: 0;
+    z-index: 200;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1.2rem;
+    background: rgba(24, 23, 20, 0.42);
+    animation: dlg-fade 0.12s ease-out;
+}
+
+.dlg {
+    width: min(360px, 100%);
+    padding: 1.15rem 1.25rem 0.95rem;
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    box-shadow: 0 18px 48px rgba(0, 0, 0, 0.26);
+    animation: dlg-in 0.14s ease-out;
+}
+
+.dlg-msg {
+    margin: 0 0 1.05rem;
+    font-size: 0.92rem;
+    line-height: 1.7;
+    color: var(--fg);
+}
+
+.dlg-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+}
+
+.dlg-btn {
+    font: inherit;
+    font-size: 0.86rem;
+    line-height: 1.2;
+    padding: 0.42rem 1.1rem;
+    color: var(--fg-2);
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: 7px;
+    cursor: pointer;
+}
+
+.dlg-btn:hover {
+    color: var(--fg);
+    background: var(--bg-2);
+}
+
+.dlg-ok,
+.dlg-ok:hover {
+    color: #fff;
+    background: var(--accent);
+    border-color: transparent;
+    font-weight: 500;
+}
+
+.dlg-ok.is-danger,
+.dlg-ok.is-danger:hover {
+    background: var(--danger);
+}
+
+.dlg-ok:hover,
+.dlg-ok.is-danger:hover {
+    filter: brightness(1.1);
+}
+
+.dlg-btn:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 1px;
+}
+
+@keyframes dlg-fade {
+    from {
+        opacity: 0;
+    }
+}
+
+@keyframes dlg-in {
+    from {
+        opacity: 0;
+        transform: translateY(4px) scale(0.99);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .dlg-mask,
+    .dlg {
+        animation: none;
+    }
 }

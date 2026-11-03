@@ -40,7 +40,7 @@
                             <button type="submit" class="link-button">恢复</button>
                         </form>
                         <form th:action="@{/trash/{id}/purge(id=${i.id()})}" method="post" class="inline"
-                              onsubmit="return confirm('彻底删除之后无法恢复，确认？');">
+                              data-confirm="彻底删除之后无法恢复，确认？">
                             <button type="submit" class="link-button danger">彻底删除</button>
                         </form>
                     </div>
