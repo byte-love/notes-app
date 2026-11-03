@@ -15,8 +15,13 @@
 - **三级可见性**：`PUBLIC` 匿名可读 / `MEMBER` 需登录 / `PRIVATE` 仅 OWNER。权限判断集中在 `VisibilityService`，列表、详情、接口共用同一套规则，不存在「列表藏了但直连 URL 能看」的漏洞。
 - **看不到的条目不消失**：游客仍会在目录树和列表里看到 `MEMBER` 条目，但只是「压暗 + 锁」的占位（点进去走登录页），并提示「登录后可查看其余 N 篇」；`PRIVATE`（公司内容）连标题都不出现。`VisibilityService.lockedTo()` 只返回 `MEMBER`，就是这个边界。
 - **树状目录**：`content_item` 表用 `parent_id` 自引用 + `sort_order` 排序，一次查询装配整棵树，不递归查库。
-- **Markdown 渲染**：在 AST 阶段把匹配到的术语文本节点替换成自定义节点，输出成带 `data-tip` 的 `<span>`，术语注解由服务端生成，不依赖前端脚本；跳过标题和代码块，同一个词每篇只标第一次出现。
-- **管理后台**：OWNER 可新建 / 编辑内容、改可见性、调整父子关系。
+- **Markdown 渲染**：在 AST 阶段把匹配到的术语文本节点替换成自定义节点，输出成带 `data-tip` 的 `<span>`，术语注解由服务端生成，不依赖前端脚本；跳过标题和代码块，同一个词每篇只标第一次出现。术语解释存在 `glossary_term` 表（`resources/glossary.json` 只在表为空时当种子），管理员点一下词就能改。
+- **评论与注释**：整篇或选中一句都能评，一句话下可楼中楼回复；长解释走「注释」那条线（正文里画短虚下划线、点开弹窗），两者共表不同 `entry_kind`。
+- **重点高亮**：选中文字标五色底纹，只给标的人自己看；底纹用 CSS Custom Highlight API 画，不往 DOM 塞 span。
+- **星级与标签**：每条内容可以标 1–3 星（点星/键盘 1·2·3），列表按 `★★★ / ★★以上 / 收藏 / 未评` 筛；标签由 `resources/tags.json` 的固定词表自动打（标题 3 分、正文 1 分，取前 5），列表可按标签筛、并能和星级叠着用。
+- **正文在线编辑**：正文页标题下有「编辑」（只对自己内容显示），编辑页左写 Markdown、右栏用同一个渲染器实时预览，可上传插图，保存后回跳到这篇文章。
+- **收藏 / 书签 / 回收站 / 推荐栏 / 更新日志**：收藏和个人书签落在用户自己名下；删除先进回收站（30 天）；管理员标为推荐的内容进「推荐」栏给游客看。
+- **管理后台**：可新建 / 编辑内容、改可见性、调整父子关系，并对已有内容重打标签。
 - **`/app/api/me`**：给同源静态作品集页读登录态和 CSRF token，作品集页据此渲染「登录 / 后台 / 退出」。
 
 ## 本地跑
@@ -48,13 +53,17 @@ src/main/java/cn/bytelove/notes/
   domain/     AppUser、ContentItem、Role、Visibility、ContentKind
   repo/       Spring Data JPA 仓储
   security/   UserDetailsService
-  service/    AccountSeeder、LoginAttemptService、VisibilityService、
-              NoteTreeService、MarkdownRenderer、GlossaryService
-  web/        PublicController、AdminController、AuthController、ApiController
+  service/    AccountSeeder、LoginAttemptService、VisibilityService、NoteTreeService、
+              MarkdownRenderer、GlossaryService、CommentService、HighlightService、
+              RatingService、TagService、ChangelogService、TrashService、RecommendService…
+  web/        PublicController、AdminController、AuthController、ApiController、
+              GlossaryEditController、ChangelogController…
 src/main/resources/
-  application.yml        全部配置；密码只从环境变量读
-  db/migration/          Flyway 脚本（V1 建表、V2 加树结构）
-  glossary.json          术语表，渲染时用来做注解
+  application.yml        全部配置；密码只从环境变量读；上传上限也在这里
+  db/migration/          Flyway 脚本（V1 建表 … V27 标签，共 27 个）
+  glossary.json          术语表种子（表为空时导入，之后以库里为准）
+  tags.json              标签词表：{标签: [关键词…]}
+  subgroups.json         大分类的二级分档规则
   templates/             Thymeleaf 模板
   static/css/app.css     全部样式，手写，无框架
 ```
@@ -63,8 +72,9 @@ src/main/resources/
 
 线上是单机双环境：nginx 占 8080（正式）和 8180（测试），两边的 `/app/` 分别反代到 `127.0.0.1:8081`
 （`notes-app`）和 `127.0.0.1:8082`（`notes-app-dev`）；Spring Boot 只监听回环，PostgreSQL 跑在 Docker 里
-也只绑回环，不对外暴露。应用由 systemd 托管，JVM 参数按 2G 内存调（正式 `-Xmx448m`、测试 `-Xmx256m`，
-都是 `-XX:+UseSerialGC`）。测试实例连独立的 `notes_test` 库，改坏了可以用 `sync-db.sh` 从正式库重灌。
+也只绑回环，不对外暴露。应用由 systemd 托管，JVM 参数按 2G 内存调（正式 `-Xms256m -Xmx448m`、测试
+`-Xms192m -Xmx320m`，都是 `-XX:+UseG1GC -XX:MaxGCPauseMillis=50`）。测试实例连独立的 `notes_test` 库，
+改坏了可以用 `sync-db.sh` 从正式库重灌。
 
 发布流程：源码打包上传服务器 → 服务器上 `mvn package` → 停服务、换 jar、起服务、探活。
 正式和测试共用同一套参数化脚本 `/opt/deploy/app.sh <dev|prod>`，完整流程与权限边界见

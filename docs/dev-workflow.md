@@ -97,6 +97,10 @@ sudo /opt/deploy/psql.sh "update ..." prod
 
 自动备份策略：每小时一份留 24 小时，每天 3 点那份留 14 天，位置 `/srv/backup/pg/`，日志 `/var/log/backup-pg.log`。
 
+**正文里上传的图片不在备份里**：它们存在 `/srv/data/uploads/media/`（`backup-pg.sh` 只管 PostgreSQL），
+删了就是真没了。要保就把这个目录一起备份（同步到对象存储或另一台机器都行）。
+目前它是应用静态资源的一部分（见 `application.yml` 的 `static-locations`），部署不会覆盖。
+
 ## 出事怎么办
 
 **应用起不来**：部署脚本换包前会把旧 jar 备份成 `notes-app.jar.bak`，直接换回去：
@@ -187,6 +191,32 @@ sudo /opt/deploy/sync-db.sh    # 正式库整库覆盖到测试库
     一个词只有语境义项、又一条都没命中时宁可不标。这是为了「标签」这种词 —— Redis 段落里是 hash tag，
     模型段落里才是 label，以前一套解释套全站，在 Redis 的 Hash 结构里弹出来的是模型的 label（2026-11-02 用户指出）
   - 改/删/新增完页面会 `location.reload()` 一次（术语可能改名、新增的词要重新包标记）
+
+- **星级（V26）**：`content_item.rating`（0 = 没评，1–3）。改星级由 `RatingService` 的 SQL 直写，
+  **不碰 `updated_at`** —— 列表是按 `updated_at` 倒序排的，标个星就把这条顶到最前，翻着翻着顺序就乱。
+  列表卡片右侧和正文标题下面都能点：点第 n 颗 = n 星，再点当前那颗 = 清回 0；列表里鼠标停在哪张卡上按
+  `1` `2` `3` 打星、`0` 清空（`rate.js`，左侧目录里同一篇的星跟着刷新）。`POST /rate/{slug}` 只允许改
+  自己名下的条目，别人的内容 403。筛选：`?rate=star|3|2|1|0`（收藏 / 三星 / 两星以上 / 一星以上 / 没评），
+  **只筛卡片，左侧目录整棵不动**。初始值来自《复习重点》原文档题目后面的 ☆☆☆，按标题回填
+  （一次性 SQL 存在 `_publish/rating-backfill-2026-11-02.sql`）。
+
+- **自动标签（V27）**：`content_tag(item_id, tag, score)`，词表在 `resources/tags.json`（20 个标签，
+  写成 `{标签: [关键词…]}`）。打分规则：标题命中 3 分、正文命中 1 分（同一个词在正文里最多算 3 次），
+  够 3 分才挂，最多 5 个；**英文缩写按左边界匹配**（`(?<![a-z0-9])`），否则 `ES` 会命中 `false`、
+  `AI` 会命中 `wait`。触发点：后台新建/保存、导入脚本（走同一张表单）、`POST /admin/retag`
+  （管理页「重新打标」，只重算自己名下）。**改完 `tags.json` 必须重新部署 + 点一次「重新打标」**，
+  否则存量 `content_tag` 还是旧词表算出来的。筛选：`?tag=Redis`，可以跟 `rate` 叠着用；
+  标签条数按「当前星级筛选后」的集合算。
+
+- **正文编辑器**：正文页标题下面那排有「编辑」（只对自己内容显示），链接带 `back=<文章路径>`。
+  编辑页左写右预览（`admin-editor.js`）：预览打 `POST /admin/preview`，用的是**服务端同一个
+  `MarkdownRenderer`**，不是前端另写一套渲染；保存后 `redirect:` 到 `back`，所以改完直接回文章页看到效果。
+  `back` 只收站内路径（`safeBack` 挡 `//` 和 `://`）。插图走 `POST /admin/upload`：文件落在
+  `/srv/data/uploads/media/notes/<随机名>.<ext>`（`notes.media-dir` 可配），返回 `/app/media/notes/xxx.png`
+  写进正文。这个地址能通，是因为 `application.yml` 的 `static-locations` 把整个 `/srv/data/uploads/`
+  当静态目录挂了出来（所以文件在 `uploads/media/...` 下，URL 就是 `/media/...`），`/media/**` 在
+  `SecurityConfig` 里放行。上传的 CSRF 走 **`X-CSRF-TOKEN` 请求头**：multipart 的 body 在过滤器那一层
+  还读不到 `_csrf` 参数。上传上限在 `application.yml`（`spring.servlet.multipart.max-file-size: 8MB`）。
 
 - 「加入我的空间」是**幂等**的：`copyTo` 先查 `(owner_id, copied_from_id)` 有没有复制过，有就返回 0；
   页面上已加入的卡片显示「已加入」。重复复制产生的脏数据用
@@ -333,5 +363,9 @@ grep 命中就退出，`tee` 收到 SIGPIPE，整个管道退出码变成 141，
 
 **别在 scroll 事件里调 `getComputedStyle`**：每帧读一次会强制同步样式重算，滚动起来发涩。
 颜色在启动时读一次、切主题时重读就够。
+
+**CSRF 的 meta 标签要读 `.content`，读 `.value` 永远是 `undefined`**：`<meta name="_csrf" content="…">`
+不是表单控件。2026-11-02 两次栽在这：`rate.js` 打星时 token 是空串 → 403（点了星页面没反应，看着像 JS 没跑），
+浏览器里临时拼登录脚本时同理。抄 `comments.js` 里 `const csrf = () => meta.content` 那行就不会错。
 
 
