@@ -2296,6 +2296,12 @@ button:hover,
     margin: 0.4rem 0 0;
 }
 
+/* 复制按钮别被地址挤成两行 */
+.me-copy {
+    flex: none;
+    white-space: nowrap;
+}
+
 .seg {
     display: flex;
     flex-wrap: wrap;

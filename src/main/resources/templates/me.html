@@ -40,7 +40,6 @@
 
         <p class="me-note" th:if="${newToken != null}">
             <code class="me-token" th:text="${newToken}">bl_…</code>
-            <button type="button" class="btn-quiet me-copy" th:attr="data-copy=${newToken}">复制</button>
             <button type="button" class="btn-quiet me-copy" th:if="${mcpPrompt != null}"
                     th:attr="data-copy=${mcpPrompt}">复制给 AI</button>
             <span class="me-hint">只显示这一次，丢了就重新生成</span>
@@ -66,7 +65,9 @@
         <div class="me-row" th:if="${tokenHint != null}">
             <span class="me-label">MCP 地址</span>
             <code class="me-token" th:text="${mcpUrl}">/app/mcp</code>
-            <button type="button" class="btn-quiet me-copy" th:attr="data-copy=${mcpUrl}">复制</button>
+            <!-- 刚生成 token 时上面已经有「复制给 AI」（含地址），这里就不再重复一个复制按钮 -->
+            <button type="button" class="btn-quiet me-copy" th:if="${mcpPrompt == null}"
+                    th:attr="data-copy=${mcpUrl}">复制</button>
         </div>
 
         <p class="me-hint" th:if="${tokenHint != null}">
