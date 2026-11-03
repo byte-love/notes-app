@@ -26,10 +26,12 @@ public class RecommendService {
 
     private final ContentItemRepository items;
     private final TagService tags;
+    private final HighlightService highlights;
 
-    public RecommendService(ContentItemRepository items, TagService tags) {
+    public RecommendService(ContentItemRepository items, TagService tags, HighlightService highlights) {
         this.items = items;
         this.tags = tags;
+        this.highlights = highlights;
     }
 
     /** 广场上的一张卡片。count 是这条加它下面所有子孙的条数。 */
@@ -159,6 +161,8 @@ public class RecommendService {
             copy.setCopiedFromId(src.getId());
             ContentItem saved = items.save(copy);
             tags.copy(src.getId(), saved.getId());
+            // 高亮也跟着走：原作者标在正文里的重点，复制过来还看得见
+            highlights.copy(src.getId(), saved.getId(), src.getOwnerId(), userId);
             newIdOf.put(src.getId(), saved.getId());
             copied++;
         }

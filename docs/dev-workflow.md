@@ -284,11 +284,23 @@ sudo /opt/deploy/sync-db.sh    # 正式库整库覆盖到测试库
     否则「加载更多」插进来的新分组不会进网格；`.list-more` 锚点已按 `grid-column: 1 / -1` 处理
   - **补充笔记（`supplement_of_id`）不单独占位置**：列表里并进「本体」那张卡片的内嵌附件行
     （`.card-attach`），左树里直接不渲染它，正文末尾给一张附件卡（`.attach-card`），
-    补充笔记页标题下面给一条「本体」回链（`.doc-origin`）。层级上两者同级（`parent_id` 相同）
-    - 再挂一条补充笔记的做法：新建一篇内容，`parent_id` 设成**本体的父节点**（同级而不是子节点），
-      `supplement_of_id` 设成本体 id，`sort_order` 排在本体后面；页面上的附件卡 / 内嵌行会自动出来
+    补充笔记页标题下面给一条「本体」回链（`.doc-origin`）。层级上原来的约定是同级（`parent_id` 相同），
+    但渲染只看 `supplement_of_id`，表单也不动 `parent_id`，所以别把它当硬约束
+    - **怎么挂（2026-11-03 起在编辑页里直接写，不用再写 SQL）**：编辑 / 新建页最底部（正文下面）有「补充笔记」——
+      一个标题输入框 + 一个正文文本框，当场写一段（通常是把 AI 整理好的整段贴进来）。保存时
+      `AdminController.applySupplement` 把它建成挂在本文下面的一篇：标题留空取正文第一行（去掉 `#` `*` 这些记号），
+      slug 是本体 slug 加 `-detail`（重名往后挂数字），`kind` / `visibility` / `sort_order` 全部跟本体走；
+      已经挂着的那篇就地更新（改标题、正文、类型、可见性）；文本框清空再保存，就把原来那篇挪进回收站。
+      行末「?」里有说明和一张卡片示例图（`static/img/guide/attach-card.png`，走 `data-help-img` 塞进浮窗，见本段最后一条）
+    - 关系记在**生成的那一篇**上（`supplement_of_id` = 本体 id），`parent_id` 抄本体的父节点。
+      渲染只看 `supplement_of_id`（`PublicController.attachedNotesOf`），所以层级怎么放都不影响卡片出不出现
+    - **卡片只在同类型之间渲染**（附件卡和列表内嵌行都按 `kind` 取兄弟条目），所以补充笔记的 `kind` 跟着本体走；
+      编辑时改了本体的「类型」，挂在它下面的那篇也会跟着改，不会变成「有记录但页面不显示」
     - 附件卡 / 内嵌行上那个体积（`9.1 KB`）是 `PublicController.sizeOf()` 按正文 UTF-8 字节折算的，
       只做量级参考；行号的来源见下面「左树每行带行号」那条
+    - **`?` 浮窗可以带图**：`layout.html` 的 `foot` 里那段脚本除了 `data-help`（一句话）还认 `data-help-img`
+      （站内图片地址），有图时给 `.gl-tip` 加 `has-img`（宽度放到 640px）并在文字下面插一张图；
+      图加载完会重新摆一次位置，`img.complete` 那句别删（缓存命中时 `load` 不会再来）
   - **左树样式**（2026-11-02 改）：不再画整列竖线 + 每行短横线（`.tree ul` 的 border-left 和
     `li::before` 都删了），层级靠缩进 + 字重；行是圆角 8 的块，hover 浅底、当前项浅底 + 强调色 +
     左侧 2px 强调色；二级条目长标题用悬挂缩进（`padding-left` + 负 `text-indent`）对齐；

@@ -37,6 +37,28 @@ public class ContentForm {
     /** 项目的结构化字段（中英双语、action/result 是数组），存 project_meta.doc，只在类型为 PROJECT 时生效。 */
     private String projectDoc;
 
+    /** 正文末尾挂的那张补充笔记卡片：标题和正文直接在编辑页里写，保存时建成挂在本文下面的一篇。 */
+    private String supplementTitle;
+
+    /** 补充笔记的正文（Markdown）。留空就是不挂。 */
+    private String supplementBody;
+
+    public String getSupplementTitle() {
+        return supplementTitle;
+    }
+
+    public void setSupplementTitle(String supplementTitle) {
+        this.supplementTitle = supplementTitle;
+    }
+
+    public String getSupplementBody() {
+        return supplementBody;
+    }
+
+    public void setSupplementBody(String supplementBody) {
+        this.supplementBody = supplementBody;
+    }
+
     public String getProjectDoc() {
         return projectDoc;
     }

@@ -2432,22 +2432,6 @@ html[data-read-size='lg'] .markdown {
     outline: none;
 }
 
-/* 字段行末的「清除」：只在这一项有值时出现，靠右对齐 */
-.clear-link {
-    margin-left: auto;
-    font: inherit;
-    font-size: 0.8rem;
-    color: var(--fg-3);
-    background: none;
-    border: none;
-    padding: 0;
-    cursor: pointer;
-}
-
-.clear-link:hover {
-    color: var(--accent);
-}
-
 /* ---- 表单底部按钮 ---- */
 
 .form-actions {
@@ -2579,11 +2563,6 @@ html[data-read-size='lg'] .markdown {
 }
 
 .select-list li.hide {
-    display: none;
-}
-
-/* 和当前「类型」不是一类的候选：整条藏掉（跟筛选框用的 .hide 分开，免得输入关键字又冒出来） */
-.select-list li.kind-off {
     display: none;
 }
 

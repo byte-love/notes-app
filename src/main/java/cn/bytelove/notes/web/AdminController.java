@@ -207,9 +207,10 @@ public class AdminController {
 
     @GetMapping("/new")
     public String createForm(Model model, Authentication auth) {
+        Long ownerId = viewers.current(auth).userId();
         model.addAttribute("form", new ContentForm());
         model.addAttribute("editing", false);
-        model.addAttribute("parents", parentOptions(null, viewers.current(auth).userId()));
+        model.addAttribute("parents", parentOptions(null, ownerId));
         return "admin/form";
     }
 
@@ -236,6 +237,7 @@ public class AdminController {
         item.setRecommended(viewer.admin());
         ContentItem saved = items.save(item);
         saveProjectDoc(saved, form);
+        applySupplement(saved, form);
         tags.retag(saved.getId(), saved.getTitle(), saved.getBody());
         return "redirect:/admin";
     }
@@ -256,6 +258,11 @@ public class AdminController {
         form.setParentId(item.getParentId());
         form.setSortOrder(item.getSortOrder());
         form.setProjectDoc(meta.findDoc(item.getId()).orElse(null));
+        ContentItem attached = attachedNote(item);
+        if (attached != null) {
+            form.setSupplementTitle(attached.getTitle());
+            form.setSupplementBody(attached.getBody());
+        }
         model.addAttribute("form", form);
         model.addAttribute("itemId", id);
         model.addAttribute("editing", true);
@@ -299,6 +306,8 @@ public class AdminController {
             return "admin/form";
         }
 
+        // 换了类型就跟原来的本体不是一类了：卡片只在同类型之间渲染，留着这条关系等于断链
+        boolean kindChanged = form.getKind() != item.getKind();
         item.setKind(form.getKind());
         item.setSlug(form.getSlug());
         item.setTitle(form.getTitle());
@@ -307,8 +316,12 @@ public class AdminController {
         item.setVisibility(form.getVisibility());
         item.setParentId(form.getParentId());
         item.setSortOrder(form.getSortOrder() == null ? 0 : form.getSortOrder());
+        if (kindChanged) {
+            item.setSupplementOfId(null);
+        }
         ContentItem saved = items.save(item);
         saveProjectDoc(saved, form);
+        applySupplement(saved, form);
         tags.retag(saved.getId(), saved.getTitle(), saved.getBody());
         // 保存后直接回文章页看效果，不用再从列表里找一遍
         return "redirect:" + safeBack(back, basePathOf(saved) + "/" + saved.getSlug());
@@ -432,5 +445,85 @@ public class AdminController {
         all.sort(Comparator.comparing(ContentItem::getKind)
                 .thenComparing(ContentItem::getTitle, Comparator.nullsLast(String::compareTo)));
         return all;
+    }
+
+    /** 这篇下面挂着的那篇补充笔记（有多篇时取排最前面的那条）。 */
+    private ContentItem attachedNote(ContentItem item) {
+        ContentItem found = null;
+        for (ContentItem i : allFor(item.getOwnerId())) {
+            if (item.getId().equals(i.getSupplementOfId())
+                    && (found == null || i.getSortOrder() < found.getSortOrder())) {
+                found = i;
+            }
+        }
+        return found;
+    }
+
+    /**
+     * 「补充笔记」：编辑页里当场写一段（通常是 AI 整理好的），保存时建成挂在本文下面的一篇，
+     * 正文末尾就会多一张卡片。已经挂着的那篇就地更新；这次留空就把原来那篇挪进回收站。
+     */
+    private void applySupplement(ContentItem item, ContentForm form) {
+        String body = form.getSupplementBody() == null ? "" : form.getSupplementBody().trim();
+        ContentItem attached = attachedNote(item);
+        if (body.isEmpty()) {
+            if (attached != null) {
+                attached.setSupplementOfId(null);
+                items.save(attached);
+                trash.softDelete(attached.getId(), attached.getOwnerId());
+            }
+            return;
+        }
+        String title = supplementTitleOf(form.getSupplementTitle(), body, item);
+        if (attached == null) {
+            // 类型、可见性、排序都跟着本体走：卡片只在同类型之间渲染，权限也不该比本体更宽
+            ContentItem note = new ContentItem(item.getOwnerId(), item.getKind(),
+                    uniqueSupplementSlug(item.getOwnerId(), item.getSlug() + "-detail"),
+                    title, null, body, item.getVisibility());
+            note.setParentId(item.getParentId());
+            note.setSortOrder(item.getSortOrder());
+            note.setRecommended(item.isRecommended());
+            note.setSupplementOfId(item.getId());
+            ContentItem saved = items.save(note);
+            tags.retag(saved.getId(), saved.getTitle(), saved.getBody());
+            return;
+        }
+        attached.setKind(item.getKind());
+        attached.setTitle(title);
+        attached.setBody(body);
+        attached.setVisibility(item.getVisibility());
+        attached.setRecommended(item.isRecommended());
+        ContentItem saved = items.save(attached);
+        tags.retag(saved.getId(), saved.getTitle(), saved.getBody());
+    }
+
+    /** 标题留空就用正文第一行（去掉 Markdown 的井号、星号），第一行也没字就叫「补充笔记」。 */
+    private static String supplementTitleOf(String raw, String body, ContentItem parent) {
+        if (raw != null && !raw.isBlank()) {
+            return raw.trim();
+        }
+        for (String line : body.split("\\R")) {
+            String text = line.replaceFirst("^\\s*#{1,6}\\s*", "")
+                    .replaceAll("[*_`>#\\-]+", " ").trim();
+            if (!text.isEmpty()) {
+                return text.length() > 40 ? text.substring(0, 40) : text;
+            }
+        }
+        return parent.getTitle() + " · 补充";
+    }
+
+    /** 补充笔记的地址：本体 slug 后面接 -detail，重名了往后挂数字。 */
+    private String uniqueSupplementSlug(Long ownerId, String base) {
+        String slug = base.length() > 60 ? base.substring(0, 60) : base;
+        if (!items.existsByOwnerIdAndSlug(ownerId, slug)) {
+            return slug;
+        }
+        for (int i = 2; i < 1000; i++) {
+            String candidate = slug + "-" + i;
+            if (!items.existsByOwnerIdAndSlug(ownerId, candidate)) {
+                return candidate;
+            }
+        }
+        throw new ResponseStatusException(HttpStatus.CONFLICT, "同名的补充笔记太多了");
     }
 }

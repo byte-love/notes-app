@@ -68,6 +68,18 @@ public class HighlightService {
                 + "where id = ? and user_id = ? and deleted_at is null", id, userId) > 0;
     }
 
+    /**
+     * 深度克隆：把原作者在源条目上标的高亮，一并复制给复制出来的那一份。
+     * 复制完各管各的——原版之后改了高亮，别人手里那份不会跟着变。
+     */
+    public int copy(long sourceItemId, long targetItemId, long fromUserId, long toUserId) {
+        return jdbc.update(
+                "insert into content_highlight (item_id, user_id, quote, anchor_kind, block_index, prefix, suffix, color) "
+                        + "select ?, ?, quote, anchor_kind, block_index, prefix, suffix, color "
+                        + "from content_highlight where item_id = ? and user_id = ? and deleted_at is null",
+                targetItemId, toUserId, sourceItemId, fromUserId);
+    }
+
     private static String normalize(String color) {
         if (color == null) {
             return DEFAULT_COLOR;
