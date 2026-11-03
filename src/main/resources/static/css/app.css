@@ -2270,6 +2270,32 @@ button:hover,
     font-size: 0.88rem;
 }
 
+/* AI 接入：Token 和 MCP 地址要能一眼复制，等宽字体、可换行 */
+.me-note {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+    margin: 0 0 0.4rem;
+}
+
+.me-token {
+    font-family: var(--mono);
+    font-size: 0.82rem;
+    padding: 0.2rem 0.5rem;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--bg-2);
+    overflow-wrap: anywhere;
+}
+
+.me-hint {
+    color: var(--fg-3);
+    font-size: 0.8rem;
+    line-height: 1.6;
+    margin: 0.4rem 0 0;
+}
+
 .seg {
     display: flex;
     flex-wrap: wrap;

@@ -36,6 +36,43 @@
     </section>
 
     <section class="me-section">
+        <h2>AI 接入</h2>
+
+        <p class="me-note" th:if="${newToken != null}">
+            <code class="me-token" th:text="${newToken}">bl_…</code>
+            <button type="button" class="btn-quiet me-copy" th:attr="data-copy=${newToken}">复制</button>
+            <span class="me-hint">只显示这一次，丢了就重新生成</span>
+        </p>
+        <p class="me-note" th:if="${newToken == null and tokenHint != null}">
+            Token <code th:text="${tokenHint}">bl_…</code>
+            生成于 <time th:text="${tokenCreatedAt}">2026-11-03 09:00</time>
+        </p>
+
+        <div class="me-row">
+            <span class="me-label">Token</span>
+            <form th:action="@{/me/token}" method="post" class="inline">
+                <input type="hidden" name="_csrf" th:value="${_csrf.token}">
+                <button type="submit" class="btn-quiet"
+                        th:text="${tokenHint == null} ? '生成 Token' : '重新生成'">生成 Token</button>
+            </form>
+            <form th:if="${tokenHint != null}" th:action="@{/me/token/delete}" method="post" class="inline">
+                <input type="hidden" name="_csrf" th:value="${_csrf.token}">
+                <button type="submit" class="btn-quiet">撤销</button>
+            </form>
+        </div>
+
+        <div class="me-row" th:if="${tokenHint != null}">
+            <span class="me-label">MCP 地址</span>
+            <code class="me-token" th:text="${mcpUrl}">/app/mcp</code>
+            <button type="button" class="btn-quiet me-copy" th:attr="data-copy=${mcpUrl}">复制</button>
+        </div>
+
+        <p class="me-hint" th:if="${tokenHint != null}">
+            把地址和 Token 交给你的 AI（Claude Code / Cursor / Claude Desktop），让它自己配好 MCP，之后就能直接往这里存笔记
+        </p>
+    </section>
+
+    <section class="me-section">
         <h2>阅读设置</h2>
 
         <div class="me-row">
@@ -64,6 +101,29 @@
 </main>
 
 <script>
+    // 复制 Token / MCP 地址
+    (() => {
+        const copy = (text) => {
+            if (navigator.clipboard) return navigator.clipboard.writeText(text);
+            const area = document.createElement('textarea');
+            area.value = text;
+            document.body.appendChild(area);
+            area.select();
+            try { document.execCommand('copy'); } finally { area.remove(); }
+            return Promise.resolve();
+        };
+        document.querySelectorAll('.me-copy').forEach((btn) => {
+            btn.addEventListener('click', async () => {
+                try {
+                    await copy(btn.dataset.copy || '');
+                    const old = btn.textContent;
+                    btn.textContent = '已复制';
+                    setTimeout(() => { btn.textContent = old; }, 1200);
+                } catch (e) {}
+            });
+        });
+    })();
+
     (() => {
         const root = document.documentElement;
         const mq = window.matchMedia('(prefers-color-scheme: dark)');

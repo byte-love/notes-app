@@ -28,12 +28,15 @@ public class SecurityConfig {
                                                 .requestMatchers("/explore", "/explore/**", "/changelog", "/updates").permitAll()
                         .requestMatchers("/", "/notes", "/notes/**", "/projects", "/projects/**",
                                 "/bagu", "/bagu/**", "/algo", "/algo/**",
-                                "/login", "/register", "/api/**", "/css/**", "/js/**", "/media/**", "/favicon.ico",
+                                // /api/ai/** 和 /mcp 是给本地 AI 用的，没有会话，靠 Bearer token 自己鉴权
+                                "/login", "/register", "/api/**", "/mcp", "/css/**", "/js/**", "/media/**", "/favicon.ico",
                                 "/error").permitAll()
                         .requestMatchers("/admin/**").authenticated()
                         .requestMatchers("/star/**", "/rate/**", "/memo").authenticated()
                         .anyRequest().authenticated()
                 )
+                // 机器调用的接口不靠 cookie，也就没有 CSRF 可言：主站表单仍然照旧校验
+                .csrf(csrf -> csrf.ignoringRequestMatchers("/api/ai/**", "/mcp"))
                 .formLogin(login -> login
                         .loginPage("/login")
                         .successHandler((request, response, authentication) -> {
