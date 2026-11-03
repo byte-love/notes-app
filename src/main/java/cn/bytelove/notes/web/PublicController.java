@@ -103,7 +103,7 @@ public class PublicController {
 
     @GetMapping("/")
     public String home(Model model, Authentication auth) {
-        return listing(ContentKind.NOTE, "笔记", model, auth, null, false, null, null);
+        return listing(ContentKind.NOTE, "闪念", model, auth, null, false, null, null);
     }
 
     @GetMapping("/notes")
@@ -112,7 +112,7 @@ public class PublicController {
                         @RequestParam(name = "fragment", defaultValue = "false") boolean fragment,
                         @RequestParam(name = "rate", required = false) String rate,
                         @RequestParam(name = "tag", required = false) String tag) {
-        return listing(ContentKind.NOTE, "笔记", model, auth, from, fragment, rate, tag);
+        return listing(ContentKind.NOTE, "闪念", model, auth, from, fragment, rate, tag);
     }
 
     @GetMapping("/bagu")
@@ -978,7 +978,7 @@ public class PublicController {
             case PROJECT:
                 return "项目";
             default:
-                return "笔记";
+                return "闪念";
         }
     }
 

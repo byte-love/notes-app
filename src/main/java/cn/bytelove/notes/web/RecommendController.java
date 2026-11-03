@@ -26,7 +26,8 @@ import java.util.Locale;
 import java.util.Set;
 
 /**
- * 推荐栏：公开的推荐内容当模板，点一下就复制一份到自己空间。
+ * 技术广场：公开的推荐内容当模板，点一下就复制一份到自己空间。
+ * 会员可见和私密的内容不在这里挂着，只能靠作者手动把链接发出去。
  */
 @Controller
 public class RecommendController {
@@ -50,15 +51,17 @@ public class RecommendController {
         ContentKind only = parseKind(kind);
 
         List<Section> sections = new ArrayList<>();
+        List<ContentKind> shown = new ArrayList<>();
         boolean any = false;
         for (ContentKind k : new ContentKind[]{ContentKind.NOTE, ContentKind.BAGU,
                 ContentKind.ALGO, ContentKind.PROJECT}) {
             if (only != null && only != k) {
                 continue;
             }
-            List<Card> cards = recommend.cards(k, viewer);
+            List<Card> cards = recommend.cards(k);
             if (!cards.isEmpty()) {
                 any = true;
+                shown.add(k);
             }
             sections.add(new Section(k, k.getLabel(), cards));
         }
@@ -66,8 +69,8 @@ public class RecommendController {
         model.addAttribute("sections", sections);
         model.addAttribute("hasAny", any);
         model.addAttribute("filterKind", only);
-        model.addAttribute("kinds", List.of(ContentKind.NOTE, ContentKind.BAGU,
-                ContentKind.ALGO, ContentKind.PROJECT));
+        // 没有内容的分区不摆出来：广场上一个空的「闪念」标签点进去什么都没有
+        model.addAttribute("kinds", shown);
         model.addAttribute("copied", copied);
         model.addAttribute("joinedIds", recommend.joined(viewer.userId()));
         model.addAttribute("tabActive", "explore");

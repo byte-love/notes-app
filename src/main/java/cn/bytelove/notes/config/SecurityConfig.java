@@ -23,14 +23,15 @@ public class SecurityConfig {
     public SecurityFilterChain filterChain(HttpSecurity http, LoginAttemptService attempts) throws Exception {
         http
                 .authorizeHttpRequests(auth -> auth
-                        // 推荐栏和更新记录对游客开放，写操作要登录
+                        // 技术广场、用户指南和更新记录对游客开放，写操作要登录
                         .requestMatchers(HttpMethod.POST, "/explore/copy/**").authenticated()
-                                                .requestMatchers("/explore", "/explore/**", "/changelog", "/updates").permitAll()
+                                                .requestMatchers("/explore", "/explore/**", "/guide",
+                                                        "/changelog", "/updates").permitAll()
                         .requestMatchers("/", "/notes", "/notes/**", "/projects", "/projects/**",
                                 "/bagu", "/bagu/**", "/algo", "/algo/**",
                                 // /api/ai/** 和 /mcp 是给本地 AI 用的，没有会话，靠 Bearer token 自己鉴权
-                                "/login", "/register", "/api/**", "/mcp", "/css/**", "/js/**", "/media/**", "/favicon.ico",
-                                "/error").permitAll()
+                                "/login", "/register", "/api/**", "/mcp", "/css/**", "/js/**", "/img/**",
+                                "/media/**", "/favicon.ico", "/error").permitAll()
                         .requestMatchers("/admin/**").authenticated()
                         .requestMatchers("/star/**", "/rate/**", "/memo").authenticated()
                         .anyRequest().authenticated()

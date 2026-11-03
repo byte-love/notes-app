@@ -135,8 +135,12 @@ sudo /opt/deploy/sync-db.sh    # 正式库整库覆盖到测试库
 从 V5 开始，每个用户有自己的项目/笔记/八股/算法空间。
 
 - `content_item.owner_id` 指向创建者；`slug` 只在本人范围内唯一（`uq_content_owner_slug`）
-- `recommended = true` 的内容才会出现在「推荐」里、对别人可见；管理员新建的内容自动是 `true`
-- `visibility` 只在「别人看推荐内容」时起作用：`PUBLIC` 谁都能看、`MEMBER` 要登录、`PRIVATE` 只有本人
+- `recommended = true` 的内容才会出现在「技术广场」里、对别人可见；管理员新建的内容自动是 `true`
+- `visibility` 只在「别人看推荐内容」时起作用：`PUBLIC` 谁都能看、`MEMBER` 要登录、`PRIVATE` 只有本人。
+  **技术广场（`/explore`）只收 `PUBLIC + recommended`**：卡片（`RecommendService.cards`）和分组页
+  （`RecommendService.group`）都按这个卡，`MEMBER` / `PRIVATE` 的分组进来是 404——那两种只走「作者把链接发出来」
+- 顶栏四项（我的笔记 / 技术广场 / 用户指南 / 更新日志）只改文案不动路由：闪念 = `NOTE`、地址仍是 `/notes`；
+  四类内容共用 `list.html`，页面上那排「闪念 / 项目 / 八股 / 算法」是 `fragments/layout :: mineTabs`
 - 收藏夹是 `content_star(user_id, item_id)`，不是内容上的一个布尔值——标记属于「谁标的」
 - 书签是 `content_bookmark(user_id, item_id, anchor)`：`anchor` 为空是整篇，非空是正文里某个标题
   （标题 id 由标题文字生成，见 `MarkdownRenderer.slugOf`；以前用 h1/h2 序位号，插标题会错位）

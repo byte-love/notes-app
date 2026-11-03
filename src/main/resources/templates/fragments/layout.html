@@ -23,7 +23,7 @@
             } catch (e) {}
         })();
     </script>
-    <link rel="stylesheet" th:href="@{/css/app.css(v=118)}">
+    <link rel="stylesheet" th:href="@{/css/app.css(v=120)}">
 </head>
 <body>
 
@@ -34,16 +34,12 @@
 <header th:fragment="nav" class="site-header">
     <div class="header-inner">
         <nav class="tabs" aria-label="站点分区">
-            <a class="tab" th:href="@{/projects}"
-               th:classappend="${tabActive == 'project'} ? 'is-active'">项目</a>
             <a class="tab" th:href="@{/notes}"
-               th:classappend="${tabActive == 'note'} ? 'is-active'">笔记</a>
-            <a class="tab" th:href="@{/bagu}"
-               th:classappend="${tabActive == 'bagu'} ? 'is-active'">八股</a>
-            <a class="tab" th:href="@{/algo}"
-               th:classappend="${tabActive == 'algo'} ? 'is-active'">算法</a>
+               th:classappend="${tabActive == 'note' or tabActive == 'project' or tabActive == 'bagu' or tabActive == 'algo'} ? 'is-active'">我的笔记</a>
             <a class="tab" th:href="@{/explore}"
-               th:classappend="${tabActive == 'explore'} ? 'is-active'">推荐</a>
+               th:classappend="${tabActive == 'explore'} ? 'is-active'">技术广场</a>
+            <a class="tab" th:href="@{/guide}"
+               th:classappend="${tabActive == 'guide'} ? 'is-active'">用户指南</a>
             <a class="tab" th:href="@{/changelog}"
                th:classappend="${tabActive == 'updates'} ? 'is-active'">更新日志</a>
         </nav>
@@ -61,6 +57,19 @@
         </div>
     </div>
 </header>
+
+<!-- 「我的笔记」下的四个分区。路由不变，这里只是同一个列表页的四种内容。
+     用 div 不用 nav：顶栏那个片段的选取器就是 nav，同名会被 Thymeleaf 按标签名一并选中 -->
+<div th:fragment="mineTabs" class="mine-tabs" role="navigation" aria-label="我的笔记分区">
+    <a class="mine-tab" th:href="@{/notes}"
+       th:classappend="${tabActive == 'note'} ? 'on'">闪念</a>
+    <a class="mine-tab" th:href="@{/projects}"
+       th:classappend="${tabActive == 'project'} ? 'on'">项目</a>
+    <a class="mine-tab" th:href="@{/bagu}"
+       th:classappend="${tabActive == 'bagu'} ? 'on'">八股</a>
+    <a class="mine-tab" th:href="@{/algo}"
+       th:classappend="${tabActive == 'algo'} ? 'on'">算法</a>
+</div>
 
 <th:block th:fragment="foot">
 <script>

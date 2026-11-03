@@ -1,12 +1,12 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org" lang="zh-CN">
-<head th:replace="~{fragments/layout :: head('推荐 · byte-love')}"></head>
+<head th:replace="~{fragments/layout :: head('技术广场 · byte-love')}"></head>
 <body>
 <header th:replace="~{fragments/layout :: nav}"></header>
 
 <main class="wrap wide">
     <div class="section-head">
-        <h1>推荐</h1>
+        <h1>技术广场</h1>
     </div>
 
     <p class="notice" th:if="${copied != null and copied > 0}">
@@ -44,7 +44,7 @@
         </div>
     </section>
 
-    <p class="empty" th:if="${!hasAny}">暂无推荐内容</p>
+    <p class="empty" th:if="${!hasAny}">暂无公开内容</p>
 </main>
 
 <footer th:replace="~{fragments/layout :: foot}"></footer>

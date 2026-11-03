@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org" lang="zh-CN">
-<head th:replace="~{fragments/layout :: head('笔记 · byte-love')}"></head>
+<head th:replace="~{fragments/layout :: head(${pageTitle + ' · byte-love'})}"></head>
 <body>
 <header th:replace="~{fragments/layout :: nav}"></header>
 
@@ -11,7 +11,7 @@
 
     <main class="tree-main">
         <div class="page-head">
-            <h1 th:text="${pageTitle}">笔记</h1>
+            <nav th:replace="~{fragments/layout :: mineTabs}"></nav>
             <span class="count" th:text="${#lists.size(items)} + ' 篇'">0 篇</span>
         </div>
 

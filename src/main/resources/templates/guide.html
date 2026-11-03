@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="zh-CN">
+<head th:replace="~{fragments/layout :: head('用户指南 · byte-love')}"></head>
+<body>
+<header th:replace="~{fragments/layout :: nav}"></header>
+
+<main class="wrap guide">
+    <h1>用户指南</h1>
+
+    <section>
+        <h2>我的笔记</h2>
+        <p>四类内容放在一起，顶上那排切换：</p>
+        <ul>
+            <li><strong>闪念</strong>：随手记的想法、学习记录、踩坑总结</li>
+            <li><strong>项目</strong>：自己做过的东西</li>
+            <li><strong>八股</strong>：面试题和答案，按技术分类归档</li>
+            <li><strong>算法</strong>：题解和思路</li>
+        </ul>
+        <p>
+            四类的地址分别是 <code>/notes</code>、<code>/projects</code>、<code>/bagu</code>、<code>/algo</code>，
+            收藏过的链接不会变。左边那棵树是目录，点分组标题收起 / 展开，收起状态记在这台浏览器里。
+        </p>
+        <figure>
+            <img th:src="@{/img/guide/guide-mine.webp(v=2)}" alt="我的笔记：四个分区和筛选行" loading="lazy">
+            <figcaption>顶部四个分区：闪念 / 项目 / 八股 / 算法</figcaption>
+        </figure>
+    </section>
+
+    <section>
+        <h2>星级与标签</h2>
+        <p>八股题后面有星级（1 到 3 星），用来记这题的重要程度。</p>
+        <ul>
+            <li>点星星改星级，再点同一颗清回 0 星</li>
+            <li>顶上「★★★」「★★以上」「未评」按档筛，带「以上」的是这一档及以上</li>
+            <li>「收藏」是另一套：文章页点「☆ 收藏」收进收藏夹（<code>/memo</code>）</li>
+            <li>卡片下面的标签是读题时自动打的，顶上那排点一下就按它筛，能和星级叠着用</li>
+        </ul>
+        <figure>
+            <img th:src="@{/img/guide/guide-rate.webp(v=2)}" alt="星级、收藏、标签三排筛选项" loading="lazy">
+            <figcaption>星级和标签都能筛，可以叠着用</figcaption>
+        </figure>
+    </section>
+
+    <section>
+        <h2>阅读页</h2>
+        <p>
+            左边的树跟着这篇内容所属的目录走，右边正文里的 <code>##</code> 小标题会变成右侧目录。
+            选中正文里的一段文字会浮出工具条，三个去处：
+        </p>
+        <ul>
+            <li><strong>评论</strong>：写进右栏，对这一段有疑问、有一点小见解就写这儿</li>
+            <li><strong>注释</strong>：长解释、贴代码都写这里，正文里留一条短虚下划线，点开看</li>
+            <li><strong>高亮</strong>：挑个颜色给这段铺底纹，只有自己看得到</li>
+        </ul>
+        <p>
+            标题下面还有星级、「☆ 收藏」、「加书签」；书签在 <code>/bookmarks</code> 里能跳回具体位置。
+            同一条内容下次打开会接着上次读到的位置。
+        </p>
+        <figure>
+            <img th:src="@{/img/guide/guide-detail.webp(v=2)}" alt="阅读页：左目录、中间正文、右栏评论" loading="lazy">
+            <figcaption>左边目录、中间正文、右栏评论</figcaption>
+        </figure>
+    </section>
+
+    <section>
+        <h2>技术广场</h2>
+        <p>
+            广场上只摆公开内容，按分类排：八股的各分类、算法、项目。点分类进去看条目清单；
+            登录后点「加入我的空间」会把这一组复制一份到自己账号下，之后随你改，原版更新不影响副本。
+        </p>
+        <p>
+            会员可见和私密的内容不在这儿——那两种只有作者把链接发给你才看得到。
+        </p>
+        <figure>
+            <img th:src="@{/img/guide/guide-explore.webp(v=2)}" alt="技术广场：按分类摆的公开内容" loading="lazy">
+            <figcaption>技术广场：按分类摆的公开内容</figcaption>
+        </figure>
+    </section>
+
+    <section>
+        <h2>用 AI 存笔记</h2>
+        <ol>
+            <li>登录后点右上角头像进「我的」</li>
+            <li>「AI 接入」里点「生成 Token」</li>
+            <li>点「复制给 AI」，把这一整段粘给 Claude Code / Cursor / Claude Desktop，它按里面的步骤把 MCP 配好</li>
+            <li>之后直接跟它说「帮我整理一下刚才的讨论，生成一篇笔记存到我账号里」</li>
+        </ol>
+        <p>
+            存之前它会先查重，再问你这篇给谁看（公开 / 会员可见 / 私密）。Token 只显示一次，丢了点「重新生成」。
+        </p>
+        <figure>
+            <img th:src="@{/img/guide/guide-ai.webp(v=2)}" alt="我的页面里的 AI 接入" loading="lazy">
+            <figcaption>「我的」页面里的 AI 接入</figcaption>
+        </figure>
+    </section>
+</main>
+
+<footer th:replace="~{fragments/layout :: foot}"></footer>
+</body>
+</html>

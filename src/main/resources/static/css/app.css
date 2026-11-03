@@ -979,6 +979,32 @@ button:hover,
     letter-spacing: -0.01em;
 }
 
+/* 「我的笔记」的四个分区：当标题用，选中的那个满色加粗，其余压淡 */
+.mine-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 1.1rem;
+    font-size: 1.6rem;
+    letter-spacing: -0.01em;
+    line-height: 1.2;
+}
+
+.mine-tab {
+    color: var(--fg-3);
+    font-weight: 400;
+}
+
+.mine-tab:hover {
+    color: var(--fg);
+    text-decoration: none;
+}
+
+.mine-tab.on {
+    color: var(--fg);
+    font-weight: 600;
+}
+
 .count {
     color: var(--fg-3);
     font-size: 0.85rem;
@@ -3418,6 +3444,81 @@ html[data-theme='dark'] .cl-latest {
 
 .cl-admin-sub li:first-child {
     border-top: none;
+}
+
+/* ---- 用户指南 ---- */
+
+.guide h1 {
+    margin: 0 0 1.4rem;
+    font-size: 1.9rem;
+}
+
+.guide section {
+    margin: 2.2rem 0 0;
+    padding-top: 2rem;
+    border-top: 1px solid var(--line);
+}
+
+.guide section:first-of-type {
+    margin-top: 0;
+    padding-top: 0;
+    border-top: 0;
+}
+
+.guide h2 {
+    margin: 0 0 0.6rem;
+    font-size: 1.15rem;
+}
+
+.guide p,
+.guide li {
+    line-height: 1.75;
+    color: var(--fg-2);
+}
+
+.guide strong {
+    color: var(--fg);
+}
+
+.guide ul,
+.guide ol {
+    margin: 0.5rem 0 0.9rem;
+    padding-left: 1.3rem;
+}
+
+.guide li {
+    margin: 0.3rem 0;
+}
+
+.guide code {
+    font-family: var(--mono);
+    font-size: 0.9em;
+    background: var(--bg-2);
+    padding: 0.1em 0.35em;
+    border-radius: 4px;
+}
+
+.guide figure {
+    margin: 1.4rem 0 0;
+    /* 正文保持 760 的阅读宽度，截图比正文宽出去一块，不然整屏截图缩到 700 宽就糊了 */
+    width: min(1040px, calc(100vw - 3rem));
+    margin-left: 50%;
+    transform: translateX(-50%);
+}
+
+.guide img {
+    display: block;
+    width: 100%;
+    height: auto;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--bg-2);
+}
+
+.guide figcaption {
+    margin-top: 0.5rem;
+    color: var(--fg-3);
+    font-size: 0.85rem;
 }
 
 /* ---- 错误页 ---- */
