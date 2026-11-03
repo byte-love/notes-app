@@ -55,6 +55,9 @@ notes:
   viewer-password: ${VIEWER_PASSWORD:}
   tab-projects-href: ${TAB_PROJECTS_HREF:/}
   register-enabled: ${REGISTER_ENABLED:true}
+  # 「我的」页给出的 MCP 地址。留空 = 按当前请求的域名端口拼；测试环境可以显式指到正式站，
+  # 免得把测试端口复制给 AI
+  mcp-url: ${MCP_URL:}
 
 logging:
   level:

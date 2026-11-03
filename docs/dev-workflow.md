@@ -234,6 +234,9 @@ sudo /opt/deploy/sync-db.sh    # 正式库整库覆盖到测试库
   - **两个 MCP 壳**：远程 `POST /app/mcp`（`McpController`，JSON-RPC：initialize / tools/list / tools/call，
     protocolVersion 2025-06-18，直接回 JSON 不用 SSE）；本地 `mcp/notes-mcp.mjs`（零依赖 Node，stdio，
     只读 `NOTES_BASE` + `NOTES_TOKEN`），客户端配置写法在 `mcp/README.md`。
+  - **页面上的 MCP 地址走配置**：`notes.mcp-url`（环境变量 `MCP_URL`），两套 `app.env` 里都写死成
+    `http://47.104.210.93:8080/app/mcp`。不配的话才按当前请求的域名端口拼——测试站会拼出 `:8180`，
+    那条地址复制给 AI 就打到测试库上去了。**备案换成域名之后改这一处就行**（两个 `app.env` + 重启）。
   - **可见性必须由用户决定**：`note_create` 的 `visibility` 是必填参数，传空服务端直接 400，返回里明说
     「先去问用户」。三档含义见 `Visibility` 枚举；`MEMBER` 是「用户把链接发给别人、对方登录后才能看」，
     **不进技术广场**（广场以后只收 `PUBLIC`）。改可见性语义先读 `VisibilityService`——别人能不能看还有

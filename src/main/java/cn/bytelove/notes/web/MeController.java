@@ -1,5 +1,6 @@
 package cn.bytelove.notes.web;
 
+import cn.bytelove.notes.config.AppProperties;
 import cn.bytelove.notes.domain.AppUser;
 import cn.bytelove.notes.domain.ContentKind;
 import cn.bytelove.notes.repo.AppUserRepository;
@@ -34,10 +35,12 @@ public class MeController {
     private final BookmarkService bookmarks;
     private final RatingService ratings;
     private final ApiTokenService tokens;
+    private final AppProperties props;
 
     public MeController(AppUserRepository users, ContentItemRepository items,
                         ContentStarService stars, ViewerService viewers, TrashService trash,
-                        BookmarkService bookmarks, RatingService ratings, ApiTokenService tokens) {
+                        BookmarkService bookmarks, RatingService ratings, ApiTokenService tokens,
+                        AppProperties props) {
         this.users = users;
         this.items = items;
         this.stars = stars;
@@ -46,6 +49,7 @@ public class MeController {
         this.bookmarks = bookmarks;
         this.ratings = ratings;
         this.tokens = tokens;
+        this.props = props;
     }
 
     @GetMapping("/me")
@@ -74,11 +78,11 @@ public class MeController {
             model.addAttribute("tokenHint", t[0]);
             model.addAttribute("tokenCreatedAt", t[1]);
         });
-        // MCP 地址给绝对地址：用户要往别的客户端里贴，带域名的才能直接用
-        String base = ServletUriComponentsBuilder.fromCurrentContextPath().toUriString();
-        String mcpUrl = base + "/mcp";
+        // MCP 地址给绝对地址：用户要往别的客户端里贴，带域名的才能直接用。
+        // 配了 notes.mcp-url 就用它（测试环境指到正式站，不会把 8180 复制出去）
+        String mcpUrl = mcpUrl(request);
         model.addAttribute("mcpUrl", mcpUrl);
-        model.addAttribute("apiBase", base + "/api/ai");
+        model.addAttribute("apiBase", mcpUrl.replaceAll("/mcp$", "") + "/api/ai");
         // 刚生成 token 时，顺手把「复制给 AI 的整段话」也备好，用户不用自己拼
         Object fresh = model.getAttribute("newToken");
         if (fresh instanceof String token) {
@@ -87,6 +91,15 @@ public class MeController {
 
         model.addAttribute("tabActive", "me");
         return "me";
+    }
+
+    /** MCP 地址：配了 notes.mcp-url 用配置的，没配就按当前请求的 scheme://host:port/app 拼。 */
+    private String mcpUrl(HttpServletRequest request) {
+        String configured = props.mcpUrl();
+        if (configured != null && !configured.isBlank()) {
+            return configured.trim();
+        }
+        return ServletUriComponentsBuilder.fromCurrentContextPath().toUriString() + "/mcp";
     }
 
     /** 一段可以直接粘给 AI 的说明：地址、token、配法，以及「先问权限、别自己覆盖」的约定。 */
