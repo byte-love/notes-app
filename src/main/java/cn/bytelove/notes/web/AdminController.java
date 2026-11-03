@@ -452,6 +452,19 @@ public class AdminController {
         }
     }
 
+    /** 正文页上卡片右边那个「×」：把挂在本篇下面的补充笔记解开并挪进回收站。 */
+    @PostMapping("/{id}/supplement/delete")
+    public String deleteSupplement(@PathVariable Long id, Authentication auth) {
+        ContentItem item = owned(id, viewers.current(auth));
+        ContentItem attached = attachedNote(item);
+        if (attached != null) {
+            attached.setSupplementOfId(null);
+            items.save(attached);
+            trash.softDelete(attached.getId(), attached.getOwnerId());
+        }
+        return "redirect:" + basePathOf(item) + "/" + item.getSlug();
+    }
+
     /** 正文页上的「插入笔记卡片」：只收标题和正文，挂到这一篇下面。 */
     @PostMapping("/{id}/supplement")
     public String saveSupplement(@PathVariable Long id,

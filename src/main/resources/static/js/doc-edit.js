@@ -1,11 +1,41 @@
 // 正文直接编辑：contenteditable 里就地改，停手后把 DOM 折回 Markdown 静默保存（不刷新页面）
 // 只覆盖 MarkdownRenderer 会产出的标签；文本节点空白要折叠，否则 HTML 源码里的换行会变成硬换行
 (() => {
+    const meta = document.querySelector('meta[name="_csrf"]');
+    const metaCsrf = meta ? meta.getAttribute('content') : '';
+
+    // 标题就地改：h1 也是 contenteditable，回车或失焦时存一次
+    const titleEl = document.querySelector('h1[data-item-id][contenteditable="true"]');
+    if (titleEl) {
+        const itemId = titleEl.dataset.itemId;
+        let savedTitle = titleEl.textContent.replace(/\s+/g, ' ').trim();
+        const saveTitle = async () => {
+            const text = titleEl.textContent.replace(/\s+/g, ' ').trim();
+            if (!text || text === savedTitle) return;
+            try {
+                await fetch('/app/admin/' + itemId + '/rename', {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: { 'content-type': 'application/x-www-form-urlencoded' },
+                    body: new URLSearchParams({ _csrf: metaCsrf, title: text, back: location.pathname }).toString(),
+                });
+                savedTitle = text;
+                document.title = text + ' · byte-love';
+            } catch (e) {}
+        };
+        titleEl.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                titleEl.blur();
+            }
+        });
+        titleEl.addEventListener('blur', saveTitle);
+    }
+
     const body = document.querySelector('.doc .markdown');
     if (!body || body.getAttribute('contenteditable') !== 'true' || !body.dataset.save) return;
 
-    const meta = document.querySelector('meta[name="_csrf"]');
-    const csrf = meta ? meta.getAttribute('content') : '';
+    const csrf = metaCsrf;
     const saveUrl = body.dataset.save;
 
     const inline = (node) => {
