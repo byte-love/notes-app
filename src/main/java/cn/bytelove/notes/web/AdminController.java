@@ -452,6 +452,21 @@ public class AdminController {
         }
     }
 
+    /** 就地改正文：正文页上直接改，保存后留在这一页。标题 / 可见性 / 目录那些还走完整编辑页。 */
+    @PostMapping("/{id}/body")
+    public String saveBody(@PathVariable Long id,
+                           @RequestParam(name = "body", required = false) String body,
+                           @RequestParam(name = "back", required = false) String back,
+                           Authentication auth) {
+        ContentItem item = owned(id, viewers.current(auth));
+        if (body != null) {
+            item.setBody(body);
+            ContentItem saved = items.save(item);
+            tags.retag(saved.getId(), saved.getTitle(), saved.getBody());
+        }
+        return "redirect:" + safeBack(back, basePathOf(item) + "/" + item.getSlug());
+    }
+
     /**
      * 树上就地新建：只给一个名字，其余全自动（slug 自动生成、排在同层最后、正文留空）。
      * 先建成空节点，之后在它下面接着建就成了分类，写正文就是一篇笔记。

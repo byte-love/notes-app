@@ -9,7 +9,7 @@
         <div class="tree-head">
             <span class="tree-head-text">我的目录</span>
             <button sec:authorize="isAuthenticated()" type="button" class="tree-act tree-add"
-                    data-parent="" title="在最外层新建">+</button>
+                    data-parent="" aria-label="在最外层新建">+</button>
         </div>
         <ul th:replace="~{fragments/tree :: nodes(${tree})}"></ul>
     </aside>
@@ -79,7 +79,7 @@
 
 <script th:src="@{/js/list.js(v=8)}" defer></script>
 <script th:src="@{/js/rate.js(v=2)}" defer></script>
-<script th:src="@{/js/tree-admin.js(v=1)}" defer></script>
+<script th:src="@{/js/tree-admin.js(v=2)}" defer></script>
 <footer th:replace="~{fragments/layout :: foot}"></footer>
 </body>
 </html>

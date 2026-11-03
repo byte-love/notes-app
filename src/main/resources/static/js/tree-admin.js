@@ -44,18 +44,45 @@
         li.appendChild(input);
 
         if (row) {
-            // 有子列表就放到子列表最前面，没有就直接跟在这一行下面
+            // 先把这个目录展开：折叠着的时候输入框藏在看不到的地方，用户会以为按钮没反应
             const owner = row.closest('li');
-            const kids = owner ? owner.querySelector(':scope > ul') : null;
-            if (kids) kids.prepend(li);
-            else if (owner) owner.appendChild(li);
-            else pane.appendChild(li);
-        } else {
-            const root = pane.querySelector(':scope > ul.tree');
-            (root || pane).prepend(li);
+            if (owner) {
+                owner.classList.remove('folded');
+                const group = row.querySelector('.tree-group');
+                // 懒加载的节点还没取子列表，借分组的点击把子节点拉下来
+                if (group && group.dataset.lazy && !owner.querySelector(':scope > ul')) {
+                    group.click();
+                }
+            }
         }
-        editing = li;
-        input.focus();
+
+        const place = () => {
+            if (row) {
+                const owner = row.closest('li');
+                const kids = owner ? owner.querySelector(':scope > ul') : null;
+                if (kids) kids.prepend(li);
+                else if (owner) owner.appendChild(li);
+                else pane.appendChild(li);
+            } else {
+                const root = pane.querySelector(':scope > ul.tree');
+                (root || pane).prepend(li);
+            }
+            editing = li;
+            input.focus();
+        };
+
+        // 懒加载是异步的：等子列表出现再插输入框，最多等一会儿
+        let tries = 0;
+        const tryPlace = () => {
+            const owner = row ? row.closest('li') : null;
+            const needsKids = owner && owner.querySelector('.tree-group[data-lazy]');
+            if (owner && needsKids && !owner.querySelector(':scope > ul') && tries++ < 20) {
+                setTimeout(tryPlace, 60);
+                return;
+            }
+            place();
+        };
+        tryPlace();
 
         let done = false;
         const submit = async () => {
@@ -123,6 +150,13 @@
         input.addEventListener('blur', () => finish(false));
     };
 
+    // ---- 目录旁边的数字：默认不显示，菜单里可以打开 ----
+    try {
+        document.documentElement.classList.toggle('tree-no-count', localStorage.getItem('tree-counts') !== 'on');
+    } catch (e) {
+        document.documentElement.classList.add('tree-no-count');
+    }
+
     // ---- ⋯ 菜单 ----
     const menu = document.createElement('div');
     menu.className = 'tree-menu';
@@ -156,6 +190,14 @@
         menu.appendChild(item('复制链接', () => {
             const url = location.origin + ctx + row.dataset.url;
             if (navigator.clipboard) navigator.clipboard.writeText(url);
+        }));
+        const hideCounts = document.documentElement.classList.contains('tree-no-count');
+        menu.appendChild(item(hideCounts ? '显示数字' : '隐藏数字', () => {
+            const root = document.documentElement;
+            root.classList.toggle('tree-no-count');
+            try {
+                localStorage.setItem('tree-counts', root.classList.contains('tree-no-count') ? 'off' : 'on');
+            } catch (e) {}
         }));
         const del = item('删除', async () => {
             if (!confirm('删除「' + (row.dataset.title || '') + '」？进回收站，30 天内能恢复。')) return;

@@ -34,8 +34,8 @@
                     th:text="${n.item.title}"></span>
             </a>
             <th:block sec:authorize="isAuthenticated()" th:unless="${n.locked()}">
-                <button type="button" class="tree-act tree-add" title="在这一项下面新建">+</button>
-                <button type="button" class="tree-act tree-more" title="更多">⋯</button>
+                <button type="button" class="tree-act tree-add" aria-label="在这一项下面新建">+</button>
+                <button type="button" class="tree-act tree-more" aria-label="更多操作">⋯</button>
             </th:block>
         </div>
         <th:block th:if="${n.hasChildren()}">

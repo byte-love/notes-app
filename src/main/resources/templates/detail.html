@@ -12,7 +12,7 @@
         <div class="tree-head">
             <span class="tree-head-text">我的目录</span>
             <button sec:authorize="isAuthenticated()" type="button" class="tree-act tree-add"
-                    data-parent="" title="在最外层新建">+</button>
+                    data-parent="" aria-label="在最外层新建">+</button>
         </div>
         <ul th:replace="~{fragments/tree :: nodes(${tree})}"></ul>
     </aside>
@@ -44,11 +44,21 @@
                                 th:classappend="${bookmarked} ? 'on'"
                                 th:text="${bookmarked} ? '已加书签' : '加书签'">加书签</button>
                     </form>
-                    <!-- 只有自己的内容才给编辑入口；back 让编辑页的「返回」和保存后都回到这一页 -->
-                    <a th:if="${canRate == true}" class="star-btn"
-                       th:href="@{/admin/{id}/edit(id=${item.id},back=${editBack})}">编辑</a>
+                    <!-- 只有自己的内容才给编辑入口：这里直接在正文位置改，不再跳表单页；
+                         可见性 / 上级目录 / 补充笔记这些走左树「⋯」里的「编辑」 -->
+                    <button th:if="${canRate == true}" type="button" class="star-btn" id="body-edit">编辑</button>
                 </div>
             </header>
+
+            <!-- 就地改正文：Markdown 源码直接在正文的位置编辑 -->
+            <div class="body-editor" id="body-editor" hidden th:if="${canRate == true}"
+                 th:attr="data-save=@{/admin/{id}/body(id=${item.id})}">
+                <textarea class="body-source" spellcheck="false" th:text="${item.body}"></textarea>
+                <div class="body-editor-actions">
+                    <button type="button" class="btn-primary" data-act="save">保存</button>
+                    <button type="button" class="btn-ghost" data-act="cancel">取消</button>
+                </div>
+            </div>
 
             <!-- 自动打的标签：点一下就是把列表按这个标签筛一遍 -->
             <p class="doc-tags" th:if="${itemTags != null and !#lists.isEmpty(itemTags)}">
@@ -99,7 +109,8 @@
     <script th:src="@{/js/code.js(v=1)}"></script>
     <script th:src="@{/js/detail.js(v=9)}"></script>
     <script th:src="@{/js/rate.js(v=2)}"></script>
-<script th:src="@{/js/tree-admin.js(v=1)}"></script>
+<script th:src="@{/js/tree-admin.js(v=2)}"></script>
+<script th:src="@{/js/body-edit.js(v=1)}"></script>
 
 <footer th:replace="~{fragments/layout :: foot}"></footer>
 
