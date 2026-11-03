@@ -177,6 +177,15 @@
         if (document.hidden) save();
     });
 
+    // 从网页 / AI 对话里粘贴：只留纯文本。带过来的底色、宽度、div 包裹会把排版顶歪
+    body.addEventListener('paste', (e) => {
+        const text = e.clipboardData ? e.clipboardData.getData('text/plain') : '';
+        if (!text) return;
+        e.preventDefault();
+        document.execCommand('insertText', false, text);
+        schedule();
+    });
+
     // 回车另起一段（不带上一段样式）；Shift+Enter 走浏览器默认的软换行
     body.addEventListener('keydown', (e) => {
         if (e.key !== 'Enter' || e.shiftKey || e.isComposing) return;
