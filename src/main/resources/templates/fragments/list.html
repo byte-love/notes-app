@@ -17,9 +17,10 @@
             <!-- 星级在行右列，纵向对齐：翻的时候一眼能看出哪几题是三星 -->
             <th:block th:replace="~{fragments/rate :: stars(${i.slug}, ${i.rating}, ${canRate == true and !lockedIds.contains(i.id)})}"></th:block>
         </div>
-        <!-- 自动打的标签：卡片上最多显示 3 个，点不进筛选（想按标签筛去顶上的标签行） -->
+        <!-- 自动打的标签：卡片上最多显示 3 个，点不进筛选（想按标签筛去顶上的标签行）。
+             锁着的条目（登录后可见）也显示，游客能先看出这题考什么 -->
         <th:block th:with="tags=${itemTags == null ? null : itemTags.get(i.id)}">
-            <p class="item-tags" th:if="${tags != null and !lockedIds.contains(i.id)}">
+            <p class="item-tags" th:if="${tags != null and !#lists.isEmpty(tags)}">
                 <span class="item-tag" th:each="t, it : ${tags}" th:if="${it.index < 3}"
                       th:text="${t}">标签</span>
             </p>
