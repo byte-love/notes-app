@@ -349,6 +349,13 @@ code {
     font-size: 1.15rem;
 }
 
+/* 标题行右侧的一组操作按钮：并排、右对齐 */
+.head-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+}
+
 .more {
     font-size: 0.9rem;
 }
