@@ -20,9 +20,11 @@ import org.springframework.web.context.request.ServletRequestAttributes;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -50,26 +52,32 @@ public class RecommendController {
         Viewer viewer = viewers.current(auth);
         ContentKind only = parseKind(kind);
 
-        List<Section> sections = new ArrayList<>();
+        // 先把四类都算出来：顶上的分类标签要一直摆着，不能因为选了某一类就把其余几个藏掉
+        Map<ContentKind, List<Card>> cardsOf = new LinkedHashMap<>();
         List<ContentKind> shown = new ArrayList<>();
         boolean any = false;
         for (ContentKind k : new ContentKind[]{ContentKind.NOTE, ContentKind.BAGU,
                 ContentKind.ALGO, ContentKind.PROJECT}) {
+            List<Card> cards = recommend.cards(k);
+            cardsOf.put(k, cards);
+            if (!cards.isEmpty()) {
+                shown.add(k);
+            }
+        }
+
+        List<Section> sections = new ArrayList<>();
+        for (ContentKind k : shown) {
             if (only != null && only != k) {
                 continue;
             }
-            List<Card> cards = recommend.cards(k);
-            if (!cards.isEmpty()) {
-                any = true;
-                shown.add(k);
-            }
-            sections.add(new Section(k, k.getLabel(), cards));
+            sections.add(new Section(k, k.getLabel(), cardsOf.get(k)));
+            any = true;
         }
 
         model.addAttribute("sections", sections);
         model.addAttribute("hasAny", any);
         model.addAttribute("filterKind", only);
-        // 没有内容的分区不摆出来：广场上一个空的「闪念」标签点进去什么都没有
+        // 没有内容的分区不摆标签：广场上一个空的「闪念」点进去什么都没有
         model.addAttribute("kinds", shown);
         model.addAttribute("copied", copied);
         model.addAttribute("joinedIds", recommend.joined(viewer.userId()));

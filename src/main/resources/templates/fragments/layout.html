@@ -23,7 +23,7 @@
             } catch (e) {}
         })();
     </script>
-    <link rel="stylesheet" th:href="@{/css/app.css(v=120)}">
+    <link rel="stylesheet" th:href="@{/css/app.css(v=122)}">
 </head>
 <body>
 
@@ -167,13 +167,8 @@
             tip.classList.remove('on');
         };
 
-        const show = (el) => {
-            current = el;
-            tip.textContent = el.getAttribute('data-help');
-            tip.style.left = '0px';
-            tip.style.top = '0px';
-            tip.classList.add('on');
-
+        // 位置单独算：带示例图时要等图加载完再算一次，否则高度还是 0
+        const place = (el) => {
             const r = el.getBoundingClientRect();
             const tw = tip.offsetWidth;
             const th = tip.offsetHeight;
@@ -183,6 +178,29 @@
             if (top + th > window.innerHeight - 12) top = r.top - th - 8;
             tip.style.left = Math.round(left) + 'px';
             tip.style.top = Math.round(Math.max(12, top)) + 'px';
+        };
+
+        const show = (el) => {
+            current = el;
+            tip.textContent = el.getAttribute('data-help');
+            const imgUrl = el.getAttribute('data-help-img');
+            tip.classList.toggle('has-img', !!imgUrl);
+            let img = null;
+            if (imgUrl) {
+                img = document.createElement('img');
+                img.alt = '';
+                img.src = imgUrl;
+                tip.appendChild(img);
+            }
+            tip.style.left = '0px';
+            tip.style.top = '0px';
+            tip.classList.add('on');
+            place(el);
+            // 缓存里的图可能在挂 load 之前就 complete 了，那样就白等一次，直接按已知尺寸再摆一遍
+            if (img) {
+                if (img.complete) place(el);
+                else img.addEventListener('load', () => { if (current === el) place(el); });
+            }
         };
 
         document.addEventListener('click', (e) => {

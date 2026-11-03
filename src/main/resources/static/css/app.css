@@ -1552,6 +1552,20 @@ button:hover,
     opacity: 1;
 }
 
+/* 表单里那句帮助后面跟一张示例图时，盒子放宽到能把卡片看清 */
+.gl-tip.has-img {
+    max-width: min(640px, calc(100vw - 32px));
+}
+
+.gl-tip.has-img img {
+    display: block;
+    width: 100%;
+    height: auto;
+    margin-top: 0.5rem;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+}
+
 /* 管理员点术语后浮出的编辑框：术语 / 语境关键词 / 解释 + 保存·删除·新增·取消 */
 .gl-admin .markdown .gl {
     cursor: pointer;
@@ -2418,6 +2432,22 @@ html[data-read-size='lg'] .markdown {
     outline: none;
 }
 
+/* 字段行末的「清除」：只在这一项有值时出现，靠右对齐 */
+.clear-link {
+    margin-left: auto;
+    font: inherit;
+    font-size: 0.8rem;
+    color: var(--fg-3);
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+}
+
+.clear-link:hover {
+    color: var(--accent);
+}
+
 /* ---- 表单底部按钮 ---- */
 
 .form-actions {
@@ -2549,6 +2579,11 @@ html[data-read-size='lg'] .markdown {
 }
 
 .select-list li.hide {
+    display: none;
+}
+
+/* 和当前「类型」不是一类的候选：整条藏掉（跟筛选框用的 .hide 分开，免得输入关键字又冒出来） */
+.select-list li.kind-off {
     display: none;
 }
 
@@ -3444,81 +3479,6 @@ html[data-theme='dark'] .cl-latest {
 
 .cl-admin-sub li:first-child {
     border-top: none;
-}
-
-/* ---- 用户指南 ---- */
-
-.guide h1 {
-    margin: 0 0 1.4rem;
-    font-size: 1.9rem;
-}
-
-.guide section {
-    margin: 2.2rem 0 0;
-    padding-top: 2rem;
-    border-top: 1px solid var(--line);
-}
-
-.guide section:first-of-type {
-    margin-top: 0;
-    padding-top: 0;
-    border-top: 0;
-}
-
-.guide h2 {
-    margin: 0 0 0.6rem;
-    font-size: 1.15rem;
-}
-
-.guide p,
-.guide li {
-    line-height: 1.75;
-    color: var(--fg-2);
-}
-
-.guide strong {
-    color: var(--fg);
-}
-
-.guide ul,
-.guide ol {
-    margin: 0.5rem 0 0.9rem;
-    padding-left: 1.3rem;
-}
-
-.guide li {
-    margin: 0.3rem 0;
-}
-
-.guide code {
-    font-family: var(--mono);
-    font-size: 0.9em;
-    background: var(--bg-2);
-    padding: 0.1em 0.35em;
-    border-radius: 4px;
-}
-
-.guide figure {
-    margin: 1.4rem 0 0;
-    /* 正文保持 760 的阅读宽度，截图比正文宽出去一块，不然整屏截图缩到 700 宽就糊了 */
-    width: min(1040px, calc(100vw - 3rem));
-    margin-left: 50%;
-    transform: translateX(-50%);
-}
-
-.guide img {
-    display: block;
-    width: 100%;
-    height: auto;
-    border: 1px solid var(--line);
-    border-radius: 8px;
-    background: var(--bg-2);
-}
-
-.guide figcaption {
-    margin-top: 0.5rem;
-    color: var(--fg-3);
-    font-size: 0.85rem;
 }
 
 /* ---- 错误页 ---- */

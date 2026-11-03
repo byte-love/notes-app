@@ -4,96 +4,289 @@
 <body>
 <header th:replace="~{fragments/layout :: nav}"></header>
 
-<main class="wrap guide">
-    <h1>用户指南</h1>
+<!-- 这一页的样式单独写在这里：只有指南用得到，不进 app.css -->
+<style>
+.guide-wrap {
+    display: grid;
+    grid-template-columns: 190px minmax(0, 760px);
+    gap: 2.5rem;
+    max-width: 1040px;
+    margin: 0 auto;
+    padding: 2rem 1.5rem 3.6rem;
+    align-items: start;
+}
 
-    <section>
-        <h2>我的笔记</h2>
-        <p>四类内容放在一起，顶上那排切换：</p>
+/* 左边这棵树：分组 + 条目，点一下跳到对应的那一段 */
+.guide-nav {
+    position: sticky;
+    top: 72px;
+    max-height: calc(100vh - 96px);
+    overflow-y: auto;
+    font-size: 0.88rem;
+}
+
+.guide-nav-cat {
+    margin: 1.1rem 0 0.25rem;
+    color: var(--fg-3);
+    font-size: 0.78rem;
+    letter-spacing: 0.04em;
+}
+
+.guide-nav-cat:first-child {
+    margin-top: 0;
+}
+
+.guide-nav ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.guide-nav a {
+    display: block;
+    margin-left: -8px;
+    padding: 3px 8px;
+    border-radius: 6px;
+    color: var(--fg-2);
+    line-height: 1.6;
+}
+
+.guide-nav a:hover {
+    color: var(--fg);
+    background: var(--bg-2);
+    text-decoration: none;
+}
+
+.guide-nav a.on {
+    color: var(--accent);
+    background: var(--accent-soft);
+}
+
+.guide h1 {
+    margin: 0 0 1.6rem;
+    font-size: 1.9rem;
+}
+
+.guide section {
+    margin: 2.4rem 0 0;
+    padding-top: 2rem;
+    border-top: 1px solid var(--line);
+    scroll-margin-top: 76px;
+}
+
+.guide section:first-of-type {
+    margin-top: 0;
+    padding-top: 0;
+    border-top: 0;
+}
+
+.guide h2 {
+    margin: 0 0 0.6rem;
+    font-size: 1.15rem;
+}
+
+.guide p,
+.guide li {
+    color: var(--fg-2);
+    line-height: 1.75;
+}
+
+.guide strong {
+    color: var(--fg);
+}
+
+.guide ul,
+.guide ol {
+    margin: 0.5rem 0 0.6rem;
+    padding-left: 1.25rem;
+}
+
+.guide li {
+    margin: 0.25rem 0;
+}
+
+/* 截图和正文同宽、同一条左边缘 */
+.guide figure {
+    margin: 1.1rem 0 0;
+}
+
+.guide img {
+    display: block;
+    width: 100%;
+    height: auto;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--bg-2);
+}
+
+@media (max-width: 820px) {
+    .guide-wrap {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 1.4rem;
+    }
+
+    .guide-nav {
+        position: static;
+        max-height: none;
+        order: -1;
+    }
+}
+</style>
+
+<div class="guide-wrap">
+    <aside class="guide-nav">
+        <p class="guide-nav-cat">上手</p>
         <ul>
-            <li><strong>闪念</strong>：随手记的想法、学习记录、踩坑总结</li>
-            <li><strong>项目</strong>：自己做过的东西</li>
-            <li><strong>八股</strong>：面试题和答案，按技术分类归档</li>
-            <li><strong>算法</strong>：题解和思路</li>
+            <li><a href="#mine">认识四个分区</a></li>
         </ul>
-        <p>
-            四类的地址分别是 <code>/notes</code>、<code>/projects</code>、<code>/bagu</code>、<code>/algo</code>，
-            收藏过的链接不会变。左边那棵树是目录，点分组标题收起 / 展开，收起状态记在这台浏览器里。
-        </p>
-        <figure>
-            <img th:src="@{/img/guide/guide-mine.webp(v=2)}" alt="我的笔记：四个分区和筛选行" loading="lazy">
-            <figcaption>顶部四个分区：闪念 / 项目 / 八股 / 算法</figcaption>
-        </figure>
-    </section>
 
-    <section>
-        <h2>星级与标签</h2>
-        <p>八股题后面有星级（1 到 3 星），用来记这题的重要程度。</p>
+        <p class="guide-nav-cat">写内容</p>
         <ul>
-            <li>点星星改星级，再点同一颗清回 0 星</li>
-            <li>顶上「★★★」「★★以上」「未评」按档筛，带「以上」的是这一档及以上</li>
-            <li>「收藏」是另一套：文章页点「☆ 收藏」收进收藏夹（<code>/memo</code>）</li>
-            <li>卡片下面的标签是读题时自动打的，顶上那排点一下就按它筛，能和星级叠着用</li>
+            <li><a href="#edit">新建与编辑</a></li>
+            <li><a href="#visibility">可见性怎么选</a></li>
         </ul>
-        <figure>
-            <img th:src="@{/img/guide/guide-rate.webp(v=2)}" alt="星级、收藏、标签三排筛选项" loading="lazy">
-            <figcaption>星级和标签都能筛，可以叠着用</figcaption>
-        </figure>
-    </section>
 
-    <section>
-        <h2>阅读页</h2>
-        <p>
-            左边的树跟着这篇内容所属的目录走，右边正文里的 <code>##</code> 小标题会变成右侧目录。
-            选中正文里的一段文字会浮出工具条，三个去处：
-        </p>
+        <p class="guide-nav-cat">复习</p>
         <ul>
-            <li><strong>评论</strong>：写进右栏，对这一段有疑问、有一点小见解就写这儿</li>
-            <li><strong>注释</strong>：长解释、贴代码都写这里，正文里留一条短虚下划线，点开看</li>
-            <li><strong>高亮</strong>：挑个颜色给这段铺底纹，只有自己看得到</li>
+            <li><a href="#rate">星级与标签</a></li>
+            <li><a href="#comment">评论与注释</a></li>
         </ul>
-        <p>
-            标题下面还有星级、「☆ 收藏」、「加书签」；书签在 <code>/bookmarks</code> 里能跳回具体位置。
-            同一条内容下次打开会接着上次读到的位置。
-        </p>
-        <figure>
-            <img th:src="@{/img/guide/guide-detail.webp(v=2)}" alt="阅读页：左目录、中间正文、右栏评论" loading="lazy">
-            <figcaption>左边目录、中间正文、右栏评论</figcaption>
-        </figure>
-    </section>
 
-    <section>
-        <h2>技术广场</h2>
-        <p>
-            广场上只摆公开内容，按分类排：八股的各分类、算法、项目。点分类进去看条目清单；
-            登录后点「加入我的空间」会把这一组复制一份到自己账号下，之后随你改，原版更新不影响副本。
-        </p>
-        <p>
-            会员可见和私密的内容不在这儿——那两种只有作者把链接发给你才看得到。
-        </p>
-        <figure>
-            <img th:src="@{/img/guide/guide-explore.webp(v=2)}" alt="技术广场：按分类摆的公开内容" loading="lazy">
-            <figcaption>技术广场：按分类摆的公开内容</figcaption>
-        </figure>
-    </section>
+        <p class="guide-nav-cat">分享</p>
+        <ul>
+            <li><a href="#square">技术广场</a></li>
+            <li><a href="#share">把内容发给朋友</a></li>
+        </ul>
 
-    <section>
-        <h2>用 AI 存笔记</h2>
-        <ol>
-            <li>登录后点右上角头像进「我的」</li>
-            <li>「AI 接入」里点「生成 Token」</li>
-            <li>点「复制给 AI」，把这一整段粘给 Claude Code / Cursor / Claude Desktop，它按里面的步骤把 MCP 配好</li>
-            <li>之后直接跟它说「帮我整理一下刚才的讨论，生成一篇笔记存到我账号里」</li>
-        </ol>
-        <p>
-            存之前它会先查重，再问你这篇给谁看（公开 / 会员可见 / 私密）。Token 只显示一次，丢了点「重新生成」。
-        </p>
-        <figure>
-            <img th:src="@{/img/guide/guide-ai.webp(v=2)}" alt="我的页面里的 AI 接入" loading="lazy">
-            <figcaption>「我的」页面里的 AI 接入</figcaption>
-        </figure>
-    </section>
-</main>
+        <p class="guide-nav-cat">进阶</p>
+        <ul>
+            <li><a href="#ai">用 AI 存笔记</a></li>
+        </ul>
+    </aside>
+
+    <main class="guide">
+        <h1>用户指南</h1>
+
+        <section id="mine">
+            <h2>认识四个分区</h2>
+            <p>站里的内容分四类，在「我的笔记」里用顶上那排切换：</p>
+            <ul>
+                <li><strong>闪念</strong>：随手记的想法、学习记录、踩坑总结</li>
+                <li><strong>项目</strong>：自己做过的东西</li>
+                <li><strong>八股</strong>：面试题和答案，按技术分类归档</li>
+                <li><strong>算法</strong>：题解和思路</li>
+            </ul>
+            <p>左边那棵树是目录，点分组标题就能收起或展开。</p>
+            <figure>
+                <img th:src="@{/img/guide/guide-mine.webp(v=3)}" alt="我的笔记：四个分区和筛选行" loading="lazy">
+            </figure>
+        </section>
+
+        <section id="edit">
+            <h2>新建与编辑</h2>
+            <ul>
+                <li>新建：右上角点「管理」，再点「新建」，选类型、填标题、写正文</li>
+                <li>改已有的：正文页标题下面点「编辑」</li>
+                <li>正文用 Markdown 写，右边实时预览；要插图就点「插入图片」</li>
+                <li>「补充笔记」能把另一篇笔记挂在这篇下面，正文末尾会出现一张卡片，点开就是那一篇</li>
+            </ul>
+            <figure>
+                <img th:src="@{/img/guide/guide-editor.webp(v=1)}" alt="编辑页：左边写 Markdown，右边实时预览" loading="lazy">
+            </figure>
+        </section>
+
+        <section id="visibility">
+            <h2>可见性怎么选</h2>
+            <p>每条内容都要挑一个可见性：</p>
+            <ul>
+                <li><strong>公开</strong>：谁都能看，也会出现在技术广场</li>
+                <li><strong>会员可见</strong>：没登录只能看到标题，登录后才读得到正文</li>
+                <li><strong>私密</strong>：只有你自己能看</li>
+            </ul>
+            <p>想让朋友看某一篇又不想公开，就选「会员可见」，把链接发给他——他登录之后能读全文。</p>
+        </section>
+
+        <section id="rate">
+            <h2>星级与标签</h2>
+            <p>八股题后面有星级（1 到 3 星），拿来记这题的重要程度。</p>
+            <ul>
+                <li>点星星改星级，再点同一颗清回 0 星</li>
+                <li>顶上「★★★」「★★以上」「未评」按档筛，带「以上」的是这一档及以上</li>
+                <li>「收藏」是另一套：正文页标题下点「☆ 收藏」就进了收藏夹</li>
+                <li>卡片下面的标签是读题时自动打的，顶上那排点一下就按它筛，还能和星级叠着用</li>
+            </ul>
+            <figure>
+                <img th:src="@{/img/guide/guide-rate.webp(v=3)}" alt="星级、收藏、标签三排筛选项" loading="lazy">
+            </figure>
+        </section>
+
+        <section id="comment">
+            <h2>评论与注释</h2>
+            <p>选中正文里的一段文字，会浮出工具条：</p>
+            <ul>
+                <li><strong>评论</strong>：写进右栏，对这一段有疑问、有一点小见解就写这儿</li>
+                <li><strong>注释</strong>：长解释、贴代码都写这里，正文里留一条短虚下划线，点开看</li>
+                <li><strong>高亮</strong>：挑个颜色给这段铺底纹，只有自己看得到</li>
+            </ul>
+            <p>标题下面的「加书签」能标记这一块，下次从书签点一下就能回到这里。</p>
+            <figure>
+                <img th:src="@{/img/guide/guide-detail.webp(v=3)}" alt="阅读页：左目录、中间正文、右栏评论" loading="lazy">
+            </figure>
+        </section>
+
+        <section id="square">
+            <h2>技术广场</h2>
+            <p>广场上摆的都是公开内容，按分类排：八股的各分类、算法、项目。点分类能看条目清单。</p>
+            <p>登录后点「加入我的空间」，会把这一组复制一份到自己名下，之后随你改，原版更新不影响副本。</p>
+            <figure>
+                <img th:src="@{/img/guide/guide-explore.webp(v=3)}" alt="技术广场：按分类摆的公开内容" loading="lazy">
+            </figure>
+        </section>
+
+        <section id="share">
+            <h2>把内容发给朋友</h2>
+            <p>
+                没放进广场的内容，把链接直接发给朋友：公开和会员可见的链接，对方打开就能看
+                （会员可见的要先登录）。私密的只有你自己能看，链接发出去别人也打不开。
+            </p>
+        </section>
+
+        <section id="ai">
+            <h2>用 AI 存笔记</h2>
+            <ol>
+                <li>登录后点右上角头像进「我的」</li>
+                <li>「AI 接入」里点「生成 Token」</li>
+                <li>点「复制给 AI」，把这一整段粘给 Claude Code / Cursor / Claude Desktop，它按里面的步骤配好</li>
+                <li>之后直接跟它说「帮我整理一下刚才的讨论，生成一篇笔记存到我账号里」</li>
+            </ol>
+            <p>存之前它会先查重，再问你这篇给谁看。Token 只显示一次，丢了点「重新生成」。</p>
+            <figure>
+                <img th:src="@{/img/guide/guide-ai.webp(v=3)}" alt="我的页面里的 AI 接入" loading="lazy">
+            </figure>
+        </section>
+    </main>
+</div>
+
+<script>
+    // 左边树高亮当前读到的那一段
+    (() => {
+        const links = [...document.querySelectorAll('.guide-nav a')];
+        const byId = new Map(links.map((a) => [a.getAttribute('href').slice(1), a]));
+        const targets = [...byId.keys()].map((id) => document.getElementById(id)).filter(Boolean);
+        if (!targets.length) return;
+        const mark = (id) => {
+            links.forEach((a) => a.classList.remove('on'));
+            const a = byId.get(id);
+            if (a) a.classList.add('on');
+        };
+        mark(targets[0].id);
+        const io = new IntersectionObserver((entries) => {
+            const hit = entries.filter((e) => e.isIntersecting).pop();
+            if (hit) mark(hit.target.id);
+        }, { rootMargin: '-72px 0px -65% 0px' });
+        targets.forEach((t) => io.observe(t));
+    })();
+</script>
 
 <footer th:replace="~{fragments/layout :: foot}"></footer>
 </body>
