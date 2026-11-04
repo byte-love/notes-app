@@ -102,7 +102,14 @@ public class MeController {
         return ServletUriComponentsBuilder.fromCurrentContextPath().toUriString() + "/mcp";
     }
 
-    /** 一段可以直接粘给 AI 的说明：地址、token、配法，以及「先问权限、别自己覆盖」的约定。 */
+    /**
+     * 一段可以直接粘给 AI 的说明：地址、token、配法。
+     * <p>
+     * 这里<b>只放配置</b>，不放「存笔记该问什么」那些规则 —— 规则由服务端在 MCP 握手时下发
+     * （`initialize.instructions`），用户重连一次就同步。以前这里抄了一份规则，结果改了服务端
+     * 这份还停在旧说法（2026-11-04 发现的：这里还写着「先问权限、由我决定新建还是覆盖」，
+     * 而服务端已经改成「先给默认值、点头就写」）。
+     */
     private static String aiPrompt(String mcpUrl, String token) {
         String cmd = "claude mcp add --transport http byte-love-notes " + mcpUrl
                 + " --header \"Authorization: Bearer " + token + "\"";
@@ -120,14 +127,8 @@ public class MeController {
                 "Cursor / Claude Desktop 往配置文件里加：",
                 json,
                 "",
-                "配好之后按这个来：",
-                "1. 存之前先用 notes_folders 看目录、notes_search 查重；有相近的旧笔记，"
-                        + "先把那几篇标题念给我，由我决定新建还是覆盖。"
-                        + "目录里没有合适的分类就先建一个（note_create 带 folder=true），别硬塞进不相关的目录。",
-                "2. 存之前问我这篇给什么权限：PUBLIC 任何用户可见（会进技术广场）；"
-                        + "MEMBER 登录可见（只有我把链接发给朋友、对方注册登录后才能看，不进广场）；"
-                        + "PRIVATE 仅自己。我已经说过了就直接用，别再问。",
-                "3. 覆盖和删除必须我明确同意。");
+                "配好之后不用记别的规则：连上时服务端会自己下发这段说明（目录怎么选、权限和星级怎么定、"
+                        + "什么时候要问我），你照它说的做就行。覆盖和删除任何内容之前，必须先问我。");
     }
 
     /** 生成（或重新生成）个人 token；旧的立即作废。 */
