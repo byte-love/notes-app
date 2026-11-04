@@ -22,7 +22,7 @@
         <th:block th:with="tags=${itemTags == null ? null : itemTags.get(i.id)}">
             <p class="item-tags" th:if="${tags != null and !#lists.isEmpty(tags)}">
                 <span class="item-tag" th:each="t, it : ${tags}" th:if="${it.index < 3}"
-                      th:text="${t}">标签</span>
+                      th:attr="data-tone=${tagTone.of(t)}" th:text="${t}">标签</span>
             </p>
         </th:block>
         <p class="item-summary" th:if="${i.summary != null and !lockedIds.contains(i.id)}"

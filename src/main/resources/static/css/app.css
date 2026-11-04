@@ -1232,6 +1232,136 @@ button:hover,
     text-decoration: none;
 }
 
+/* 标签配色：同一个词永远是同一个色调（data-tone 由 tagTone.of 算出来，不随机）。
+   只让底色、描边、文字带一点点色相，整体还是纸感；深色主题里反过来压暗。
+   t0~t7 是色相，0 赭红 / 30 琥珀 / 85 橄榄 / 150 松绿 / 190 青 / 210 靛 / 265 紫 / 330 玫 */
+.doc-tag,
+.item-tag {
+    --tc: 30;
+    background: hsl(var(--tc) 45% 95.5%);
+    border-color: hsl(var(--tc) 32% 85%);
+    color: hsl(var(--tc) 36% 33%);
+}
+
+.doc-tag:hover,
+.item-tag:hover {
+    background: hsl(var(--tc) 55% 92%);
+    border-color: hsl(var(--tc) 42% 60%);
+    color: hsl(var(--tc) 45% 27%);
+}
+
+.doc-tag[data-tone='t0'], .item-tag[data-tone='t0'] {
+    --tc: 12;
+}
+
+.doc-tag[data-tone='t1'], .item-tag[data-tone='t1'] {
+    --tc: 32;
+}
+
+.doc-tag[data-tone='t2'], .item-tag[data-tone='t2'] {
+    --tc: 85;
+}
+
+.doc-tag[data-tone='t3'], .item-tag[data-tone='t3'] {
+    --tc: 150;
+}
+
+.doc-tag[data-tone='t4'], .item-tag[data-tone='t4'] {
+    --tc: 190;
+}
+
+.doc-tag[data-tone='t5'], .item-tag[data-tone='t5'] {
+    --tc: 212;
+}
+
+.doc-tag[data-tone='t6'], .item-tag[data-tone='t6'] {
+    --tc: 265;
+}
+
+.doc-tag[data-tone='t7'], .item-tag[data-tone='t7'] {
+    --tc: 330;
+}
+
+@media (prefers-color-scheme: dark) {
+    .doc-tag,
+    .item-tag {
+        background: hsl(var(--tc) 26% 17%);
+        border-color: hsl(var(--tc) 22% 27%);
+        color: hsl(var(--tc) 42% 72%);
+    }
+}
+
+html[data-theme='dark'] .doc-tag,
+html[data-theme='dark'] .item-tag {
+    background: hsl(var(--tc) 26% 17%);
+    border-color: hsl(var(--tc) 22% 27%);
+    color: hsl(var(--tc) 42% 72%);
+}
+
+html[data-theme='light'] .doc-tag,
+html[data-theme='light'] .item-tag,
+html[data-theme='sepia'] .doc-tag,
+html[data-theme='sepia'] .item-tag {
+    background: hsl(var(--tc) 45% 95.5%);
+    border-color: hsl(var(--tc) 32% 85%);
+    color: hsl(var(--tc) 36% 33%);
+}
+
+/* ---------- 正文末尾的「下一篇」 ---------- */
+.doc-next {
+    margin: 2.2rem 0 0;
+}
+
+.doc-next-link {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    padding: 0.75rem 1rem;
+    background: var(--bg-2);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    color: var(--fg-2);
+}
+
+.doc-next-link:hover {
+    color: var(--accent);
+    border-color: var(--accent);
+    text-decoration: none;
+}
+
+.doc-next-label {
+    flex: none;
+    font-size: 0.78rem;
+    color: var(--fg-3);
+}
+
+.doc-next-title {
+    min-width: 0;
+    font-weight: 500;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.doc-next-arrow {
+    flex: none;
+    margin-left: auto;
+    color: var(--fg-3);
+}
+
+.doc-next-link:hover .doc-next-arrow {
+    color: var(--accent);
+}
+
+.doc-next-end {
+    margin: 2.2rem 0 0;
+    padding-top: 1.1rem;
+    border-top: 1px dashed var(--line);
+    text-align: center;
+    font-size: 0.82rem;
+    color: var(--fg-3);
+}
+
 /* 标签那条筛选行跟星级那条挨着，别各自留一份外边距 */
 .tag-filter {
     margin-top: -0.9rem;

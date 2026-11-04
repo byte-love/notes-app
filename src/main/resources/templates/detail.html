@@ -75,10 +75,10 @@
                 </div>
             </form>
 
-            <!-- 自动打的标签：点一下就是把列表按这个标签筛一遍 -->
+            <!-- 自动打的标签：点一下就是把列表按这个标签筛一遍；颜色按词固定，不随机 -->
             <p class="doc-tags" th:if="${itemTags != null and !#lists.isEmpty(itemTags)}">
                 <a class="doc-tag" th:each="t : ${itemTags}" th:href="${basePath + '?tag=' + t}"
-                   th:text="${t}">标签</a>
+                   th:attr="data-tone=${tagTone.of(t)}" th:text="${t}">标签</a>
             </p>
 
             <!-- 这条是补充笔记时，标题下面指出「本体」是哪一篇，点一下回去 -->
@@ -117,6 +117,16 @@
                     </form>
                 </div>
             </section>
+
+            <!-- 同一分类里的下一篇；到底了就给个明确的终点，免得人以为还有 -->
+            <nav class="doc-next" th:if="${nextNote != null}">
+                <a class="doc-next-link" th:href="${basePath + '/' + nextNote.slug}">
+                    <span class="doc-next-label">下一篇</span>
+                    <span class="doc-next-title" th:text="${nextNote.title}">标题</span>
+                    <span class="doc-next-arrow" aria-hidden="true">→</span>
+                </a>
+            </nav>
+            <p class="doc-next-end" th:if="${nextNote == null}">已经是这个分类的最后一篇</p>
         </article>
 
         <!-- 右栏是评论区：整篇评论 + 对正文里带下划线句子的评论 -->

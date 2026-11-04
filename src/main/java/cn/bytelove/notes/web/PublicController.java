@@ -333,6 +333,8 @@ public class PublicController {
         model.addAttribute("parentNote", parentNoteOf(siblings, item, lockedIds));
         // 九成八股正文里没有 ## 标题，右栏会空着；没有目录时改用「同分类的其他条目」填上
         model.addAttribute("rail", railOf(siblings, item, lockedIds));
+        // 同一分类（同一个父级）里的下一篇：正文末尾给一个直达按钮，到尾了给个明确的终点
+        model.addAttribute("nextNote", nextNoteOf(siblings, item, lockedIds));
         model.addAttribute("starred", viewer.userId() != null && stars.isStarred(viewer.userId(), item.getId()));
         // 只有自己的内容能标星级：星级是内容上的字段，不是「谁标的」，改别人的条目等于改别人的东西
         model.addAttribute("canRate", viewer.userId() != null && viewer.userId().equals(item.getOwnerId()));
@@ -357,6 +359,34 @@ public class PublicController {
         model.addAttribute("highlights", highlights.list(item.getId(),
                 viewer.userId() == null ? 0L : viewer.userId()));
         return "detail";
+    }
+
+    /**
+     * 同一分类（同一个父级）里的下一篇：按 sortOrder、id 的顺序取排在当前这条后面的第一条。
+     * 补充笔记不参与（它跟在附录里，不是同级的正文）；锁着的条目（登录后可见）也不指过去，
+     * 免得游客点进去是 403。没有下一篇就返回 null，页面显示「已经是这个分类的最后一篇」。
+     */
+    private AttachedNote nextNoteOf(List<ContentItem> siblings, ContentItem current, Set<Long> lockedIds) {
+        List<ContentItem> peers = new ArrayList<>();
+        for (ContentItem s : siblings) {
+            if (Objects.equals(s.getParentId(), current.getParentId())
+                    && s.getSupplementOfId() == null
+                    && !lockedIds.contains(s.getId())) {
+                peers.add(s);
+            }
+        }
+        peers.sort(Comparator.comparingInt(ContentItem::getSortOrder).thenComparing(ContentItem::getId));
+        for (ContentItem s : peers) {
+            if (s.getId().equals(current.getId())) {
+                continue;
+            }
+            boolean after = s.getSortOrder() > current.getSortOrder()
+                    || (s.getSortOrder() == current.getSortOrder() && s.getId() > current.getId());
+            if (after) {
+                return new AttachedNote(s.getTitle(), s.getSlug(), null);
+            }
+        }
+        return null;
     }
 
     /**
