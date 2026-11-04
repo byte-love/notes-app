@@ -246,9 +246,16 @@ sudo /opt/deploy/sync-db.sh    # 正式库整库覆盖到测试库
   - **两个 MCP 壳**：远程 `POST /app/mcp`（`McpController`，JSON-RPC：initialize / tools/list / tools/call，
     protocolVersion 2025-06-18，直接回 JSON 不用 SSE）；本地 `mcp/notes-mcp.mjs`（零依赖 Node，stdio，
     只读 `NOTES_BASE` + `NOTES_TOKEN`），客户端配置写法在 `mcp/README.md`。
-  - **页面上的 MCP 地址走配置**：`notes.mcp-url`（环境变量 `MCP_URL`），两套 `app.env` 里都写死成
-    `http://47.104.210.93:8080/app/mcp`。不配的话才按当前请求的域名端口拼——测试站会拼出 `:8180`，
-    那条地址复制给 AI 就打到测试库上去了。**备案换成域名之后改这一处就行**（两个 `app.env` + 重启）。
+  - **页面上的 MCP 地址走配置**：`notes.mcp-url`（环境变量 `MCP_URL`），两套 `app.env` 里现在都是
+    `https://byte-love.cn/app/mcp`（换域名之前是 `http://47.104.210.93:8080/app/mcp`）。不配的话才按当前
+    请求的域名端口拼——测试站会拼出 `:8180`，那条地址复制给 AI 就打到测试库上去了。改这一处就行（两个
+    `app.env` + 重启），页面上「复制」出来的就是它。
+  - **每个工具都必须写全 `inputSchema`，哪怕没有参数**：`{type:"object", properties:{}}`，
+    不能用空对象 `{}`。2026-11-04 就栽在 `notes_folders` 传了 `Map.of()`：客户端连上之后
+    `tools/list` 校验失败（`Invalid input (at tools.0.inputSchema.type)`），**六个工具一个都注册不上**，
+    看着像「MCP 配错了」。`tools/list` 不校验 token，自查一条命令就够：
+    `curl -s -X POST https://byte-love.cn/app/mcp -H 'content-type: application/json' -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'`
+    —— 把每个 `inputSchema` 里的 `type` 和 `properties` 看一遍。
   - **可见性必须由用户决定**：`note_create` 的 `visibility` 是必填参数，传空服务端直接 400，返回里明说
     「先去问用户」。三档含义见 `Visibility` 枚举；`MEMBER` 是「用户把链接发给别人、对方登录后才能看」，
     **不进技术广场**（广场以后只收 `PUBLIC`）。改可见性语义先读 `VisibilityService`——别人能不能看还有
@@ -435,6 +442,23 @@ grep 命中就退出，`tee` 收到 SIGPIPE，整个管道退出码变成 141，
 **CSRF 的 meta 标签要读 `.content`，读 `.value` 永远是 `undefined`**：`<meta name="_csrf" content="…">`
 不是表单控件。2026-11-02 两次栽在这：`rate.js` 打星时 token 是空串 → 403（点了星页面没反应，看着像 JS 没跑），
 浏览器里临时拼登录脚本时同理。抄 `comments.js` 里 `const csrf = () => meta.content` 那行就不会错。
+
+**页面里那份 CSRF token 会作废，所以提交前要换新（2026-11-04 修）**：token 绑在会话上
+（`HttpSessionCsrfTokenRepository`），会话一换就作废——进程重启、会话过期、
+`remember-me` 在别处重新认证（`CsrfAuthenticationStrategy` 会轮换 token）、在另一台设备重新登录，
+都会让「页面打开时拿到的那份」失效。表现是：闲置一阵再发评论 / 注释，**第一次 POST 403、
+再发一次就好了**（第二次是在刷新后的页面上发的）。校验失败走的是 `AccessDeniedException` →
+`AccessDeniedHandlerImpl` → 403，和「这条内容不归你看」那种 403 不是一回事
+（后者文案由 `AppErrorController` 按 `errorReason` 区分）。
+
+现在的做法（`static/js/csrf.js` + `GET /csrf`）：
+- `GET /csrf` 回 `{"token":"…","header":"X-CSRF-TOKEN"}`，`Cache-Control: no-store`；
+  返回的是**给页面用的那版编码**（Spring Security 6 的 XOR 掩码），直接填回表单 / meta 就能用。
+  别改成 `token.getToken()` 之外的裸值，也别去掉掩码——那样提交反而校验不过。
+- `csrf.js` 在页面初次加载、`visibilitychange` 回到前台、`focus`、`pageshow`、每 4 分钟
+  各换一次；**提交时再兜一道**：token 超过 30 秒没换就等换完再提交，不会把用户写的字丢掉。
+- 自测办法：登录后打开正文页 → `systemctl restart notes-app-dev` → 用页面里的旧 token POST
+  `/comment/<slug>` 应得 403 → `GET /app/csrf` 拿新 token 再 POST 应成功（`_publish/csrf-repro.ps1`）。
 
 **测试脚本取 JSON 字段别用贪婪 `sed 's/.*"slug":"//'`**：2026-11-03 我用它从 `note_create` 的返回里取 slug，
 结果匹配到了 `similar` 数组里的最后一个 slug，于是后续的「带 confirm 覆盖」改错了对象、清理时又用同一个变量

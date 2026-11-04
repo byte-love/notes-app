@@ -5,6 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="_csrf" th:if="${_csrf != null}" th:content="${_csrf.token}">
+    <meta name="csrf-endpoint" th:if="${_csrf != null}" th:content="@{/csrf}">
     <!-- 术语解释的编辑入口：管理员才有，浮窗里点一下就能改 / 删 / 新增 -->
     <meta name="glossary-endpoint" th:if="${glossaryAdmin}" th:content="@{/glossary}">
     <title th:text="${pageTitle}">notes</title>
@@ -72,6 +73,7 @@
 </div>
 
 <th:block th:fragment="foot">
+<script th:src="@{/js/csrf.js(v=1)}"></script>
 <script th:src="@{/js/confirm.js(v=1)}"></script>
 
 <script>

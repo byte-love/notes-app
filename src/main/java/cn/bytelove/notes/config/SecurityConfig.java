@@ -30,7 +30,8 @@ public class SecurityConfig {
                         .requestMatchers("/", "/notes", "/notes/**", "/projects", "/projects/**",
                                 "/bagu", "/bagu/**", "/algo", "/algo/**",
                                 // /api/ai/** 和 /mcp 是给本地 AI 用的，没有会话，靠 Bearer token 自己鉴权
-                                "/login", "/register", "/api/**", "/mcp", "/css/**", "/js/**", "/img/**",
+                                // /csrf 只回一份当前会话的 token，没有它前端没法在会话换掉后自愈
+                                "/login", "/register", "/csrf", "/api/**", "/mcp", "/css/**", "/js/**", "/img/**",
                                 "/media/**", "/favicon.ico", "/error").permitAll()
                         .requestMatchers("/admin/**").authenticated()
                         .requestMatchers("/star/**", "/rate/**", "/memo").authenticated()

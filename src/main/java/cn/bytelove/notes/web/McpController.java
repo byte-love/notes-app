@@ -109,7 +109,7 @@ public class McpController {
     private List<Map<String, Object>> tools() {
         List<Map<String, Object>> tools = new ArrayList<>();
         tools.add(tool("notes_folders", "列出我自己笔记的目录（slug / 标题 / 完整路径 / 类型）。新建笔记前用它挑 parent。",
-                Map.of()));
+                props(Map.of())));
         tools.add(tool("notes_search", "在我自己的笔记里按关键词搜（标题、摘要、正文都搜）。用来查重，只搜自己名下的。",
                 props(Map.of("q", str("关键词，可留空表示全部")))));
         tools.add(tool("note_get", "读一篇我自己笔记的完整内容。",

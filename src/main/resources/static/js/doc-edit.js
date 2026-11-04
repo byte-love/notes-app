@@ -1,8 +1,11 @@
 // 正文直接编辑：contenteditable 里就地改，停手后把 DOM 折回 Markdown 静默保存（不刷新页面）
 // 只覆盖 MarkdownRenderer 会产出的标签；文本节点空白要折叠，否则 HTML 源码里的换行会变成硬换行
 (() => {
-    const meta = document.querySelector('meta[name="_csrf"]');
-    const metaCsrf = meta ? meta.getAttribute('content') : '';
+    // token 会随会话换掉而作废（csrf.js 会刷），所以每次都现读，别在加载时缓存一份
+    const csrfToken = () => {
+        const meta = document.querySelector('meta[name="_csrf"]');
+        return meta ? meta.getAttribute('content') : '';
+    };
 
     // 标题就地改：h1 也是 contenteditable，回车或失焦时存一次
     const titleEl = document.querySelector('h1[data-item-id][contenteditable="true"]');
@@ -17,7 +20,7 @@
                     method: 'POST',
                     credentials: 'same-origin',
                     headers: { 'content-type': 'application/x-www-form-urlencoded' },
-                    body: new URLSearchParams({ _csrf: metaCsrf, title: text, back: location.pathname }).toString(),
+                    body: new URLSearchParams({ _csrf: csrfToken(), title: text, back: location.pathname }).toString(),
                 });
                 savedTitle = text;
                 // 改完刷新一次：卡片标题、面包屑、左树都是服务端渲染的，光改 document.title 不够
@@ -41,7 +44,7 @@
     const body = document.querySelector('.doc .markdown');
     if (!body || body.getAttribute('contenteditable') !== 'true' || !body.dataset.save) return;
 
-    const csrf = metaCsrf;
+    const csrf = csrfToken;
     const saveUrl = body.dataset.save;
 
     const inline = (node) => {
@@ -189,7 +192,7 @@
                 method: 'POST',
                 credentials: 'same-origin',
                 headers: { 'content-type': 'application/x-www-form-urlencoded' },
-                body: new URLSearchParams({ _csrf: csrf, body: md, back: location.pathname }).toString(),
+                body: new URLSearchParams({ _csrf: csrf(), body: md, back: location.pathname }).toString(),
             });
             lastSaved = md;
             dirty = false;
