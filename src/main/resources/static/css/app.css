@@ -17,6 +17,7 @@
     --fg-3: #726d63;
     --bg: #fbfaf7;
     --bg-2: #f4f2ec;
+    --doc-bg: #fffefb;
     --line: #e5e1d8;
     --accent: #1f6f66;
     --accent-soft: #edf3f1;
@@ -73,6 +74,7 @@
         --fg-3: #8c8980;
         --bg: #131413;
         --bg-2: #1b1d1c;
+        --doc-bg: #191b1a;
         --line: #2a2e2c;
         --accent: #6fd3c3;
         --accent-soft: #1c2725;
@@ -136,6 +138,7 @@ html[data-theme='light'] {
     --fg-3: #726d63;
     --bg: #fbfaf7;
     --bg-2: #f4f2ec;
+    --doc-bg: #fffefb;
     --line: #e5e1d8;
     --accent: #1f6f66;
     --accent-soft: #edf3f1;
@@ -152,6 +155,7 @@ html[data-theme='dark'] {
     --fg-3: #8c8980;
     --bg: #131413;
     --bg-2: #1b1d1c;
+    --doc-bg: #191b1a;
     --line: #2a2e2c;
     --accent: #6fd3c3;
     --accent-soft: #1c2725;
@@ -180,6 +184,7 @@ html[data-theme='sepia'] {
     --fg-3: #6f6552;
     --bg: #f5efe2;
     --bg-2: #efe7d6;
+    --doc-bg: #fbf6ec;
     --line: #ddd2bd;
     --accent: #7d3f22;
     --accent-soft: #ece2cd;
@@ -1662,6 +1667,16 @@ html[data-theme='sepia'] .item-tag {
 .markdown {
     font-size: 16px;
     line-height: 1.8;
+}
+
+/* 正文整块托一层很浅的底色（各主题的 --doc-bg，比页面底色亮一点点），
+   像一张纸压在页面上。左右用负外边距撑出去，正文文字仍然和标题左对齐 */
+.doc .markdown {
+    margin: 0 -1.4rem;
+    padding: 1.2rem 1.4rem;
+    background: var(--doc-bg);
+    border: 1px solid var(--line);
+    border-radius: 12px;
 }
 
 .markdown h1,
