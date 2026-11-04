@@ -27,9 +27,14 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
- * commonmark 默认把原始 HTML 转义掉，所以不再额外做 XSS 过滤。
- * 标题 id 由渲染和目录提取共用同一套「按文档顺序编号」规则，两边必然一致。
- * 术语浮窗只在渲染阶段包一层 span，不影响目录取文字。
+ * 原始 HTML 一律按文字输出（{@code escapeHtml(true)}）。
+ * <p>
+ * 笔记正文里到处都是 {@code <T>}、{@code <String>}、{@code <groupId>} 这种尖括号，
+ * 不转义就会被浏览器当成标签：{@code List<String>、List<Integer>} 会开出两个没闭合的元素，
+ * 把后面整页内容（右栏评论、页脚脚本）吞进正文里 —— 表现为右栏消失、评论跑到正文下面
+ * （2026-11-04 在八股 043 上踩到，全站 37 篇有同样的尖括号）。
+ * <p>
+ * 全站只有 2 篇正文里出现过真 HTML（还都是当代码举例的 span / a），按文字输出反而更对。
  */
 @Service
 public class MarkdownRenderer {
@@ -137,6 +142,7 @@ public class MarkdownRenderer {
         HtmlRenderer renderer = HtmlRenderer.builder()
                 .extensions(extensions)
                 .nodeRendererFactory(TermNodeRenderer::new)
+                .escapeHtml(true)
                 .attributeProviderFactory(context -> attrProvider)
                 .build();
         return stripPresentational(renderer.render(document));

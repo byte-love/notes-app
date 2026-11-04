@@ -285,8 +285,9 @@
         const byViewport = (ratio, lo, hi) =>
             Math.round(Math.min(hi, Math.max(lo, window.innerWidth * ratio)));
         let treeW = read('layout:tree4', byViewport(0.19, 160, 380));
-        // 右栏固定像素：拖左栏时它只是被推着走，宽度不变
-        let tocW = read('layout:toc6', byViewport(0.24, 280, 420));
+        // 右栏固定像素：拖左栏时它只是被推着走，宽度不变。
+        // 默认跟着正文走窄一点（约 280px，1700 窗口下 0.165），太宽会把正文挤窄
+        let tocW = read('layout:toc6', byViewport(0.165, 260, 300));
 
         // <=820 是单列堆叠、<=1100 没有右侧目录，这两种宽度下列宽交给 CSS 媒体查询；
         // 内联样式一旦盖上去，手机上正文会被挤成 0 宽
