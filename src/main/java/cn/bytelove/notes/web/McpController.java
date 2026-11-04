@@ -28,6 +28,34 @@ public class McpController {
     private static final String PROTOCOL = "2025-06-18";
     private static final ObjectMapper JSON = new ObjectMapper();
 
+    /**
+     * 握手时下发给客户端的说明（MCP 的 initialize.instructions）。
+     * 存笔记那几件事的规则全写在这里 —— 客户端只要把这段交给模型，
+     * 就不用每一步都靠工具描述去拼。改这段等于改 AI 的行为，别随手加废话。
+     */
+    private static final String INSTRUCTIONS = """
+            你是「byte-love 笔记站」的助手，帮用户把各种内容存进他的笔记库：聊天里聊出来的东西，\
+            或者他电脑上散落各处的笔记、文件，都算。
+
+            用户一般不想逐项做选择题，所以每一件都先给出你的判断和默认值，问一句「这样行不行」；\
+            他说「可以 / 没问题 / 就这样」就直接按默认值写，别再问第二遍：
+            1. 存到哪：先调 notes_folders 看现有目录，自己挑最像的那个（比如讲 JVM 就放「JVM 与反射」）；\
+            确实没有合适的，再问他新分类叫什么，建好拿返回的 slug 当 parent。
+            2. 内容类型：你自己判断 —— note 闪念（一段想法、零散记录）/ bagu 八股（面试问答）/ \
+            algo 算法（题解）/ project 项目。
+            3. 谁能看：默认 MEMBER（登录用户能看、不进技术广场）。他明确说要公开，或者这篇本来就该给所有人看，\
+            才用 PUBLIC（会直接进技术广场）；明确要私密才用 PRIVATE。
+            4. 几颗星：你自己判断 0~3 —— 3 星面试高频、迟早会被问到；2 星值得复习；1 星有空再看；0 先不评。
+            5. 撞不撞车：note_create 返回的 similar 不空，就把那几篇标题列出来，默认按「新建一篇」；\
+            他说是补进旧的那篇，才用 note_update + confirm=true。
+
+            确认时把结论摆成一小段（标题 / 目录 / 类型 / 可见性 / 几颗星）让他一句话回；他纠正哪项就改哪项。
+            如果一次拿来一堆散落的文件或笔记，先列个清单（一行一篇：标题 → 目录）整体确认，再逐篇落库。
+
+            其它：摘要和标签站里自动生成，不用问；标题尽量 20 字以内；正文用 Markdown，代码放 ``` 里；\
+            note_create 只新建不覆盖；写完回一句话加一个 url，别把正文再贴一遍。
+            """;
+
     private final AiController ai;
 
     public McpController(AiController ai) {
@@ -95,7 +123,8 @@ public class McpController {
                 case "initialize" -> Map.of(
                         "protocolVersion", PROTOCOL,
                         "capabilities", Map.of("tools", Map.of()),
-                        "serverInfo", Map.of("name", "byte-love-notes", "version", "1.0.0"));
+                        "serverInfo", Map.of("name", "byte-love-notes", "version", "1.1.0"),
+                        "instructions", INSTRUCTIONS);
                 case "ping" -> Map.of();
                 case "tools/list" -> Map.of("tools", tools());
                 case "tools/call" -> call(auth, body, request);
@@ -152,11 +181,11 @@ public class McpController {
             case "note_create" -> ai.create(auth, new AiController.NoteIn(
                     str(args, "title"), str(args, "body"), str(args, "summary"), null,
                     str(args, "parent"), str(args, "visibility"), str(args, "kind"), null,
-                    Boolean.TRUE.equals(args.get("folder"))), request);
+                    Boolean.TRUE.equals(args.get("folder")), num(args, "rating")), request);
             case "note_update" -> ai.update(auth, str(args, "slug"), new AiController.NoteIn(
                     str(args, "title"), str(args, "body"), str(args, "summary"), null,
                     str(args, "parent"), str(args, "visibility"), str(args, "kind"),
-                    Boolean.TRUE.equals(args.get("confirm")), null), request);
+                    Boolean.TRUE.equals(args.get("confirm")), null, num(args, "rating")), request);
             case "note_delete" -> ai.delete(auth, str(args, "slug"),
                     Boolean.TRUE.equals(args.get("confirm")));
             default -> throw new Rpc(-32602, "没有这个工具: " + name);
@@ -170,6 +199,26 @@ public class McpController {
         return v == null ? null : String.valueOf(v);
     }
 
+    /** 数值参数：模型有时把数字写成字符串，两种都认。 */
+    private static Integer num(Map<String, Object> args, String key) {
+        Object v = args.get(key);
+        if (v instanceof Number n) {
+            return n.intValue();
+        }
+        if (v == null) {
+            return null;
+        }
+        String s = String.valueOf(v).trim();
+        if (s.isEmpty()) {
+            return null;
+        }
+        try {
+            return Integer.parseInt(s);
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
     private List<Map<String, Object>> tools() {
         List<Map<String, Object>> tools = new ArrayList<>();
         tools.add(tool("notes_folders", "列出我自己笔记的目录（slug / 标题 / 完整路径 / 类型）。新建笔记前用它挑 parent。",
@@ -180,9 +229,8 @@ public class McpController {
                 props(Map.of("slug", str("笔记的 slug")), "slug")));
         tools.add(tool("note_create", "新建一篇笔记（或者一个目录）。永远只会新建，不会覆盖任何已有内容；如果返回里 similar 不为空，"
                         + "说明站里有标题相近的旧笔记，要把这几篇告诉用户，问他是新建还是去改旧的。"
-                        + "**visibility 必填**：先问用户这篇给什么权限 —— PUBLIC 任何用户可见（会进技术广场）；"
-                        + "MEMBER 登录可见（只有用户把链接发给别人、对方注册登录后才能看，不进技术广场）；"
-                        + "PRIVATE 仅自己。用户已经说过了就直接用那个值，不要再问一遍。"
+                        + "**visibility 你自己定并告诉他**：默认 MEMBER（登录可见、不进技术广场）；他说要公开、"
+                        + "或者这篇本来就该给所有人看，才用 PUBLIC（会直接进技术广场）；明确要私密才用 PRIVATE。"
                         + "**要开新分类（比如用户学的 Python，现有目录全是 Java）就传 folder=true**："
                         + "这时 title 就是分类名、body 可以留空；建好以后返回的 slug 拿去当下一次 note_create 的 parent。",
                 props(Map.of(
@@ -190,11 +238,14 @@ public class McpController {
                         "body", str("正文，Markdown；folder=true 时可以留空"),
                         "summary", str("摘要，可不填（会自动取正文开头）"),
                         "parent", str("父目录 slug，可用 notes_folders 查；不填就放在顶层"),
-                        "visibility", str("必填。PUBLIC 任何用户可见 / MEMBER 登录可见（不进广场） / PRIVATE 仅自己。"
-                                + "用户没说就先问，说了就别再问"),
+                        "visibility", str("可见性，你自己定：默认 MEMBER（登录可见、不进广场）/ PUBLIC 会进技术广场 / "
+                                + "PRIVATE 仅自己。定好告诉他一句，他没意见就用这个"),
                         "kind", str("内容类型：note（默认）/ bagu / algo / project"),
+                        "rating", Map.of("type", "integer", "minimum", 0, "maximum", 3,
+                                "description", "星级 0~3，你自己判断并告诉他：3 星面试高频、迟早会被问到；"
+                                        + "2 星值得复习；1 星有空再看；0 先不评。他说没问题就按这个来"),
                         "folder", Map.of("type", "boolean",
-                                "description", str("只当目录用（分类）：列表里不占卡片，可以在它下面继续新建。新建分类时传 true"))),
+                                "description", "只当目录用（分类）：列表里不占卡片，可以在它下面继续新建。新建分类时传 true")),
                         "title", "visibility")));
         tools.add(tool("note_update", "覆盖一篇已有笔记。**必须先把这个 slug 对应的标题念给用户、得到明确同意**，"
                         + "再把 confirm 传 true；服务端会先把旧版本存快照再覆盖。没带 confirm 会被拒绝。",
@@ -205,12 +256,14 @@ public class McpController {
                         "summary", str("新摘要"),
                         "parent", str("新的父目录 slug"),
                         "visibility", str("可见性：PUBLIC / MEMBER / PRIVATE"),
-                        "confirm", Map.of("type", "boolean", "description", str("用户同意覆盖后传 true"))),
+                        "rating", Map.of("type", "integer", "minimum", 0, "maximum", 3,
+                                "description", "顺便改星级 0~3；用户没提就别传"),
+                        "confirm", Map.of("type", "boolean", "description", "用户同意覆盖后传 true")),
                         "slug", "confirm")));
         tools.add(tool("note_delete", "删除一篇笔记（软删，30 天内可在站点回收站恢复）。"
                         + "**必须先向用户复述要删的那篇标题并得到同意**，再传 confirm=true。",
                 props(Map.of("slug", str("要删的笔记 slug"),
-                        "confirm", Map.of("type", "boolean", "description", str("用户同意删除后传 true"))),
+                        "confirm", Map.of("type", "boolean", "description", "用户同意删除后传 true")),
                         "slug", "confirm")));
         return tools;
     }

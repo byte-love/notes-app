@@ -54,20 +54,16 @@ public class RecommendService {
     public List<Card> cards(ContentKind kind) {
         // 只查需要的列：body 是表里最大的列，算数量和看标题用不到它
         List<ContentItemRepository.CardRow> pool = items.findCardRows(kind);
-        Set<Long> ids = new HashSet<>();
+        List<Slot> slots = new ArrayList<>(pool.size());
         for (ContentItemRepository.CardRow i : pool) {
-            ids.add(i.getId());
+            slots.add(new Slot(i.getId(), i.getParentId(), i.getSlug(), i.getVisibility()));
         }
-        Map<Long, List<Long>> childrenOf = new HashMap<>();
-        for (ContentItemRepository.CardRow i : pool) {
-            if (i.getParentId() != null) {
-                childrenOf.computeIfAbsent(i.getParentId(), k -> new ArrayList<>()).add(i.getId());
-            }
-        }
+        Map<Long, Long> parentOf = effectiveParents(slots);
+        Map<Long, List<Long>> childrenOf = childrenMap(slots, parentOf);
 
         List<Card> cards = new ArrayList<>();
         for (ContentItemRepository.CardRow item : pool) {
-            boolean top = item.getParentId() == null || !ids.contains(item.getParentId());
+            boolean top = !parentOf.containsKey(item.getId());
             if (top && item.getVisibility() == Visibility.PUBLIC) {
                 Set<Long> seen = new HashSet<>();
                 collect(item.getId(), childrenOf, seen);
@@ -94,13 +90,76 @@ public class RecommendService {
         if (root == null) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND);
         }
-        Map<Long, List<Long>> childrenOf = childrenMap(pool);
+        List<Slot> slots = new ArrayList<>(pool.size());
+        for (ContentItem i : pool) {
+            slots.add(new Slot(i.getId(), i.getParentId(), i.getSlug(), i.getVisibility()));
+        }
+        Map<Long, List<Long>> childrenOf = childrenMap(slots, effectiveParents(slots));
         Set<Long> keep = new HashSet<>();
         collect(root.getId(), childrenOf, keep);
         List<ContentItem> out = new ArrayList<>();
         for (ContentItem i : pool) {
             if (keep.contains(i.getId())) {
                 out.add(i);
+            }
+        }
+        return out;
+    }
+
+    /** 广场里一个条目的最小信息：算层级只用得到这几个字段。 */
+    private record Slot(Long id, Long parentId, String slug, Visibility visibility) {
+    }
+
+    /**
+     * 每个条目在广场树上实际的父级。
+     * <p>
+     * 父节点没被推荐、但它的目录在广场上另有正本（slug 相同）时，把子条目挂到正本下面 ——
+     * 否则「谁在自己那份副本目录里建了一篇公开笔记」就会变成一张 1 条的假分类卡片
+     * （2026-11-04 就是这么冒出来一张「内存泄漏与内存溢出」）。
+     * 没有可挂的父级就不放进返回的 map，调用方按顶层处理。
+     */
+    private Map<Long, Long> effectiveParents(List<Slot> pool) {
+        Set<Long> ids = new HashSet<>();
+        Map<String, Slot> canonical = new HashMap<>();
+        for (Slot s : pool) {
+            ids.add(s.id());
+            if (s.slug() == null) {
+                continue;
+            }
+            Slot cur = canonical.get(s.slug());
+            // 正本优先：公开的优先，其次 id 小的（id 小的那份是复制来源）
+            boolean better = cur == null
+                    || (s.visibility() == Visibility.PUBLIC && cur.visibility() != Visibility.PUBLIC)
+                    || (s.visibility() == cur.visibility() && s.id() < cur.id());
+            if (better) {
+                canonical.put(s.slug(), s);
+            }
+        }
+
+        Set<Long> missing = new HashSet<>();
+        for (Slot s : pool) {
+            if (s.parentId() != null && !ids.contains(s.parentId())) {
+                missing.add(s.parentId());
+            }
+        }
+        Map<Long, String> missingSlug = new HashMap<>();
+        if (!missing.isEmpty()) {
+            for (ContentItem p : items.findAllById(missing)) {
+                missingSlug.put(p.getId(), p.getSlug());
+            }
+        }
+
+        Map<Long, Long> out = new HashMap<>();
+        for (Slot s : pool) {
+            Long pid = s.parentId();
+            if (pid != null && ids.contains(pid)) {
+                out.put(s.id(), pid);
+                continue;
+            }
+            String parentSlug = pid == null ? null : missingSlug.get(pid);
+            Slot canon = parentSlug == null ? null : canonical.get(parentSlug);
+            if (canon != null && !canon.id().equals(s.id())) {
+                out.put(s.id(), canon.id());
             }
         }
         return out;
@@ -208,6 +267,18 @@ public class RecommendService {
         for (ContentItem i : pool) {
             if (i.getParentId() != null) {
                 map.computeIfAbsent(i.getParentId(), k -> new ArrayList<>()).add(i.getId());
+            }
+        }
+        return map;
+    }
+
+    /** 按“广场上的实际父级”（{@link #effectiveParents}）建子节点表。 */
+    private Map<Long, List<Long>> childrenMap(List<Slot> pool, Map<Long, Long> parentOf) {
+        Map<Long, List<Long>> map = new HashMap<>();
+        for (Slot s : pool) {
+            Long pid = parentOf.get(s.id());
+            if (pid != null) {
+                map.computeIfAbsent(pid, k -> new ArrayList<>()).add(s.id());
             }
         }
         return map;

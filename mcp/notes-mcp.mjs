@@ -20,8 +20,23 @@ import { basename } from 'node:path';
 const BASE = (process.env.NOTES_BASE || '').replace(/\/$/, '');
 const TOKEN = process.env.NOTES_TOKEN || '';
 const NAME = 'byte-love-notes';
-const VERSION = '1.0.0';
+const VERSION = '1.1.0';
 const PROTOCOL = '2025-06-18';
+
+// 握手时下发给客户端的说明（和远端 /app/mcp 的 INSTRUCTIONS 保持一致，改一处要改两处）
+const INSTRUCTIONS = `你是「byte-love 笔记站」的助手，帮用户把各种内容存进他的笔记库：聊天里聊出来的东西，或者他电脑上散落各处的笔记、文件，都算。
+
+用户一般不想逐项做选择题，所以每一件都先给出你的判断和默认值，问一句「这样行不行」；他说「可以 / 没问题 / 就这样」就直接按默认值写，别再问第二遍：
+1. 存到哪：先调 notes_folders 看现有目录，自己挑最像的那个（比如讲 JVM 就放「JVM 与反射」）；确实没有合适的，再问他新分类叫什么，建好拿返回的 slug 当 parent。
+2. 内容类型：你自己判断 —— note 闪念（一段想法、零散记录）/ bagu 八股（面试问答）/ algo 算法（题解）/ project 项目。
+3. 谁能看：默认 MEMBER（登录用户能看、不进技术广场）。他明确说要公开，或者这篇本来就该给所有人看，才用 PUBLIC（会直接进技术广场）；明确要私密才用 PRIVATE。
+4. 几颗星：你自己判断 0~3 —— 3 星面试高频、迟早会被问到；2 星值得复习；1 星有空再看；0 先不评。
+5. 撞不撞车：note_create 返回的 similar 不空，就把那几篇标题列出来，默认按「新建一篇」；他说是补进旧的那篇，才用 note_update + confirm=true。
+
+确认时把结论摆成一小段（标题 / 目录 / 类型 / 可见性 / 几颗星）让他一句话回；他纠正哪项就改哪项。
+如果一次拿来一堆散落的文件或笔记，先列个清单（一行一篇：标题 → 目录）整体确认，再逐篇落库。
+
+其它：摘要和标签站里自动生成，不用问；标题尽量 20 字以内；正文用 Markdown，代码放 \`\`\` 里；note_create 只新建不覆盖；写完回一句话加一个 url，别把正文再贴一遍。`;
 
 // stdout 只允许出现 JSON-RPC 消息，日志一律走 stderr
 const log = (...args) => console.error('[notes-mcp]', ...args);
@@ -74,10 +89,9 @@ const TOOLS = [
     name: 'note_create',
     description:
       '新建一篇笔记（或者一个目录）。只新建、绝不覆盖。返回里的 similar 不为空时，说明站里有标题相近的旧笔记，' +
-      '必须把这几篇念给用户听，问他是「新建」还是「去改那一篇」，不要自己决定。' +
-      'visibility 必填：先问用户这篇给什么权限 —— PUBLIC 任何用户可见（会进技术广场）；' +
-      'MEMBER 登录可见（只有用户把链接发给别人、对方注册登录后才能看，不进技术广场）；PRIVATE 仅自己。' +
-      '用户已经说过了就直接用那个值，不要再问一遍。' +
+      '把这几篇列给用户看，默认按「新建一篇」；他说是补进旧的那篇，才改用 note_update。' +
+      'visibility 你自己定并告诉他：默认 MEMBER（登录可见、不进技术广场）；他说要公开、' +
+      '或者这篇本来就该给所有人看，才用 PUBLIC（会直接进技术广场）；明确要私密才用 PRIVATE。' +
       '要开新分类（比如用户学的 Python、现有目录全是 Java）就传 folder=true：title 是分类名、body 可留空，' +
       '建好后用返回的 slug 当下一次 note_create 的 parent。',
     inputSchema: {
@@ -90,11 +104,19 @@ const TOOLS = [
         visibility: {
           type: 'string',
           description:
-            '必填。PUBLIC 任何用户可见（进技术广场）/ MEMBER 登录可见（不进广场，只有拿到链接的人登录后能看）/ PRIVATE 仅自己。' +
-            '用户没说就先问，说了就别再问',
+            '可见性，你自己定：默认 MEMBER（登录可见、不进广场）/ PUBLIC 会进技术广场 / PRIVATE 仅自己。' +
+            '定好告诉他一句，他没意见就用这个',
           enum: ['PUBLIC', 'MEMBER', 'PRIVATE'],
         },
         kind: { type: 'string', description: '内容类型，默认 note', enum: ['note', 'bagu', 'algo', 'project'] },
+        rating: {
+          type: 'integer',
+          minimum: 0,
+          maximum: 3,
+          description:
+            '星级 0~3，你自己判断并告诉他：3 星面试高频、迟早会被问到；2 星值得复习；1 星有空再看；0 先不评。' +
+            '他说没问题就按这个来',
+        },
         folder: { type: 'boolean', description: '只当目录用（分类）：列表里不占卡片，可在其下继续新建。建分类时传 true' },
       },
       required: ['title', 'visibility'],
@@ -114,6 +136,12 @@ const TOOLS = [
         summary: { type: 'string', description: '新摘要' },
         parent: { type: 'string', description: '新的父目录 slug' },
         visibility: { type: 'string', enum: ['PUBLIC', 'MEMBER', 'PRIVATE'] },
+        rating: {
+          type: 'integer',
+          minimum: 0,
+          maximum: 3,
+          description: '顺便改星级 0~3；用户没提就别传',
+        },
         confirm: { type: 'boolean', description: '用户同意覆盖后传 true' },
       },
       required: ['slug', 'confirm'],
@@ -181,6 +209,7 @@ async function handle(msg) {
           protocolVersion: (params && params.protocolVersion) || PROTOCOL,
           capabilities: { tools: {} },
           serverInfo: { name: NAME, version: VERSION },
+          instructions: INSTRUCTIONS,
         };
         break;
       case 'ping':
