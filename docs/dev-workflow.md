@@ -147,7 +147,9 @@ sudo /opt/deploy/sync-db.sh    # 正式库整库覆盖到测试库
 从 V5 开始，每个用户有自己的项目/笔记/八股/算法空间。
 
 - `content_item.owner_id` 指向创建者；`slug` 只在本人范围内唯一（`uq_content_owner_slug`）
-- `recommended = true` 的内容才会出现在「技术广场」里、对别人可见；管理员新建的内容自动是 `true`
+- `recommended = true` 的内容才会出现在「技术广场」里、对别人可见。**新建/编辑时选了 `PUBLIC` 就自动是 `true`**
+  （站内表单和 AI/MCP 两条路径同一套规则，普通账号一样生效）；管理员建的 `MEMBER` 也默认 `true`，老用法
+  「把链接发给别人」不受影响。**「加入我的空间」的副本永远 `false`**——不然广场上会同时出现好几份同名分组
 - `visibility` 只在「别人看推荐内容」时起作用：`PUBLIC` 谁都能看、`MEMBER` 要登录、`PRIVATE` 只有本人。
   **技术广场（`/explore`）只收 `PUBLIC + recommended`**：卡片（`RecommendService.cards`）和分组页
   （`RecommendService.group`）都按这个卡，`MEMBER` / `PRIVATE` 的分组进来是 404——那两种只走「作者把链接发出来」

@@ -206,7 +206,8 @@ public class AiController {
         item.setParentId(parentIdOf(userId, in.parent()));
         item.setSortOrder(nextSortOrder(userId));
         item.setFolder(folder);
-        item.setRecommended(false);
+        // 和站内新建同一套规则：PUBLIC 就进技术广场（AI 建的不会是副本）
+        item.setRecommended(item.getVisibility() == Visibility.PUBLIC);
         ContentItem saved = items.save(item);
         if (!body.isEmpty()) {
             tags.retag(saved.getId(), saved.getTitle(), saved.getBody());
