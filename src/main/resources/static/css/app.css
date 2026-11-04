@@ -820,7 +820,7 @@ button:hover,
     overflow-y: auto;
     padding-right: 0.4rem;
     padding-left: 1.25rem;
-    border-left: 1px solid var(--line);
+    border-left: 2px solid var(--line);
 }
 
 .cmt-head {
@@ -2015,6 +2015,21 @@ html[data-theme='sepia'] .item-tag {
 
 .markdown blockquote p:last-child {
     margin-bottom: 0;
+}
+
+/* 正文块和紧跟其后的补充块之间不留缝：两个块直接接上，用各自的底色连成一片，
+   中间不再夹一条页面底色。接缝处的圆角去掉，看着是完整的一块。
+   上面这条 margin-bottom 是给「后面还有别的正文」的块留的间距，这里盖掉。 */
+.markdown blockquote + blockquote {
+    margin-top: 0;
+    border-top-left-radius: 0;
+    border-top-right-radius: 0;
+}
+
+.markdown blockquote:has(+ blockquote) {
+    margin-bottom: 0;
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
 }
 
 /* 只有一行加粗的引用块（「回答流程」「回答」这类提词）：当标签用——框收窄、文字纵向居中（上下内边距对称），
