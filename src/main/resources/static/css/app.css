@@ -812,10 +812,16 @@ button:hover,
 }
 
 /* ---------- 右栏评论区 ---------- */
+/* 正文和评论之间那条竖线：往左让出 1.25rem 落在两栏留白里（评论文字位置不变），
+   高度拉伸到正文那一行的高度，所以线跟着正文走，不是只贴着几条评论 */
 .cmt-pane {
     max-height: calc(100vh - 100px);
     overflow-y: auto;
+    margin-left: -1.25rem;
     padding-right: 0.4rem;
+    padding-left: 1.25rem;
+    border-left: 1px solid var(--line);
+    align-self: stretch;
 }
 
 .cmt-head {
@@ -1407,13 +1413,17 @@ html[data-theme='sepia'] .item-tag {
 }
 
 /* ---------- 正文末尾的「下一篇」 ---------- */
+/* 卡片按内容收缩、靠正文右边缘摆着，不占满一整行 */
 .doc-next {
+    display: flex;
+    justify-content: flex-end;
     margin: 2.2rem 0 0;
 }
 
 .doc-next-link {
     display: flex;
     align-items: center;
+    max-width: 100%;
     gap: 0.7rem;
     padding: 0.75rem 1rem;
     background: var(--bg-2);
