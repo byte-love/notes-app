@@ -812,10 +812,15 @@ button:hover,
 }
 
 /* ---------- 右栏评论区 ---------- */
+/* 评论栏左边一条竖线把正文和评论分开。线画在这一栏自己的左沿上（不是挤在正文那边），
+   高度固定成一屏，所以不管点评多还是少，线都从上到下贯到底，底部不会断在半路。 */
 .cmt-pane {
+    height: calc(100vh - 100px);
     max-height: calc(100vh - 100px);
     overflow-y: auto;
     padding-right: 0.4rem;
+    padding-left: 1.25rem;
+    border-left: 2px solid var(--line);
 }
 
 .cmt-head {
@@ -1407,13 +1412,19 @@ html[data-theme='sepia'] .item-tag {
 }
 
 /* ---------- 正文末尾的「下一篇」 ---------- */
+/* 固定宽度的小卡片、靠正文右边缘摆着，不占满一整行，也不跟着标题长短变 */
 .doc-next {
+    display: flex;
+    justify-content: flex-end;
     margin: 2.2rem 0 0;
 }
 
 .doc-next-link {
     display: flex;
     align-items: center;
+    /* 260px：固定宽度，标题再长也只会省略号截断，不会把卡片撑开 */
+    width: 16.25rem;
+    max-width: 100%;
     gap: 0.7rem;
     padding: 0.75rem 1rem;
     background: var(--bg-2);
@@ -2008,18 +2019,35 @@ html[data-theme='sepia'] .item-tag {
     margin-bottom: 0;
 }
 
+/* 正文块和紧跟其后的补充块之间不留缝：两个块直接接上，用各自的底色连成一片，
+   中间不再夹一条页面底色。接缝处的圆角去掉，看着是完整的一块。
+   上面这条 margin-bottom 是给「后面还有别的正文」的块留的间距，这里盖掉。 */
+.markdown blockquote + blockquote {
+    margin-top: 0;
+    border-top-left-radius: 0;
+    border-top-right-radius: 0;
+}
+
+.markdown blockquote:has(+ blockquote) {
+    margin-bottom: 0;
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+}
+
 /* 只有一行加粗的引用块（「回答流程」「回答」这类提词）：当标签用——框收窄、文字纵向居中（上下内边距对称），
    横向仍然左对齐。提词本身也用这一块的色调，和底色是一家人。
    用 p:only-of-type 而不是 p:only-child：注释功能会往引用块里插一个「＋」按钮，
-   用 only-child 永远匹配不上（2026-11-02 踩过，规则写了但页面没生效） */
-.markdown blockquote:has(> p:only-of-type > strong:only-child) {
+   用 only-child 永远匹配不上（2026-11-02 踩过，规则写了但页面没生效）
+   2026-11-04 改成由服务端给 data-label：:has 里的 :only-child 只数元素兄弟、不数文本，
+   「开头加粗 + 后面还有正文」的整段也会被当成标签拉成两栏。 */
+.markdown blockquote[data-label='1'] {
     padding: 0.55rem 1rem;
     display: flex;
     align-items: center;
     min-height: 2.6rem;
 }
 
-.markdown blockquote:has(> p:only-of-type > strong:only-child) strong,
+.markdown blockquote[data-label='1'] strong,
 .markdown blockquote ol > li::marker,
 .markdown blockquote ul > li::marker {
     color: hsl(var(--ct) var(--ct-fg-s) var(--ct-fg-l));
