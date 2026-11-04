@@ -18,6 +18,13 @@
     --bg: #fbfaf7;
     --bg-2: #f4f2ec;
     --doc-bg: #fffefb;
+    --code-kw: #a626a4;
+    --code-type: #c18401;
+    --code-func: #4078f2;
+    --code-str: #4f9440;
+    --code-num: #986801;
+    --code-cmt: #a0a1a7;
+    --code-ann: #b76b01;
     --line: #e5e1d8;
     --accent: #1f6f66;
     --accent-soft: #edf3f1;
@@ -75,6 +82,13 @@
         --bg: #131413;
         --bg-2: #1b1d1c;
         --doc-bg: #191b1a;
+        --code-kw: #c678dd;
+        --code-type: #e5c07b;
+        --code-func: #61afef;
+        --code-str: #98c379;
+        --code-num: #d19a66;
+        --code-cmt: #7f848e;
+        --code-ann: #d19a66;
         --line: #2a2e2c;
         --accent: #6fd3c3;
         --accent-soft: #1c2725;
@@ -139,6 +153,13 @@ html[data-theme='light'] {
     --bg: #fbfaf7;
     --bg-2: #f4f2ec;
     --doc-bg: #fffefb;
+    --code-kw: #a626a4;
+    --code-type: #c18401;
+    --code-func: #4078f2;
+    --code-str: #4f9440;
+    --code-num: #986801;
+    --code-cmt: #a0a1a7;
+    --code-ann: #b76b01;
     --line: #e5e1d8;
     --accent: #1f6f66;
     --accent-soft: #edf3f1;
@@ -156,6 +177,13 @@ html[data-theme='dark'] {
     --bg: #131413;
     --bg-2: #1b1d1c;
     --doc-bg: #191b1a;
+    --code-kw: #c678dd;
+    --code-type: #e5c07b;
+    --code-func: #61afef;
+    --code-str: #98c379;
+    --code-num: #d19a66;
+    --code-cmt: #7f848e;
+    --code-ann: #d19a66;
     --line: #2a2e2c;
     --accent: #6fd3c3;
     --accent-soft: #1c2725;
@@ -185,6 +213,13 @@ html[data-theme='sepia'] {
     --bg: #f5efe2;
     --bg-2: #efe7d6;
     --doc-bg: #fbf6ec;
+    --code-kw: #8e44a0;
+    --code-type: #a8650a;
+    --code-func: #2f6fb3;
+    --code-str: #3f7f45;
+    --code-num: #8a5a00;
+    --code-cmt: #9a8f7d;
+    --code-ann: #9c4b12;
     --line: #ddd2bd;
     --accent: #7d3f22;
     --accent-soft: #ece2cd;
@@ -1984,23 +2019,36 @@ html[data-theme='sepia'] .item-tag {
     user-select: none;
 }
 
-/* 轻量高亮：关键字松绿、字符串赭石、注释灰斜体、数字灰 */
+/* 代码高亮：注释 / 字符串 / 注解 / 数字 / 关键字 / 类型 / 函数名，七类各有颜色。
+   色值放在各主题的 --code-* 里（浅色 / 深色 / 护眼各一份），这里只引用 */
 .code-block .tok-k {
-    color: var(--accent);
+    color: var(--code-kw);
     font-weight: 600;
 }
 
-.code-block .tok-s {
-    color: var(--accent-2);
+.code-block .tok-t {
+    color: var(--code-type);
 }
 
-.code-block .tok-c {
-    color: var(--fg-3);
-    font-style: italic;
+.code-block .tok-f {
+    color: var(--code-func);
+}
+
+.code-block .tok-s {
+    color: var(--code-str);
+}
+
+.code-block .tok-a {
+    color: var(--code-ann);
 }
 
 .code-block .tok-n {
-    color: var(--fg-2);
+    color: var(--code-num);
+}
+
+.code-block .tok-c {
+    color: var(--code-cmt);
+    font-style: italic;
 }
 
 /* 引用块当提示块用（仿飞书的 highlight block）：浅底 + 同色左边条 + 圆角，正文回到正常色。

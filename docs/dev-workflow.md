@@ -189,6 +189,11 @@ sudo /opt/deploy/sync-db.sh    # 正式库整库覆盖到测试库
 - **正文末尾的「下一篇」**：按 `(sortOrder, id)` 在**同一个父级分类**里往后取一条（`PublicController.nextNoteOf`）；
   补充笔记不参与、锁着的条目不指过去；没有了就在页面上显示「已经是这个分类的最后一篇」。
   项目页（`project.html`）没有这个导航
+- **正文页的三处外观**（2026-11-04，都在 `app.css`）：① 正文整块垫一层比页面底色更浅的底
+  （`--doc-bg`，浅色 `#fffefb` / 护眼 `#fbf6ec` / 深色 `#191b1a`，左右用 `margin: 0 -1.4rem` 撑出去，
+  正文文字仍和标题左对齐）；② 右栏评论区左边一条 2px 竖线（`.cmt-pane` 的 `border-left`，
+  高度固定一屏，所以线从上到下一贯到底）；③「下一篇」是固定 260×52 的小卡片，靠正文右边缘，
+  标题再长也只走省略号，不跟着内容变宽
   **改了 css/js 必须同时升 `?v=`**，否则强缓存让浏览器永远跑老代码（2026-10-30 踩过：评论改了 4 版用户一直看不到）
 - 评论是 `content_comment(item_id, user_id, parent_id, quote, body, anchor_kind, block_index, prefix, suffix, entry_kind)`：
   锚点两种粒度——`text`（选中文字，存原文 + 前后各 20 字）和 `block`（整段 / 代码块，存正文顶层块序号）；
@@ -222,6 +227,17 @@ sudo /opt/deploy/sync-db.sh    # 正式库整库覆盖到测试库
   代码块，页面上是 `![](...)` 字面量）；② JSON 的键值行、单独一行括号**算代码**，且要先于「含中文就不算」判断
   （`"id": 202,   // 活动ID` 这种行尾中文注释是正常写法）；③ 行尾注释（`code; // 说明`）先摘掉再判中文和长度。
   只围 2 行会把「1kb = 1024byte。」这种并列的两条换算误收进去，所以阈值是 3
+- **代码块的高亮和保存**（2026-11-04）：`code.js` 给每个 `pre > code` 加语言条 / 行号 / 复制按钮，
+  并把**每一行包成 `<span class="line">`**；token 分七类（`.tok-k` 关键字 / `.tok-t` 类型 / `.tok-f` 函数名 /
+  `.tok-s` 字符串 / `.tok-n` 数字 / `.tok-c` 注释 / `.tok-a` 注解），颜色是主题块里的
+  `--code-kw|type|func|str|num|cmt|ann` 七组值（浅色 / 护眼 / 深色各一套）。
+  ⚠ 行是 `<span>`，所以**从 DOM 取代码必须按 `.line` 逐行拼**（`doc-edit.js` 的 `codeText()`）——
+  直接 `textContent` 会把整段代码粘成一行，保存下去就真成一行了；`.code-head`（语言条 + 复制按钮）
+  是界面不是正文，序列化时要跳过
+- **往正文里粘贴**（`doc-edit.js` 的 paste）：剪贴板带 `table / pre / ul / ol / h1-6 / blockquote / img`
+  就先把 HTML 洗一遍再 `insertHTML`（只留结构标签，丢掉来源页的底色、宽度、外层 div、脚本、按钮），
+  页面当场就是表格 / 代码块的样子，保存时 `toMarkdown` 再按结构序列化；没有结构才退回纯文本。
+  以前一律只取 `text/plain`：从 AI 对话粘表格会挤成一整行，粘代码只会是普通段落
 
 - 术语浮窗是另一套（tooltip）：`.markdown .gl[data-tip]` + `detail.js` 的 `.gl-tip`，鼠标悬停显示、灰色长虚线，
   跟注释的松绿点线不是一回事。**解释存在 `glossary_term` 表**（V25，第一次启动用 `resources/glossary.json`
@@ -539,5 +555,21 @@ Maven 编译会产出损坏的 jar，服务起不来（`Error: Invalid or corrup
 `html[data-theme='sepia']` 的 `--bg`（`#f5efe2` 护眼）、`html[data-theme='dark']` 的（`#131413`）对一下，
 对得上就是主题不同，让对方在「我的 → 外观」里切成同一个即可，别去动 CSS / 部署（右上角那个太阳/月亮
 按钮只在浅色和深色之间切，切不到护眼）。
+
+**正文里的尖括号会被当成 HTML 标签，把后半个页面吞进正文**（2026-11-04）：用户报「右栏评论突然不见了、
+评论跑到正文下面」，根因是 `bagu-java-043` 的正文字面写着 `List<String>、List<Integer>`——commonmark
+原样放行 raw HTML，浏览器开出两个不闭合的元素，`</article>` 之后的评论栏、下一篇、页脚脚本全被包进了
+`.markdown`。更糟的是正文可编辑：`doc-edit.js` 一失焦就把这块 DOM 序列化存库，于是「整页文字」变成了正文
+（正式库 id 130 从 708 字涨到 8235 字，已用同 slug 的另一份副本恢复，坏内容留在
+`_publish/corrupt-130-2026-11-04.txt`）。现在 `MarkdownRenderer` 用 `escapeHtml(true)`，尖括号一律按文字输出。
+**自测**：找一篇带 `<T>` 的八股，`document.querySelector('.markdown').textContent` 里不该出现
+「还没有评论」「已经是这个分类的最后一篇」这类页面文字，长度也不该是正文的好几倍。
+
+**高亮后的代码块在保存时会被压成一行，语言条还会被抄进正文**（2026-11-04）：`code.js` 把每行包成
+`<span class="line">`，`doc-edit.js` 以前用 `textContent` 取代码 → 所有行粘在一起；`.code-head` 里的
+「Java」也被当成段落写进正文。用户编辑过一次 `bagu-java-038` 之后，三个代码块全变成一行 + 正文多出三段
+「Java」。修法是 `codeText()` 按 `.line` 逐行拼、`block()` 开头跳过 `.code-head`。
+**验证办法**（不写库）：Playwright 里 `page.route("**/app/admin/*/body", abort)` 拦掉保存请求，
+往正文敲一个字触发自动保存，再把请求里的 `body` 参数解出来数 ``` 里的行数——行数没塌就说明没被压扁。
 
 
