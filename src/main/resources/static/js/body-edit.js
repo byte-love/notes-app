@@ -6,8 +6,11 @@
     if (!btn || !box || !view) return;
 
     const source = box.querySelector('.body-source');
-    const meta = document.querySelector('meta[name="_csrf"]');
-    const csrf = meta ? meta.getAttribute('content') : '';
+    // token 会随会话换掉而作废（csrf.js 会刷），所以提交时现读
+    const csrf = () => {
+        const meta = document.querySelector('meta[name="_csrf"]');
+        return meta ? meta.getAttribute('content') : '';
+    };
 
     const open = () => {
         view.hidden = true;
@@ -48,7 +51,7 @@
                 credentials: 'same-origin',
                 headers: { 'content-type': 'application/x-www-form-urlencoded' },
                 body: new URLSearchParams({
-                    _csrf: csrf,
+                    _csrf: csrf(),
                     body: source.value,
                     back: location.pathname,
                 }).toString(),

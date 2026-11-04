@@ -436,6 +436,23 @@ grep 命中就退出，`tee` 收到 SIGPIPE，整个管道退出码变成 141，
 不是表单控件。2026-11-02 两次栽在这：`rate.js` 打星时 token 是空串 → 403（点了星页面没反应，看着像 JS 没跑），
 浏览器里临时拼登录脚本时同理。抄 `comments.js` 里 `const csrf = () => meta.content` 那行就不会错。
 
+**页面里那份 CSRF token 会作废，所以提交前要换新（2026-11-04 修）**：token 绑在会话上
+（`HttpSessionCsrfTokenRepository`），会话一换就作废——进程重启、会话过期、
+`remember-me` 在别处重新认证（`CsrfAuthenticationStrategy` 会轮换 token）、在另一台设备重新登录，
+都会让「页面打开时拿到的那份」失效。表现是：闲置一阵再发评论 / 注释，**第一次 POST 403、
+再发一次就好了**（第二次是在刷新后的页面上发的）。校验失败走的是 `AccessDeniedException` →
+`AccessDeniedHandlerImpl` → 403，和「这条内容不归你看」那种 403 不是一回事
+（后者文案由 `AppErrorController` 按 `errorReason` 区分）。
+
+现在的做法（`static/js/csrf.js` + `GET /csrf`）：
+- `GET /csrf` 回 `{"token":"…","header":"X-CSRF-TOKEN"}`，`Cache-Control: no-store`；
+  返回的是**给页面用的那版编码**（Spring Security 6 的 XOR 掩码），直接填回表单 / meta 就能用。
+  别改成 `token.getToken()` 之外的裸值，也别去掉掩码——那样提交反而校验不过。
+- `csrf.js` 在页面初次加载、`visibilitychange` 回到前台、`focus`、`pageshow`、每 4 分钟
+  各换一次；**提交时再兜一道**：token 超过 30 秒没换就等换完再提交，不会把用户写的字丢掉。
+- 自测办法：登录后打开正文页 → `systemctl restart notes-app-dev` → 用页面里的旧 token POST
+  `/comment/<slug>` 应得 403 → `GET /app/csrf` 拿新 token 再 POST 应成功（`_publish/csrf-repro.ps1`）。
+
 **测试脚本取 JSON 字段别用贪婪 `sed 's/.*"slug":"//'`**：2026-11-03 我用它从 `note_create` 的返回里取 slug，
 结果匹配到了 `similar` 数组里的最后一个 slug，于是后续的「带 confirm 覆盖」改错了对象、清理时又用同一个变量
 拼 `delete ... where slug='$SLUG'`，把测试库里别人（我自己的另一篇八股）的一条笔记删掉了。
