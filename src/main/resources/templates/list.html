@@ -4,7 +4,8 @@
 <body>
 <header th:replace="~{fragments/layout :: nav}"></header>
 
-<div class="with-tree" th:classappend="${#lists.isEmpty(tree)} ? 'no-tree' : ''">
+<div class="with-tree" th:classappend="${#lists.isEmpty(tree)} ? 'no-tree' : ''"
+     th:attr="data-area=${#strings.toLowerCase(kind.name())}">
     <aside class="tree-pane" th:attr="data-kind=${#strings.toLowerCase(kind.name())}" th:if="${!#lists.isEmpty(tree)}">
         <div class="tree-head">
             <span class="tree-head-text">我的目录</span>

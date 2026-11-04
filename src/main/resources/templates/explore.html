@@ -22,7 +22,8 @@
         </div>
     </div>
 
-    <section th:each="sec : ${sections}" th:if="${!#lists.isEmpty(sec.cards)}">
+    <section th:each="sec : ${sections}" th:if="${!#lists.isEmpty(sec.cards)}"
+             th:attr="data-area=${#strings.toLowerCase(sec.kind.name())}">
         <h2 class="explore-kind" th:text="${sec.label}">八股</h2>
         <div class="tpl-grid">
             <article class="tpl-card" th:each="c : ${sec.cards}">

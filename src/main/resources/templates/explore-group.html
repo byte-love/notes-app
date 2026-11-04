@@ -4,7 +4,7 @@
 <body>
 <header th:replace="~{fragments/layout :: nav}"></header>
 
-<main class="wrap wide">
+<main class="wrap wide" th:attr="data-area=${#strings.toLowerCase(root.kind.name())}">
     <a th:replace="~{fragments/layout :: back(@{/explore})}"></a>
 
     <div class="rec-head">

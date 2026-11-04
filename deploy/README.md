@@ -14,7 +14,7 @@ ssh root@47.104.210.93 "chmod +x /opt/deploy/*.sh /srv/backup/backup-pg.sh"
 | | 正式 | 测试 |
 |---|---|---|
 | 应用 | `/opt/apps/notes-app` `:8081` systemd `notes-app` | `/opt/apps/notes-app-test` `:8082` systemd `notes-app-dev` |
-| 静态站 | `/srv/sites/lab` `:8080` | `/srv/sites/lab-dev` `:8180` |
+| 静态站 | `/srv/sites/lab`（`https://byte-love.cn/`） | `/srv/sites/lab-dev` `:8180` |
 | 数据库 | `notes` | `notes_test` |
 
 ## 每个脚本干什么

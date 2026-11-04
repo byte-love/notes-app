@@ -46,4 +46,26 @@ public class GlobalModelAdvice {
         return auth != null && auth.isAuthenticated() && auth.getAuthorities().stream()
                 .anyMatch(a -> "ROLE_ADMIN".equals(a.getAuthority()));
     }
+
+    /**
+     * 标签的配色：同一个词永远同一个颜色（按词本身算，不随机），模板里写成
+     * {@code data-tone="${tagTone.of(t)}"}，具体色值在 app.css 的 t0~t7 里。
+     */
+    public static final class TagTone {
+        public String of(String tag) {
+            if (tag == null || tag.isEmpty()) {
+                return "t0";
+            }
+            int h = 0;
+            for (int i = 0; i < tag.length(); i++) {
+                h = h * 31 + tag.charAt(i);
+            }
+            return "t" + Math.floorMod(h, 8);
+        }
+    }
+
+    @ModelAttribute("tagTone")
+    public TagTone tagTone() {
+        return new TagTone();
+    }
 }
