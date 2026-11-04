@@ -216,12 +216,78 @@
         if (document.hidden) save();
     });
 
-    // 从网页 / AI 对话里粘贴：只留纯文本。带过来的底色、宽度、div 包裹会把排版顶歪
+    // 从网页 / AI 对话里粘贴。以前一律只留纯文本，结果表格变成一整行、代码块变成普通段落。
+    // 现在：剪贴板里带了结构（表格 / 代码块 / 列表 / 标题 / 图片）就先把 HTML 洗一遍再插进去，
+    // 页面上当场就是表格和代码块的样子；保存时 toMarkdown 再序列化成 Markdown。
+    // 没有结构就还是走纯文本，避免把来源页的底色、宽度、div 包裹带进来。
+    const ALLOWED_TAGS = new Set(['P', 'BR', 'DIV', 'SECTION', 'ARTICLE', 'STRONG', 'B', 'EM', 'I',
+        'DEL', 'S', 'CODE', 'PRE', 'A', 'IMG', 'UL', 'OL', 'LI', 'BLOCKQUOTE',
+        'TABLE', 'THEAD', 'TBODY', 'TR', 'TH', 'TD', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'HR']);
+    const DROP_TAGS = /^(SCRIPT|STYLE|META|LINK|NOSCRIPT|IFRAME|SVG|BUTTON|INPUT|TEXTAREA|SELECT|FORM)$/;
+
+    const scrub = (root) => {
+        for (const child of [...root.childNodes]) {
+            if (child.nodeType === 3) continue;
+            if (child.nodeType !== 1) {
+                child.remove();
+                continue;
+            }
+            if (DROP_TAGS.test(child.tagName)) {
+                child.remove();
+                continue;
+            }
+            scrub(child);
+            if (!ALLOWED_TAGS.has(child.tagName)) {
+                // 不认识的标签拆掉，只留里面的内容
+                child.replaceWith(...child.childNodes);
+                continue;
+            }
+            for (const attr of [...child.attributes]) {
+                const name = attr.name.toLowerCase();
+                const keep = (child.tagName === 'A' && name === 'href')
+                    || (child.tagName === 'IMG' && (name === 'src' || name === 'alt'));
+                if (!keep) child.removeAttribute(attr.name);
+            }
+            if (child.tagName === 'CODE') {
+                const lang = (child.getAttribute('class') || '').match(/language-[\w-]+/);
+                child.removeAttribute('class');
+                if (lang) child.className = lang[0];
+            }
+            if (child.tagName === 'TD' || child.tagName === 'TH') {
+                // 空单元格给个空格，Markdown 表格的列才对得上
+                if (!child.textContent.trim()) child.textContent = ' ';
+            }
+        }
+    };
+
+    const pasteHtml = (html) => {
+        const doc = new DOMParser().parseFromString(html, 'text/html');
+        const box = document.createElement('div');
+        while (doc.body.firstChild) box.appendChild(doc.body.firstChild);
+        scrub(box);
+        return box.textContent.trim() || box.querySelector('img') ? box.innerHTML : '';
+    };
+
     body.addEventListener('paste', (e) => {
-        const text = e.clipboardData ? e.clipboardData.getData('text/plain') : '';
-        if (!text) return;
+        const dt = e.clipboardData;
+        if (!dt) return;
+        const html = dt.getData('text/html');
+        const text = dt.getData('text/plain');
+        let marked = '';
+        if (html && /<(table|pre|ul|ol|h[1-6]|blockquote|img)\b/i.test(html)) {
+            try {
+                marked = pasteHtml(html);
+            } catch (err) {
+                marked = '';
+            }
+        }
+        if (!marked && !text) return;
         e.preventDefault();
-        document.execCommand('insertText', false, text);
+        if (marked) {
+            document.execCommand('insertHTML', false, marked);
+        } else {
+            document.execCommand('insertText', false, text);
+        }
         schedule();
     });
 
