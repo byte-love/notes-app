@@ -812,16 +812,15 @@ button:hover,
 }
 
 /* ---------- 右栏评论区 ---------- */
-/* 正文和评论之间那条竖线：往左让出 1.25rem 落在两栏留白里（评论文字位置不变），
-   高度拉伸到正文那一行的高度，所以线跟着正文走，不是只贴着几条评论 */
+/* 评论栏左边一条竖线把正文和评论分开。线画在这一栏自己的左沿上（不是挤在正文那边），
+   高度固定成一屏，所以不管点评多还是少，线都从上到下贯到底，底部不会断在半路。 */
 .cmt-pane {
+    height: calc(100vh - 100px);
     max-height: calc(100vh - 100px);
     overflow-y: auto;
-    margin-left: -1.25rem;
     padding-right: 0.4rem;
     padding-left: 1.25rem;
     border-left: 1px solid var(--line);
-    align-self: stretch;
 }
 
 .cmt-head {
@@ -2021,15 +2020,17 @@ html[data-theme='sepia'] .item-tag {
 /* 只有一行加粗的引用块（「回答流程」「回答」这类提词）：当标签用——框收窄、文字纵向居中（上下内边距对称），
    横向仍然左对齐。提词本身也用这一块的色调，和底色是一家人。
    用 p:only-of-type 而不是 p:only-child：注释功能会往引用块里插一个「＋」按钮，
-   用 only-child 永远匹配不上（2026-11-02 踩过，规则写了但页面没生效） */
-.markdown blockquote:has(> p:only-of-type > strong:only-child) {
+   用 only-child 永远匹配不上（2026-11-02 踩过，规则写了但页面没生效）
+   2026-11-04 改成由服务端给 data-label：:has 里的 :only-child 只数元素兄弟、不数文本，
+   「开头加粗 + 后面还有正文」的整段也会被当成标签拉成两栏。 */
+.markdown blockquote[data-label='1'] {
     padding: 0.55rem 1rem;
     display: flex;
     align-items: center;
     min-height: 2.6rem;
 }
 
-.markdown blockquote:has(> p:only-of-type > strong:only-child) strong,
+.markdown blockquote[data-label='1'] strong,
 .markdown blockquote ol > li::marker,
 .markdown blockquote ul > li::marker {
     color: hsl(var(--ct) var(--ct-fg-s) var(--ct-fg-l));

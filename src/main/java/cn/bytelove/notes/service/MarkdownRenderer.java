@@ -111,14 +111,22 @@ public class MarkdownRenderer {
         Node document = parser.parse(fenceBareCode(stripFrontMatter(markdown)));        wrapGlossary(document);
 
         Map<Heading, String> ids = assignHeadingIds(document);
+        BlockQuote firstQuote = firstBlockQuote(document);
         AttributeProvider attrProvider = (node, tagName, attributes) -> {
             if (node instanceof Heading heading && ids.containsKey(heading)) {
                 attributes.put("id", ids.get(heading));
             }
             if (node instanceof BlockQuote quote) {
                 String tone = calloutTone(quote);
+                if (tone == null && quote == firstQuote) {
+                    // 正文第一块就是这篇的答案：没有提词也按「回答」上绿底，和后面追加的补充块分开
+                    tone = "answer";
+                }
                 if (tone != null) {
                     attributes.put("data-tone", tone);
+                }
+                if (isLabelBlock(quote)) {
+                    attributes.put("data-label", "1");
                 }
             }
             if ("img".equals(tagName)) {
@@ -600,6 +608,49 @@ public class MarkdownRenderer {
             }
         }
         return false;
+    }
+
+    /** 正文里第一个引用块（按文档顺序找，包括嵌在列表项里的）。 */
+    private static BlockQuote firstBlockQuote(Node root) {
+        for (Node child = root.getFirstChild(); child != null; child = child.getNext()) {
+            if (child instanceof BlockQuote quote) {
+                return quote;
+            }
+            BlockQuote inner = firstBlockQuote(child);
+            if (inner != null) {
+                return inner;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * 「只有一行加粗」的引用块（{@code > **回答**}）当标签渲染，样式见 app.css 的 data-label。
+     * <p>
+     * 判据必须是<b>整块就一个加粗词</b>：以前 CSS 用
+     * {@code blockquote:has(> p:only-of-type > strong:only-child)} 判断，可 :only-child
+     * 只看元素兄弟、不看文本节点，{@code **遍历过程中要安全删除**，适合使用迭代器} 这种
+     * 「开头加粗 + 后面还有正文」的段落也被当成标签，整块被拉成 flex 两栏
+     * （2026-11-04 在八股正文里看到列表和段落并排挤在一起）。
+     */
+    private static boolean isLabelBlock(BlockQuote quote) {
+        Node only = quote.getFirstChild();
+        if (only == null || only.getNext() != null || !(only instanceof Paragraph)) {
+            return false;
+        }
+        int strong = 0;
+        for (Node child = only.getFirstChild(); child != null; child = child.getNext()) {
+            if (child instanceof Text text) {
+                if (!text.getLiteral().isBlank()) {
+                    return false;
+                }
+            } else if (child instanceof org.commonmark.node.StrongEmphasis) {
+                strong++;
+            } else {
+                return false;
+            }
+        }
+        return strong == 1;
     }
 
     private void appendText(Node node, StringBuilder sb) {
