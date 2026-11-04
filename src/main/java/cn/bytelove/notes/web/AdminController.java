@@ -268,8 +268,9 @@ public class AdminController {
         item.setParentId(form.getParentId());
         item.setSortOrder(form.getSortOrder() == null ? 0 : form.getSortOrder());
         item.setFolder(form.isFolder());
-        // 管理员的公开内容就是站点的推荐栏；普通用户的内容先只留给自己
-        item.setRecommended(viewer.admin());
+        // 公开 = 上广场：选 PUBLIC 就自动进技术广场（副本不走这条路，否则广场上会出现好几份同名分组）。
+        // 管理员建的 MEMBER 仍然默认推荐，这样「把链接发给别人」的老用法不受影响
+        item.setRecommended(viewer.admin() || form.getVisibility() == Visibility.PUBLIC);
         ContentItem saved = items.save(item);
         saveProjectDoc(saved, form);
         applySupplement(saved, form);
@@ -364,6 +365,10 @@ public class AdminController {
         item.setFolder(form.isFolder());
         if (kindChanged) {
             item.setSupplementOfId(null);
+        }
+        // 编辑时改成 PUBLIC 也要补上推荐标记（原来不是公开的、后来改成公开的）
+        if (item.getVisibility() == Visibility.PUBLIC && item.getCopiedFromId() == null) {
+            item.setRecommended(true);
         }
         ContentItem saved = items.save(item);
         saveProjectDoc(saved, form);
