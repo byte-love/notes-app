@@ -95,6 +95,18 @@ sudo /srv/backup/backup-pg.sh          # 手动打一份（每小时也会自动
 sudo /opt/deploy/psql.sh "update ..." prod
 ```
 
+**两个库的写权限不一样**（2026-11-03 踩到）：`psql.sh` 用的是 `notes_dev`，它在 `notes_test` 里是属主、
+读写都行；到了正式库 `notes` 只被 `grant` 过 DML，写 `changelog_entry` 会报
+`ERROR: permission denied for table changelog_entry`。正式库的超级用户是 **`notes`**（容器
+`POSTGRES_USER=notes`，没有 `postgres` 这个角色），所以往正式库灌 SQL 要这样：
+
+```bash
+scp 某.sql root@47.104.210.93:/root/
+ssh root@47.104.210.93 'docker exec -i notes-pg psql -U notes -d notes -f - < /root/某.sql'
+```
+
+测试库同一条命令把 `-U notes` 换成 `-U notes_dev`、库名换成 `notes_test`。
+
 自动备份策略：每小时一份留 24 小时，每天 3 点那份留 14 天，位置 `/srv/backup/pg/`，日志 `/var/log/backup-pg.log`。
 
 **正文里上传的图片不在备份里**：它们存在 `/srv/data/uploads/media/`（`backup-pg.sh` 只管 PostgreSQL），
