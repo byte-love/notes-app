@@ -1412,7 +1412,7 @@ html[data-theme='sepia'] .item-tag {
 }
 
 /* ---------- 正文末尾的「下一篇」 ---------- */
-/* 卡片按内容收缩、靠正文右边缘摆着，不占满一整行 */
+/* 固定宽度的小卡片、靠正文右边缘摆着，不占满一整行，也不跟着标题长短变 */
 .doc-next {
     display: flex;
     justify-content: flex-end;
@@ -1422,6 +1422,8 @@ html[data-theme='sepia'] .item-tag {
 .doc-next-link {
     display: flex;
     align-items: center;
+    /* 260px：固定宽度，标题再长也只会省略号截断，不会把卡片撑开 */
+    width: 16.25rem;
     max-width: 100%;
     gap: 0.7rem;
     padding: 0.75rem 1rem;
