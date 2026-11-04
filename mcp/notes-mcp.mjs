@@ -20,8 +20,20 @@ import { basename } from 'node:path';
 const BASE = (process.env.NOTES_BASE || '').replace(/\/$/, '');
 const TOKEN = process.env.NOTES_TOKEN || '';
 const NAME = 'byte-love-notes';
-const VERSION = '1.0.0';
+const VERSION = '1.1.0';
 const PROTOCOL = '2025-06-18';
+
+// 握手时下发给客户端的说明（和远端 /app/mcp 的 INSTRUCTIONS 保持一致，改一处要改两处）
+const INSTRUCTIONS = `你是「byte-love 笔记站」的助手，负责把聊天里聊出来的东西存成笔记。动手之前，下面几件事逐条问清楚，别替用户决定，也别一次抛一大堆：
+
+1. 存到哪：先调 notes_folders 看现有目录，挑最像的 2~3 个让他选；都不合适就问他新分类叫什么（note_create 带 folder=true，建好拿返回的 slug 当 parent）。
+2. 什么类型：note 闪念（一段想法或记录）/ bagu 八股（面试问答）/ algo 算法（题解）/ project 项目。
+3. 谁能看（必问）：PUBLIC 任何人可见、会直接进技术广场；MEMBER 只有登录用户能看、不进广场；PRIVATE 只有他自己。
+4. 几颗星（必问，0~3）：3 星是面试高频、迟早会被问到；2 星值得复习；1 星有空再看；0 先不评。
+5. 撞不撞车：note_create 返回的 similar 不空，就把那几篇标题念给他，问是新建还是去改旧的（改旧的要 note_update + confirm=true）。
+6. 写之前把「标题 / 目录 / 谁能看 / 几颗星」复述一遍等他点头。
+
+其它：摘要和标签站里自动生成，不用问；标题尽量 20 字以内；正文用 Markdown，代码放 \`\`\` 里；note_create 只新建不覆盖；写完回一句话加一个 url，别把正文再贴一遍。`;
 
 // stdout 只允许出现 JSON-RPC 消息，日志一律走 stderr
 const log = (...args) => console.error('[notes-mcp]', ...args);
@@ -95,6 +107,13 @@ const TOOLS = [
           enum: ['PUBLIC', 'MEMBER', 'PRIVATE'],
         },
         kind: { type: 'string', description: '内容类型，默认 note', enum: ['note', 'bagu', 'algo', 'project'] },
+        rating: {
+          type: 'integer',
+          minimum: 0,
+          maximum: 3,
+          description:
+            '必问：0~3 星。3 星面试高频、迟早会被问到；2 星值得复习；1 星有空再看；0 先不评。问过再传，别自己估',
+        },
         folder: { type: 'boolean', description: '只当目录用（分类）：列表里不占卡片，可在其下继续新建。建分类时传 true' },
       },
       required: ['title', 'visibility'],
@@ -114,6 +133,12 @@ const TOOLS = [
         summary: { type: 'string', description: '新摘要' },
         parent: { type: 'string', description: '新的父目录 slug' },
         visibility: { type: 'string', enum: ['PUBLIC', 'MEMBER', 'PRIVATE'] },
+        rating: {
+          type: 'integer',
+          minimum: 0,
+          maximum: 3,
+          description: '顺便改星级 0~3；用户没提就别传',
+        },
         confirm: { type: 'boolean', description: '用户同意覆盖后传 true' },
       },
       required: ['slug', 'confirm'],
@@ -181,6 +206,7 @@ async function handle(msg) {
           protocolVersion: (params && params.protocolVersion) || PROTOCOL,
           capabilities: { tools: {} },
           serverInfo: { name: NAME, version: VERSION },
+          instructions: INSTRUCTIONS,
         };
         break;
       case 'ping':

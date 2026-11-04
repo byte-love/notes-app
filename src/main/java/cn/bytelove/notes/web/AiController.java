@@ -5,6 +5,7 @@ import cn.bytelove.notes.domain.ContentKind;
 import cn.bytelove.notes.domain.Visibility;
 import cn.bytelove.notes.repo.ContentItemRepository;
 import cn.bytelove.notes.service.ApiTokenService;
+import cn.bytelove.notes.service.RatingService;
 import cn.bytelove.notes.service.TagService;
 import cn.bytelove.notes.service.TrashService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -81,19 +82,22 @@ public class AiController {
     private final TagService tags;
     private final TrashService trash;
     private final JdbcTemplate jdbc;
+    private final RatingService ratings;
 
     public AiController(ContentItemRepository items, ApiTokenService tokens, TagService tags,
-                        TrashService trash, JdbcTemplate jdbc) {
+                        TrashService trash, JdbcTemplate jdbc, RatingService ratings) {
         this.items = items;
         this.tokens = tokens;
         this.tags = tags;
         this.trash = trash;
         this.jdbc = jdbc;
+        this.ratings = ratings;
     }
 
     /** 新建或更新请求体；字段都可选，只有 title/body 是新建时必填。 */
     public record NoteIn(String title, String body, String summary, String slug,
-                         String parent, String visibility, String kind, Boolean confirm, Boolean folder) {
+                         String parent, String visibility, String kind, Boolean confirm, Boolean folder,
+                         Integer rating) {
     }
 
     @GetMapping("/me")
@@ -212,12 +216,17 @@ public class AiController {
         if (!body.isEmpty()) {
             tags.retag(saved.getId(), saved.getTitle(), saved.getBody());
         }
+        if (in.rating() != null) {
+            ratings.set(saved.getId(), in.rating());
+            saved.setRating(Math.max(0, Math.min(3, in.rating())));
+        }
 
         Map<String, Object> out = new LinkedHashMap<>();
         out.put("ok", true);
         out.put("created", true);
         out.put("folder", folder);
         out.put("slug", saved.getSlug());
+        out.put("rating", saved.getRating());
         out.put("url", urlOf(saved, request));
         out.put("tags", tags.of(List.of(saved.getId())).getOrDefault(saved.getId(), List.of()));
         out.put("similar", similar(userId, title, saved.getId()));
@@ -258,11 +267,16 @@ public class AiController {
         }
         ContentItem saved = items.save(item);
         tags.retag(saved.getId(), saved.getTitle(), saved.getBody());
+        if (in.rating() != null) {
+            ratings.set(saved.getId(), in.rating());
+            saved.setRating(Math.max(0, Math.min(3, in.rating())));
+        }
 
         Map<String, Object> out = new LinkedHashMap<>();
         out.put("ok", true);
         out.put("created", false);
         out.put("slug", saved.getSlug());
+        out.put("rating", saved.getRating());
         out.put("url", urlOf(saved, request));
         out.put("note", "旧版本已存快照，改坏了可以在 /app/trash 之外由管理员从 content_revision 恢复");
         return out;
