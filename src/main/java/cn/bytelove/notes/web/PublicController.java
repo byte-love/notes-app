@@ -299,7 +299,7 @@ public class PublicController {
             model.addAttribute("tabActive", "project");
             model.addAttribute("item", item);
             model.addAttribute("project", meta.view(item.getId()).orElse(null));
-            model.addAttribute("html", markdown.toHtml(item.getBody()));
+            model.addAttribute("html", markdown.toHtml(markdown.dropTitleEcho(item.getBody(), item.getTitle())));
             model.addAttribute("starred", viewer.userId() != null && stars.isStarred(viewer.userId(), item.getId()));
             return "project";
         }
@@ -322,8 +322,10 @@ public class PublicController {
         model.addAttribute("tabActive", kind.name().toLowerCase(java.util.Locale.ROOT));
 
         model.addAttribute("item", item);
-        model.addAttribute("html", markdown.toHtml(item.getBody()));
-        model.addAttribute("toc", markdown.toc(item.getBody()));
+        // 正文第一行要是把标题又抄了一遍，渲染时不显示那一行（AI 存笔记时常这么写）
+        String body = markdown.dropTitleEcho(item.getBody(), item.getTitle());
+        model.addAttribute("html", markdown.toHtml(body));
+        model.addAttribute("toc", markdown.toc(body));
         model.addAttribute("itemTags", tags.of(List.of(item.getId())).getOrDefault(item.getId(), List.of()));
         // 正文末尾的附件卡：挂到本文下面的补充笔记，点开就是那篇
         model.addAttribute("attachedNotes", attachedNotesOf(siblings, item, lockedIds));

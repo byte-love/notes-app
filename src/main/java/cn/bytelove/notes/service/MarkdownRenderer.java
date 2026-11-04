@@ -19,6 +19,7 @@ import org.springframework.stereotype.Service;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.LinkedHashMap;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -105,8 +106,7 @@ public class MarkdownRenderer {
         if (markdown == null || markdown.isBlank()) {
             return "";
         }
-        Node document = parser.parse(fenceBareCode(stripFrontMatter(markdown)));
-        wrapGlossary(document);
+        Node document = parser.parse(fenceBareCode(stripFrontMatter(markdown)));        wrapGlossary(document);
 
         Map<Heading, String> ids = assignHeadingIds(document);
         AttributeProvider headingIds = (node, tagName, attributes) -> {
@@ -124,6 +124,55 @@ public class MarkdownRenderer {
                 .attributeProviderFactory(context -> headingIds)
                 .build();
         return stripPresentational(renderer.render(document));
+    }
+
+    /**
+     * 正文第一行又把标题抄了一遍的话，去掉那一行。
+     * <p>
+     * AI 存笔记时经常这么干：页面顶上已经渲染了标题，正文第一行再来一次「4. 内存泄漏与内存溢出」，
+     * 看着像重复。只在<b>第一行的文字和标题一致</b>时才删（比较前先去掉 #、列表记号、编号和标点），
+     * 其它情况原样返回，不动用户正文；也不改库里的内容，只是渲染时不显示这一行。
+     */
+    public String dropTitleEcho(String markdown, String title) {
+        if (markdown == null || markdown.isBlank() || title == null) {
+            return markdown;
+        }
+        String want = comparable(title);
+        if (want.isEmpty()) {
+            return markdown;
+        }
+        String[] lines = markdown.split("\n", -1);
+        int at = 0;
+        while (at < lines.length && lines[at].isBlank()) {
+            at++;
+        }
+        if (at >= lines.length) {
+            return markdown;
+        }
+        String bare = lines[at].strip()
+                .replaceFirst("^#{1,6}\\s*", "")
+                .replaceFirst("^(?:[-*+]\\s+|\\d+[.)、]\\s*)", "")
+                .replaceAll("[*_`]", "");
+        if (!comparable(bare).equals(want)) {
+            return markdown;
+        }
+        StringBuilder out = new StringBuilder(markdown.length());
+        for (int i = 0; i < lines.length; i++) {
+            if (i == at) {
+                continue;
+            }
+            out.append(lines[i]).append('\n');
+        }
+        return out.toString().stripLeading();
+    }
+
+    /** 比较用的形态：去掉空白、中英文标点、Markdown 记号，忽略大小写。 */
+    private static String comparable(String text) {
+        if (text == null) {
+            return "";
+        }
+        return text.replaceAll("[\\s\\p{Punct}，。、：；！？（）【】〔〕「」『』《》〈〉—…·]+", "")
+                .toLowerCase(Locale.ROOT);
     }
 
     /**
