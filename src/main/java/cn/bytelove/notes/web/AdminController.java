@@ -61,7 +61,7 @@ public class AdminController {
 
     /** 列表行：值都在控制器里算好，模板只做输出。 */
     public record AdminRow(long id, String kind, String slug, String title, String visibility,
-                           String updated) {
+                           String updated, boolean recommended) {
     }
 
     private static final DateTimeFormatter UPDATED_AT =
@@ -156,10 +156,11 @@ public class AdminController {
         List<AdminRow> rows = new ArrayList<>(found.size());
         for (ContentItem i : found) {
             rows.add(new AdminRow(i.getId(), i.getKind().getLabel(), i.getSlug(), i.getTitle(),
-                    i.getVisibility().getLabel(), UPDATED_AT.format(i.getUpdatedAt())));
+                    i.getVisibility().getLabel(), UPDATED_AT.format(i.getUpdatedAt()), i.isRecommended()));
         }
-
         model.addAttribute("items", found);
+        // 「推荐 / 下架」只有管理员能用：别人的内容也能摘
+        model.addAttribute("canRecommend", viewer.admin());
         // 一次只渲染 60 行，滚到底再取下一批（和列表页同一套做法）。
         // 313 行一次渲染光 Thymeleaf 输出就要 60ms 左右，首屏没必要等
         int start = Math.max(0, from == null ? 0 : from);
@@ -573,6 +574,29 @@ public class AdminController {
         }
         // 进回收站，不是真删；30 天后由 TrashService 定时清理
         trash.softDelete(item.getId(), item.getOwnerId());
+        return "redirect:" + safeBack(back, "/admin");
+    }
+
+    /**
+     * 平台上 / 下架：把一条内容挂到技术广场，或者从广场上摘下来。
+     * <p>
+     * 下架 = 取消推荐，内容本身不动（广场只收 {@code recommended = true} 的，见 {@code RecommendService.cards}）；
+     * 上架只对 PUBLIC 有意义 —— MEMBER / PRIVATE 的条目就算推荐了也不会摆上广场，
+     * 但对「别人拿链接能不能看」是有影响的（{@code VisibilityService} 先看 recommended 再看 visibility）。
+     * 只有管理员能操作：别人往广场投稿的内容，觉得不合适就在这里摘掉。
+     */
+    @PostMapping("/{id}/recommend")
+    public String toggleRecommend(@PathVariable Long id,
+                                  @RequestParam(name = "back", required = false) String back,
+                                  Authentication auth) {
+        Viewer viewer = viewers.current(auth);
+        if (!viewer.admin()) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN);
+        }
+        ContentItem item = items.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+        item.setRecommended(!item.isRecommended());
+        items.save(item);
         return "redirect:" + safeBack(back, "/admin");
     }
 

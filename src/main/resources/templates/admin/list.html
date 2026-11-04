@@ -71,6 +71,10 @@
         <form id="row-del" th:action="@{/admin/0/delete}" method="post" hidden>
             <input type="hidden" name="_csrf" th:value="${_csrf.token}">
         </form>
+        <!-- 「推荐 / 下架」同理：只有管理员看得到这个按钮（表单也跟着一起不给） -->
+        <form id="row-rec" th:if="${canRecommend}" th:action="@{/admin/0/recommend}" method="post" hidden>
+            <input type="hidden" name="_csrf" th:value="${_csrf.token}">
+        </form>
     </div>
 
     <p class="empty" th:if="${#lists.isEmpty(items)}">
