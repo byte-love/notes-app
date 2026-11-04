@@ -16,7 +16,10 @@
         python: 'def class import from return if elif else for while try except finally with as lambda None True False and or not in',
     };
 
-    // 注释/字符串/数字/关键字；注释和字符串都限制在单行内，才能按行切分后加行号
+    // 注释 / 字符串 / 注解 / 数字 / 关键字 / 类型 / 函数名，七个 token。
+    // 注释和字符串都限制在单行内，才能按行切分后加行号。
+    // 类型（首字母大写）排在关键字之后、函数名之前：while( 仍然是关键字，
+    // System / Map / Entry 走类型色，println( / iterator( 走函数色。
     const build = (lang) => {
         const kw = KEYWORDS[lang];
         const comment = lang === 'sql' || lang === 'lua' ? '--[^\\n]*|#[^\\n]*'
@@ -26,17 +29,25 @@
         const parts = [
             `(${comment})`,
             `(${str})`,
+            '(@[A-Za-z_][\\w.]*)',
             '(\\b\\d+(?:\\.\\d+)?\\b)',
         ];
         if (kw) {
             parts.push(`(\\b(?:${kw.replace(/ /g, '|')})\\b)`);
+        } else {
+            parts.push('(?!)');
         }
+        parts.push('(\\b[A-Z][A-Za-z0-9_$]*\\b)');
+        parts.push('(\\b[a-zA-Z_][A-Za-z0-9_$]*(?=\\s*\\())');
         return new RegExp(parts.join('|'), 'g');
     };
 
     const cache = {};
 
     const escapeHtml = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+    // 下标对应正则里的捕获组顺序，null 占位
+    const CLASSES = [null, 'tok-c', 'tok-s', 'tok-a', 'tok-n', 'tok-k', 'tok-t', 'tok-f'];
 
     const highlight = (text, lang) => {
         const re = cache[lang] || (cache[lang] = build(lang));
@@ -46,7 +57,13 @@
         let m;
         while ((m = re.exec(text)) !== null) {
             out += escapeHtml(text.slice(last, m.index));
-            const cls = m[1] ? 'tok-c' : m[2] ? 'tok-s' : m[3] ? 'tok-n' : 'tok-k';
+            let cls = 'tok-k';
+            for (let i = 1; i < CLASSES.length; i++) {
+                if (m[i]) {
+                    cls = CLASSES[i];
+                    break;
+                }
+            }
             out += `<span class="${cls}">${escapeHtml(m[0])}</span>`;
             last = m.index + m[0].length;
         }
