@@ -4,7 +4,8 @@
 <body>
 <header th:replace="~{fragments/layout :: nav}"></header>
 
-<div class="with-tree" th:classappend="${item.kind.name() != 'PROJECT'} ? 'has-tree' : ''">
+<div class="with-tree" th:classappend="${item.kind.name() != 'PROJECT'} ? 'has-tree' : ''"
+     th:attr="data-area=${#strings.toLowerCase(item.kind.name())}">
     <aside class="tree-pane" th:attr="data-kind=${#strings.toLowerCase(item.kind.name())}" th:if="${item.kind.name() != 'PROJECT' and tree != null}">
         <p class="tree-hint" th:if="${lockedCount > 0}">
             登录后可查看其余 <span th:text="${lockedCount}">0</span> 篇

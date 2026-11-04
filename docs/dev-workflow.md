@@ -171,6 +171,18 @@ sudo /opt/deploy/sync-db.sh    # 正式库整库覆盖到测试库
   `/api/tree/{kind}?parent=<slug>` 补子节点
 - 静态资源带 `?v=` 版本号 + `Cache-Control: max-age=31536000`，nginx 开了 `gzip_types`（css/js）；
   nginx 到应用是长连接（`upstream ... keepalive` + `Connection ""`）
+- **分区配色**（2026-11-04）：四个分区各一个色相——闪念 170 松绿 / 项目 214 靛 / 八股 34 琥珀 / 算法 272 紫。
+  容器上写 `data-area="note|project|bagu|algo"`（`list.html`/`detail.html` 的 `.with-tree`、`explore.html` 的每个
+  `<section>`、`explore-group.html`/`project.html` 的 `<main>`），里面用
+  `hsl(var(--kh) var(--k-sat) var(--k-l-fg))` 现算；`--k-sat` / `--k-l-*` 是跟主题走的旋钮，在 `:root`、
+  `@media dark`、`html[data-theme=light|dark|sepia]` 各写一份。
+  ⚠ 别写成 `--kfg: hsl(var(--kh) …)` 再到处 `var(--kfg)`：自定义属性里的 `var()` 在声明它的元素上就替换完了，
+  继承下去不会跟着 `--kh` 变，四个分区会全用一个颜色。钩子也别用 `data-kind`（树的行、评论锚点、高亮都在用）
+- **正文提示块按提词分色**（2026-11-04）：`> ` 引用块由 `MarkdownRenderer.calloutTone` 看**第一段开头 12 个字**，
+  给 `data-tone`：`warn` 注意/警告/切记/务必/别忘/踩坑/风险/小心（红）、`answer` 回答/答案/结论/总结（绿）、
+  `example` 示例/举例/例子/代码/用法/使用方式（蓝），其余不给属性、走默认暖米。色相在 `app.css` 的
+  `.markdown blockquote` 里按 `--ct` 现算，`--ct-bg-*` / `--ct-bar-*` / `--ct-fg-*` 是主题旋钮。
+  只看开头是为了别把正文里顺带提一句「回答」的整段染绿
 - **标签气泡的配色按词固定**：`GlobalModelAdvice.TagTone.of(词)` 把词哈希到 `t0~t7` 八个色调，模板写成
   `data-tone="${tagTone.of(t)}"`（`detail.html` 的 `.doc-tag`、`fragments/list.html` 的 `.item-tag`），
   色值在 `app.css` 里按 `--tc` 色相算（浅色纸感、深色压暗，三套主题各一份）。同一个词在哪个页面都是同一个颜色

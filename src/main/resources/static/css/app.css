@@ -23,8 +23,30 @@
     --accent-2: #8a5a20;
     --danger: #b3261e;
     --tree-guide: #dfdacf;
-    /* 仿飞书的提示块底色（暖米色），和强调色的赭石搭 */
-    --callout-bg: #fdf4e6;
+    /* 提示块（正文里的 > 引用）底色的旋钮：色相由 data-tone 给（默认 34 暖米），这里只放跟
+       主题走的饱和度 / 明度——bg 是底色，bar 是左边条，fg 是提词和序号 */
+    --ct-bg-s: 55%;
+    --ct-bg-l: 95%;
+    --ct-bar-s: 55%;
+    --ct-bar-l: 62%;
+    --ct-fg-s: 45%;
+    --ct-fg-l: 38%;
+    /* 分区色：闪念 松绿 / 项目 靛 / 八股 琥珀 / 算法 紫。挂 data-area 的容器（见下面那几条）
+       把 --kh 换成对应色相，其余几个是跟主题走的旋钮，用的时候现算：
+       hsl(var(--kh) var(--k-sat) var(--k-l-fg))。
+       ⚠ 别预先算成一个 hsl(...) 色值塞进自定义属性再到处引用：自定义属性里的 var() 在
+       **声明它的那个元素**上就替换完了，继承下去不会跟着 --kh 变，四个分区会全用松绿（已踩一次）。 */
+    --hue-note: 170;
+    --hue-project: 214;
+    --hue-bagu: 34;
+    --hue-algo: 272;
+    --kh: var(--hue-note);
+    --k-sat: 44%;
+    --k-sat-soft: 45%;
+    --k-l-fg: 31%;
+    --k-l-bg: 90%;
+    --k-l-line: 80%;
+    --k-l-bar: 55%;
     /* 重点高亮的五层底纹（半透明，正文颜色不受影响）和工具条上那排色块 */
     --hl-yellow: rgba(250, 205, 60, 0.45);
     --hl-green: rgba(72, 199, 116, 0.35);
@@ -57,7 +79,19 @@
         --accent-2: #d8a25e;
         --danger: #f07c74;
         --tree-guide: #2b302e;
-        --callout-bg: #251f18;
+        --ct-bg-s: 26%;
+        --ct-bg-l: 13%;
+        --ct-bar-s: 40%;
+        --ct-bar-l: 48%;
+        --ct-fg-s: 55%;
+        --ct-fg-l: 70%;
+        /* 分区色在深色底上反过来：文字提亮、浅底压暗 */
+        --k-sat: 55%;
+        --k-sat-soft: 28%;
+        --k-l-fg: 72%;
+        --k-l-bg: 17%;
+        --k-l-line: 28%;
+        --k-l-bar: 60%;
         /* 深色底下五层底纹都再压一档，免得盖住正文 */
         --hl-yellow: rgba(250, 205, 60, 0.28);
         --hl-green: rgba(72, 199, 116, 0.26);
@@ -75,7 +109,18 @@
 }
 
 html[data-theme='light'] {
-    --callout-bg: #fdf4e6;
+    --ct-bg-s: 55%;
+    --ct-bg-l: 95%;
+    --ct-bar-s: 55%;
+    --ct-bar-l: 62%;
+    --ct-fg-s: 45%;
+    --ct-fg-l: 38%;
+    --k-sat: 44%;
+    --k-sat-soft: 45%;
+    --k-l-fg: 31%;
+    --k-l-bg: 90%;
+    --k-l-line: 80%;
+    --k-l-bar: 55%;
     --hl-yellow: rgba(250, 205, 60, 0.45);
     --hl-green: rgba(72, 199, 116, 0.35);
     --hl-blue: rgba(64, 156, 255, 0.28);
@@ -113,7 +158,18 @@ html[data-theme='dark'] {
     --accent-2: #d8a25e;
     --danger: #f07c74;
     --tree-guide: #2b302e;
-    --callout-bg: #251f18;
+    --ct-bg-s: 26%;
+    --ct-bg-l: 13%;
+    --ct-bar-s: 40%;
+    --ct-bar-l: 48%;
+    --ct-fg-s: 55%;
+    --ct-fg-l: 70%;
+    --k-sat: 55%;
+    --k-sat-soft: 28%;
+    --k-l-fg: 72%;
+    --k-l-bg: 17%;
+    --k-l-line: 28%;
+    --k-l-bar: 60%;
     --sb-active: rgba(140, 137, 128, 0.85);
     --sb-idle: rgba(231, 229, 223, 0.035);
 }
@@ -130,7 +186,19 @@ html[data-theme='sepia'] {
     --accent-2: #8a5a20;
     --danger: #a82f2f;
     --tree-guide: #d8ccb6;
-    --callout-bg: #f8eedb;
+    --ct-bg-s: 40%;
+    --ct-bg-l: 90%;
+    --ct-bar-s: 45%;
+    --ct-bar-l: 56%;
+    --ct-fg-s: 42%;
+    --ct-fg-l: 38%;
+    /* 牛皮纸底本来就偏暖，分区色的饱和度再收一档，免得盖过纸感 */
+    --k-sat: 40%;
+    --k-sat-soft: 32%;
+    --k-l-fg: 30%;
+    --k-l-bg: 89%;
+    --k-l-line: 78%;
+    --k-l-bar: 52%;
     --hl-yellow: rgba(248, 200, 60, 0.42);
     --hl-green: rgba(72, 180, 110, 0.32);
     --hl-blue: rgba(64, 140, 230, 0.24);
@@ -143,6 +211,25 @@ html[data-theme='sepia'] {
     --sw-purple: #a580f5;
     --sb-active: rgba(111, 101, 82, 0.9);
     --sb-idle: rgba(59, 50, 39, 0.042);
+}
+
+/* 页面挂在哪个分区（.with-tree / 技术广场的分组上带 data-area），它里面所有用 --k* 的地方
+   就跟着换色相。注意别用 data-kind 做钩子：树的每一行、评论锚点、高亮都在用那个属性，
+   含义不是一回事 */
+[data-area='note'] {
+    --kh: var(--hue-note);
+}
+
+[data-area='project'] {
+    --kh: var(--hue-project);
+}
+
+[data-area='bagu'] {
+    --kh: var(--hue-bagu);
+}
+
+[data-area='algo'] {
+    --kh: var(--hue-algo);
 }
 
 * {
@@ -979,7 +1066,8 @@ button:hover,
     letter-spacing: -0.01em;
 }
 
-/* 「我的笔记」的四个分区：当标题用，选中的那个满色加粗，其余压淡 */
+/* 「我的笔记」的四个分区：当标题用。选中的那个换成分区色，底下压一条同色短条，
+   其余压淡——四个分区各一个颜色，进来先知道自己在哪一区 */
 .mine-tabs {
     display: flex;
     flex-wrap: wrap;
@@ -993,6 +1081,10 @@ button:hover,
 .mine-tab {
     color: var(--fg-3);
     font-weight: 400;
+    /* 四个都留出同一条底边的位置，切换时分区的标题不会跳 */
+    border-bottom: 3px solid transparent;
+    padding-bottom: 0.04rem;
+    transition: color 0.14s ease, border-color 0.14s ease;
 }
 
 .mine-tab:hover {
@@ -1001,14 +1093,20 @@ button:hover,
 }
 
 .mine-tab.on {
-    color: var(--fg);
+    color: hsl(var(--kh) var(--k-sat) var(--k-l-fg));
     font-weight: 600;
+    border-bottom-color: hsl(var(--kh) var(--k-sat) var(--k-l-bar));
 }
 
 .count {
-    color: var(--fg-3);
-    font-size: 0.85rem;
+    color: hsl(var(--kh) var(--k-sat) var(--k-l-fg));
+    background: hsl(var(--kh) var(--k-sat-soft) var(--k-l-bg));
+    border: 1px solid hsl(var(--kh) var(--k-sat-soft) var(--k-l-line));
+    border-radius: 999px;
+    padding: 0.06rem 0.5rem;
+    font-size: 0.78rem;
     font-family: var(--mono);
+    font-variant-numeric: tabular-nums;
 }
 
 .item-list {
@@ -1038,7 +1136,7 @@ button:hover,
 }
 
 .item-title:hover {
-    color: var(--accent);
+    color: hsl(var(--kh) var(--k-sat) var(--k-l-fg));
     text-decoration: none;
 }
 
@@ -1171,10 +1269,11 @@ button:hover,
     text-decoration: none;
 }
 
+/* 选中态用当前分区的颜色：胶囊里那一条就是这一区的主色，和标题下的色条对上 */
 .rate-chip.on {
-    color: var(--accent);
-    border-color: var(--accent);
-    background: var(--accent-soft);
+    color: hsl(var(--kh) var(--k-sat) var(--k-l-fg));
+    border-color: hsl(var(--kh) var(--k-sat) var(--k-l-bar));
+    background: hsl(var(--kh) var(--k-sat-soft) var(--k-l-bg));
 }
 
 .rate-chip.off {
@@ -1189,7 +1288,7 @@ button:hover,
 }
 
 .rate-chip.on .rate-chip-count {
-    color: var(--accent);
+    color: hsl(var(--kh) var(--k-sat) var(--k-l-fg));
 }
 
 /* ---------- 标签（按词表自动打的，卡片上只展示，详情页点了能筛） ---------- */
@@ -1471,8 +1570,8 @@ html[data-theme='sepia'] .item-tag {
 }
 
 .toc a.on {
-    color: var(--accent);
-    border-left-color: var(--accent);
+    color: hsl(var(--kh) var(--k-sat) var(--k-l-fg));
+    border-left-color: hsl(var(--kh) var(--k-sat) var(--k-l-bar));
 }
 
 .toc .lv3 a {
@@ -1574,7 +1673,8 @@ html[data-theme='sepia'] .item-tag {
     font-size: 1.4rem;
     margin: 2.6rem 0 0.9rem;
     padding-bottom: 0.35rem;
-    border-bottom: 1px solid var(--line);
+    /* 分隔线换成当前分区的浅色：正文读起来不闷，又不抢标题 */
+    border-bottom: 1px solid hsl(var(--kh) var(--k-sat-soft) var(--k-l-line));
     line-height: 1.35;
 }
 
@@ -1877,14 +1977,31 @@ html[data-theme='sepia'] .item-tag {
     color: var(--fg-2);
 }
 
-/* 引用块当提示块用（仿飞书的 highlight block）：暖米底 + 赭石左边条 + 圆角，正文回到正常色 */
+/* 引用块当提示块用（仿飞书的 highlight block）：浅底 + 同色左边条 + 圆角，正文回到正常色。
+   底色不写死：--ct 是色相，默认 34 暖米；服务端按第一段开头的提词给 data-tone
+   （MarkdownRenderer.calloutTone），回答 绿 / 示例 蓝 / 注意 红。
+   饱和度、明度是跟主题走的旋钮（--ct-bg-* / --ct-bar-* / --ct-fg-*，在顶部主题块里各写一份），
+   和分区色同一套写法：规则里现算 hsl()，不预先算成自定义属性。 */
 .markdown blockquote {
+    --ct: 34;
     margin: 0 0 1.2rem;
     padding: 0.85rem 1.15rem;
-    border-left: 3px solid var(--accent-2);
+    border-left: 3px solid hsl(var(--ct) var(--ct-bar-s) var(--ct-bar-l));
     border-radius: 10px;
-    background: var(--callout-bg);
+    background: hsl(var(--ct) var(--ct-bg-s) var(--ct-bg-l));
     color: var(--fg);
+}
+
+.markdown blockquote[data-tone='answer'] {
+    --ct: 152;
+}
+
+.markdown blockquote[data-tone='example'] {
+    --ct: 214;
+}
+
+.markdown blockquote[data-tone='warn'] {
+    --ct: 6;
 }
 
 .markdown blockquote p:last-child {
@@ -1892,7 +2009,7 @@ html[data-theme='sepia'] .item-tag {
 }
 
 /* 只有一行加粗的引用块（「回答流程」「回答」这类提词）：当标签用——框收窄、文字纵向居中（上下内边距对称），
-   横向仍然左对齐。
+   横向仍然左对齐。提词本身也用这一块的色调，和底色是一家人。
    用 p:only-of-type 而不是 p:only-child：注释功能会往引用块里插一个「＋」按钮，
    用 only-child 永远匹配不上（2026-11-02 踩过，规则写了但页面没生效） */
 .markdown blockquote:has(> p:only-of-type > strong:only-child) {
@@ -1902,9 +2019,10 @@ html[data-theme='sepia'] .item-tag {
     min-height: 2.6rem;
 }
 
+.markdown blockquote:has(> p:only-of-type > strong:only-child) strong,
 .markdown blockquote ol > li::marker,
 .markdown blockquote ul > li::marker {
-    color: var(--accent-2);
+    color: hsl(var(--ct) var(--ct-fg-s) var(--ct-fg-l));
 }
 
 .markdown table {
@@ -1981,7 +2099,7 @@ html[data-theme='sepia'] .item-tag {
 }
 
 .tree-head-text {
-    color: var(--fg-3);
+    color: hsl(var(--kh) var(--k-sat) var(--k-l-fg));
     font-size: 0.78rem;
     letter-spacing: 0.02em;
 }
@@ -2313,12 +2431,12 @@ html.tree-no-count .tree-count {
     text-decoration: none;
 }
 
-/* 当前这一条：浅底 + 文字变强调色 + 左边一条强调色竖线，比纯浅底更容易扫到 */
+/* 当前这一条：浅底 + 文字变分区色 + 左边一条同色竖线，比纯浅底更容易扫到 */
 .tree a.on {
-    color: var(--accent);
-    background: var(--accent-soft);
+    color: hsl(var(--kh) var(--k-sat) var(--k-l-fg));
+    background: hsl(var(--kh) var(--k-sat-soft) var(--k-l-bg));
     font-weight: 600;
-    box-shadow: inset 2px 0 0 var(--accent);
+    box-shadow: inset 2px 0 0 hsl(var(--kh) var(--k-sat) var(--k-l-bar));
 }
 
 /* 没权限看的：只占位，压暗 + 锁，点进登录页 */
@@ -2459,8 +2577,8 @@ html.tree-no-count .tree-count {
     color: var(--line);
 }
 
-.crumbs a.here {
-    color: var(--fg-2);
+.crumbs .here {
+    color: hsl(var(--kh) var(--k-sat) var(--k-l-fg));
 }
 
 .crumbs a.here::after {
@@ -3021,7 +3139,7 @@ html[data-read-size='lg'] .markdown {
     font-size: 0.85rem;
     font-weight: 600;
     letter-spacing: 0.04em;
-    color: var(--fg-3);
+    color: hsl(var(--kh) var(--k-sat) var(--k-l-fg));
 }
 
 .project-problem {
@@ -3061,7 +3179,7 @@ html[data-read-size='lg'] .markdown {
     content: "\25B8";
     position: absolute;
     left: 0;
-    color: var(--accent);
+    color: hsl(var(--kh) var(--k-sat) var(--k-l-bar));
 }
 
 .project-diagram {
@@ -3269,7 +3387,8 @@ html[data-read-size='lg'] .markdown {
     margin: 2rem 0 1rem;
     font-size: 0.95rem;
     font-weight: 600;
-    color: var(--fg-2);
+    /* 技术广场按内容类型分段，每段跟对应分区的颜色走 */
+    color: hsl(var(--kh) var(--k-sat) var(--k-l-fg));
 }
 
 .tpl-grid {
@@ -3289,7 +3408,7 @@ html[data-read-size='lg'] .markdown {
 }
 
 .tpl-card:hover {
-    border-color: var(--fg-3);
+    border-color: hsl(var(--kh) var(--k-sat) var(--k-l-bar));
 }
 
 .tpl-title {
@@ -3362,6 +3481,9 @@ html[data-read-size='lg'] .markdown {
 
 .rec-head-main .badge {
     margin: 0;
+    color: hsl(var(--kh) var(--k-sat) var(--k-l-fg));
+    background: hsl(var(--kh) var(--k-sat-soft) var(--k-l-bg));
+    border-color: hsl(var(--kh) var(--k-sat-soft) var(--k-l-line));
 }
 
 .rec-head h1 {
@@ -4097,7 +4219,8 @@ html[data-theme='dark'] .cl-latest {
     gap: 1.1rem;
 }
 
-/* 每条一块卡片：只动形状和间距，底色 / 边框 / 悬停色都用原来的变量，不另配颜色 */
+/* 每条一块卡片：形状和间距不变，悬停时描边换成分区色 —— 鼠标扫过去整列是一个颜色，
+   一眼能看出自己在哪一区，比统一变灰更有点指向 */
 .with-tree .item-list li {
     display: flex;
     flex-direction: column;
@@ -4110,7 +4233,7 @@ html[data-theme='dark'] .cl-latest {
 
 .with-tree .item-list li:hover {
     transform: translateY(-2px);
-    border-color: var(--fg-3);
+    border-color: hsl(var(--kh) var(--k-sat) var(--k-l-bar));
     box-shadow: 0 12px 26px -18px rgba(28, 27, 24, 0.45);
 }
 
@@ -4153,7 +4276,7 @@ html[data-theme='dark'] .cl-latest {
     opacity: 0;
     transform: translateX(-4px);
     transition: opacity 0.16s ease, transform 0.16s ease;
-    color: var(--accent);
+    color: hsl(var(--kh) var(--k-sat) var(--k-l-bar));
 }
 
 .with-tree .item-list li:hover .item-date::after {
@@ -4208,7 +4331,7 @@ html[data-theme='dark'] .cl-latest {
     margin: 0;
     font-size: 0.95rem;
     font-weight: 600;
-    color: var(--accent-2);
+    color: hsl(var(--kh) var(--k-sat) var(--k-l-fg));
     letter-spacing: 0.01em;
 }
 
@@ -4446,8 +4569,9 @@ html[data-theme='dark'] .cl-latest {
     color: var(--danger);
 }
 /* 分类标题做成可点的折叠条：左边小三角 + 标题 + 条数 */
-/* 一级分组标题：整行条带（浅底 + 描边 + 圆角 + 计数胶囊），和二级的 chips 同一套材料，
-   只是更大更重，层级一眼能看出来。整行可点，收起后只剩这条。 */
+/* 一级分组标题：整行条带（分区色浅底 + 同色描边 + 左侧一道色条 + 计数胶囊），和二级的
+   chips 同一套材料，只是更大更重，层级一眼能看出来。整行可点，收起后只剩这条。
+   底色不再用 bg-2：整页条带同色，一屏扫下去就能分清有几组 */
 .item-group-toggle {
     display: flex;
     align-items: center;
@@ -4458,21 +4582,22 @@ html[data-theme='dark'] .cl-latest {
     font: inherit;
     text-align: left;
     color: inherit;
-    background: var(--bg-2);
-    border: 1px solid var(--line);
+    background: hsl(var(--kh) var(--k-sat-soft) var(--k-l-bg));
+    border: 1px solid hsl(var(--kh) var(--k-sat-soft) var(--k-l-line));
     border-radius: 12px;
+    box-shadow: inset 3px 0 0 hsl(var(--kh) var(--k-sat) var(--k-l-bar));
     cursor: pointer;
     transition: border-color 0.14s ease, background 0.14s ease, transform 0.14s ease, box-shadow 0.14s ease;
 }
 
 .item-group-toggle:hover {
-    border-color: var(--fg-3);
+    border-color: hsl(var(--kh) var(--k-sat) var(--k-l-bar));
 }
 
 .item-group-caret {
     width: 0;
     height: 0;
-    border-left: 5px solid var(--fg-3);
+    border-left: 5px solid hsl(var(--kh) var(--k-sat) var(--k-l-fg));
     border-top: 4px solid transparent;
     border-bottom: 4px solid transparent;
     transform: rotate(90deg);
@@ -4484,8 +4609,8 @@ html[data-theme='dark'] .cl-latest {
     transform: rotate(0deg);
 }
 
-.item-group-toggle:hover .item-group-title {
-    color: var(--accent);
+.item-group-toggle:hover .item-group-caret {
+    border-left-color: hsl(var(--kh) var(--k-sat) var(--k-l-bar));
 }
 
 /* 计数做成胶囊徽标，和二级 chip 里的计数是同一套样子 */
@@ -4494,14 +4619,14 @@ html[data-theme='dark'] .cl-latest {
     padding: 0.1rem 0.5rem;
     font-size: 0.72rem;
     font-variant-numeric: tabular-nums;
-    color: var(--fg-3);
+    color: hsl(var(--kh) var(--k-sat) var(--k-l-fg));
     background: var(--bg);
-    border: 1px solid var(--line);
+    border: 1px solid hsl(var(--kh) var(--k-sat-soft) var(--k-l-line));
     border-radius: 999px;
 }
 
 .item-group-toggle:hover .item-group-count {
-    color: var(--fg-2);
+    color: hsl(var(--kh) var(--k-sat) var(--k-l-bar));
 }
 
 .item-group.folded .item-list {
@@ -4551,10 +4676,11 @@ html[data-theme='dark'] .cl-latest {
     border-radius: 14px;
 }
 
-/* 和条目卡片一样，悬停轻轻抬一下，才像一张卡而不是表格行 */
+/* 和条目卡片一样，悬停轻轻抬一下，才像一张卡而不是表格行。
+   左边那道分区色条得一起写进来，否则这条 box-shadow 会把上面那条盖掉 */
 .group-grid > .item-group.folded > .item-group-toggle:hover {
     transform: translateY(-1px);
-    box-shadow: 0 10px 20px -16px rgba(28, 27, 24, 0.5);
+    box-shadow: inset 3px 0 0 hsl(var(--kh) var(--k-sat) var(--k-l-bar)), 0 10px 20px -16px rgba(28, 27, 24, 0.5);
 }
 
 .group-grid > .item-group.folded .item-group-caret {
@@ -4579,7 +4705,7 @@ html[data-theme='dark'] .cl-latest {
 }
 
 .group-grid > .item-group.folded > .item-group-toggle:hover .item-group-count {
-    color: var(--accent);
+    color: hsl(var(--kh) var(--k-sat) var(--k-l-bar));
 }
 
 /* 预览行：淡、单行、放不下就截断 */
@@ -4649,9 +4775,9 @@ html[data-theme='dark'] .cl-latest {
 }
 
 .subgroup-chip.on {
-    color: var(--accent);
-    border-color: var(--accent);
-    background: var(--accent-soft);
+    color: hsl(var(--kh) var(--k-sat) var(--k-l-fg));
+    border-color: hsl(var(--kh) var(--k-sat) var(--k-l-bar));
+    background: hsl(var(--kh) var(--k-sat-soft) var(--k-l-bg));
 }
 
 .subgroup-chip-count {
@@ -4661,7 +4787,7 @@ html[data-theme='dark'] .cl-latest {
 }
 
 .subgroup-chip.on .subgroup-chip-count {
-    color: var(--accent);
+    color: hsl(var(--kh) var(--k-sat) var(--k-l-fg));
 }
 
 .subgroup-panels {

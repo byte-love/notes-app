@@ -2,11 +2,13 @@ package cn.bytelove.notes.service;
 
 import org.commonmark.ext.gfm.strikethrough.StrikethroughExtension;
 import org.commonmark.ext.gfm.tables.TablesExtension;
+import org.commonmark.node.BlockQuote;
 import org.commonmark.node.Code;
 import org.commonmark.node.FencedCodeBlock;
 import org.commonmark.node.Heading;
 import org.commonmark.node.IndentedCodeBlock;
 import org.commonmark.node.Node;
+import org.commonmark.node.Paragraph;
 import org.commonmark.node.Text;
 import org.commonmark.parser.Parser;
 import org.commonmark.renderer.NodeRenderer;
@@ -109,9 +111,15 @@ public class MarkdownRenderer {
         Node document = parser.parse(fenceBareCode(stripFrontMatter(markdown)));        wrapGlossary(document);
 
         Map<Heading, String> ids = assignHeadingIds(document);
-        AttributeProvider headingIds = (node, tagName, attributes) -> {
+        AttributeProvider attrProvider = (node, tagName, attributes) -> {
             if (node instanceof Heading heading && ids.containsKey(heading)) {
                 attributes.put("id", ids.get(heading));
+            }
+            if (node instanceof BlockQuote quote) {
+                String tone = calloutTone(quote);
+                if (tone != null) {
+                    attributes.put("data-tone", tone);
+                }
             }
             if ("img".equals(tagName)) {
                 attributes.put("loading", "lazy");
@@ -121,7 +129,7 @@ public class MarkdownRenderer {
         HtmlRenderer renderer = HtmlRenderer.builder()
                 .extensions(extensions)
                 .nodeRendererFactory(TermNodeRenderer::new)
-                .attributeProviderFactory(context -> headingIds)
+                .attributeProviderFactory(context -> attrProvider)
                 .build();
         return stripPresentational(renderer.render(document));
     }
@@ -552,6 +560,46 @@ public class MarkdownRenderer {
         StringBuilder sb = new StringBuilder();
         appendText(node, sb);
         return sb.toString().trim();
+    }
+
+    /**
+     * 提示块（{@code >} 引用）按<b>第一段开头</b>的提词给个色调，规则写在 app.css 里：
+     * 回答 / 示例 / 注意 三种，其余留默认暖米。
+     * <p>
+     * 只看开头 12 个字：正文里顺带提一句「回答」不该把整块染绿；
+     * 长段落（比如整段引文）开头不是提词的一律走默认色。
+     */
+    private String calloutTone(BlockQuote quote) {
+        Node first = quote.getFirstChild();
+        while (first != null && !(first instanceof Paragraph)) {
+            first = first.getNext();
+        }
+        if (first == null) {
+            return null;
+        }
+        String head = textOf(first);
+        if (head.length() > 12) {
+            head = head.substring(0, 12);
+        }
+        if (startsWithAny(head, "注意", "警告", "切记", "务必", "别忘", "踩坑", "风险", "小心")) {
+            return "warn";
+        }
+        if (startsWithAny(head, "回答", "答案", "结论", "总结")) {
+            return "answer";
+        }
+        if (startsWithAny(head, "示例", "举例", "例子", "代码", "用法", "使用方式")) {
+            return "example";
+        }
+        return null;
+    }
+
+    private static boolean startsWithAny(String head, String... words) {
+        for (String w : words) {
+            if (head.contains(w)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private void appendText(Node node, StringBuilder sb) {
