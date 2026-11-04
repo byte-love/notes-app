@@ -3308,6 +3308,19 @@ html[data-read-size='lg'] .markdown {
     margin: 0;
 }
 
+/* 「已加入」那一格：文字 + 移除按钮并排，右侧对齐 */
+.rec-both {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+/* 行尾的状态词：你的 / 已加入 */
+.rec-own {
+    font-size: 0.78rem;
+    color: var(--fg-3);
+}
+
 /* ---- 更新记录 ---- */
 
 .log-form {

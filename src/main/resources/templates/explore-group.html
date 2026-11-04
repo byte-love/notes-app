@@ -15,6 +15,7 @@
         </div>
 
         <form sec:authorize="isAuthenticated()"
+              th:if="${viewerId == null or root.ownerId != viewerId}"
               th:action="@{/explore/copy/{id}(id=${root.id})}" method="post" class="rec-action">
             <button type="submit" class="btn-new">全部加入</button>
         </form>
@@ -31,10 +32,25 @@
                 <p class="rec-summary" th:if="${i.summary != null}" th:text="${i.summary}">摘要</p>
             </div>
 
-            <form sec:authorize="isAuthenticated()"
-                  th:action="@{/explore/copy/{id}(id=${i.id})}" method="post" class="rec-action">
-                <button type="submit" class="btn-small">加入</button>
-            </form>
+            <!-- 行尾三种状态：你自己的内容 / 已经加到空间里（可移除）/ 还没加 -->
+            <span sec:authorize="isAuthenticated()"
+                  th:if="${viewerId != null and i.ownerId == viewerId}" class="rec-own">你的</span>
+
+            <div sec:authorize="isAuthenticated()" class="rec-action rec-both"
+                 th:if="${viewerId != null and i.ownerId != viewerId}">
+                <span th:if="${joinedIds.contains(i.id)}" class="rec-own">已加入</span>
+                <form th:if="${joinedIds.contains(i.id)}"
+                      th:action="@{/explore/remove/{id}(id=${i.id})}" method="post" class="rec-action"
+                      data-confirm="把这份副本移出你的空间？它会进回收站，30 天内能恢复。">
+                    <button type="submit" class="btn-small">移除</button>
+                </form>
+                <form th:unless="${joinedIds.contains(i.id)}"
+                      th:action="@{/explore/copy/{id}(id=${i.id})}" method="post" class="rec-action">
+                    <button type="submit" class="btn-small">加入</button>
+                </form>
+            </div>
+
+            <a sec:authorize="!isAuthenticated()" th:href="@{/login}" class="rec-action btn-small">加入</a>
         </li>
     </ul>
 </main>

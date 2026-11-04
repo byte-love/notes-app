@@ -134,8 +134,24 @@ public class RecommendController {
         model.addAttribute("root", root);
         model.addAttribute("kindLabel", k.getLabel());
         model.addAttribute("basePath", contextPath() + basePath(k));
+        // 行尾按钮要靠这两个判断状态：你自己的（显示「你的」）、已经副本到自己空间里（显示「已加入」+ 移除）
+        model.addAttribute("joinedIds", recommend.joined(viewer.userId()));
+        model.addAttribute("viewerId", viewer.userId());
         model.addAttribute("tabActive", "explore");
         return "explore-group";
+    }
+
+    /** 把「我复制来的那份」移出空间（软删进回收站）；正本和别人的副本不受影响。 */
+    @PostMapping("/explore/remove/{id}")
+    public String remove(@PathVariable Long id, Authentication auth) {
+        Viewer viewer = viewers.current(auth);
+        if (viewer.userId() == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED);
+        }
+        // 先记下这条属于哪个分组，删完还回原来那个分组页
+        String back = recommend.groupPathOf(id);
+        recommend.removeCopy(viewer.userId(), id);
+        return "redirect:" + (back == null ? "/explore" : back);
     }
 
     @PostMapping("/explore/copy/{id}")

@@ -27,11 +27,14 @@ public class RecommendService {
     private final ContentItemRepository items;
     private final TagService tags;
     private final HighlightService highlights;
+    private final TrashService trash;
 
-    public RecommendService(ContentItemRepository items, TagService tags, HighlightService highlights) {
+    public RecommendService(ContentItemRepository items, TagService tags, HighlightService highlights,
+                            TrashService trash) {
         this.items = items;
         this.tags = tags;
         this.highlights = highlights;
+        this.trash = trash;
     }
 
     /** 广场上的一张卡片。count 是这条加它下面所有子孙的条数。 */
@@ -165,8 +168,7 @@ public class RecommendService {
         return out;
     }
 
-    /** 这个用户已经复制过哪些模板（copied_from_id），用来把按钮显示成「已加入」。 */
-    public java.util.Set<Long> joined(Long userId) {
+    /** 这个用户已经复制过哪些模板（copied_from_id），用来把按钮显示成「已加入」。 */    public java.util.Set<Long> joined(Long userId) {
         if (userId == null) {
             return java.util.Set.of();
         }
@@ -226,6 +228,69 @@ public class RecommendService {
             copied++;
         }
         return copied;
+    }
+
+    /**
+     * 这条内容所在的分组页地址（用来从广场的「移除」按钮跳回原处）；找不到就返回 null。
+     * 从自己往上找到最顶层，用最顶层那条的 slug 当分组 Key。
+     */
+    public String groupPathOf(Long itemId) {
+        ContentItem cur = items.findById(itemId).orElse(null);
+        int guard = 0;
+        while (cur != null && cur.getParentId() != null && guard++ < 20) {
+            ContentItem parent = items.findById(cur.getParentId()).orElse(null);
+            if (parent == null) {
+                break;
+            }
+            cur = parent;
+        }
+        if (cur == null) {
+            return null;
+        }
+        String base = switch (cur.getKind()) {
+            case BAGU -> "/bagu";
+            case ALGO -> "/algo";
+            case PROJECT -> "/projects";
+            default -> "/notes";
+        };
+        return "/explore/" + cur.getKind().name().toLowerCase(java.util.Locale.ROOT) + "/" + cur.getSlug();
+    }
+
+    /**
+     * 把我复制来的那份（连同它下面复制下来的子节点）移进回收站；正本和别人的副本都不动。
+     * 广场分组页那个「移除」按钮走这里。没有复制过就什么也不做，返回 0。
+     */
+    public int removeCopy(Long userId, Long sourceId) {
+        if (userId == null) {
+            return 0;
+        }
+        List<ContentItem> mine = items.findByOwnerIdOrderByKindAscSortOrderAsc(userId);
+        Map<Long, List<Long>> childrenOf = new HashMap<>();
+        for (ContentItem i : mine) {
+            if (i.getParentId() != null) {
+                childrenOf.computeIfAbsent(i.getParentId(), k -> new ArrayList<>()).add(i.getId());
+            }
+        }
+        int removed = 0;
+        for (ContentItem c : mine) {
+            if (!sourceId.equals(c.getCopiedFromId())) {
+                continue;
+            }
+            // 副本是深拷贝，子节点一起进回收站，免得留一堆孤儿
+            Set<Long> seen = new HashSet<>();
+            java.util.ArrayDeque<Long> queue = new java.util.ArrayDeque<>();
+            queue.add(c.getId());
+            while (!queue.isEmpty()) {
+                Long id = queue.poll();
+                if (!seen.add(id)) {
+                    continue;
+                }
+                trash.softDelete(id, userId);
+                removed++;
+                queue.addAll(childrenOf.getOrDefault(id, List.of()));
+            }
+        }
+        return removed;
     }
 
     private List<ContentItem> inParentFirstOrder(Long rootId, Map<Long, ContentItem> byId) {
