@@ -256,6 +256,12 @@ sudo /opt/deploy/sync-db.sh    # 正式库整库覆盖到测试库
     看着像「MCP 配错了」。`tools/list` 不校验 token，自查一条命令就够：
     `curl -s -X POST https://byte-love.cn/app/mcp -H 'content-type: application/json' -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'`
     —— 把每个 `inputSchema` 里的 `type` 和 `properties` 看一遍。
+  - **`/mcp` 的入口故意不用 `@RequestBody`**（2026-11-04 改）：客户端可能发单条 JSON-RPC、也可能发**批量数组**，
+    还可能不带 `Content-Type`、或者只声明 `Accept: text/event-stream`。走 MVC 的参数解析和内容协商时，这几种
+    分别被拦成 **400 / 415 / 406 的整页 HTML**，AI 那边只看到「400 错误页面」，从报错里看不出原因
+    （同事接客户端时就被这个挡住，看着像 token 不对）。现在 `McpController.rpc` 自己读原始字节 +
+    `ObjectMapper` 解析：单条和批量都回 JSON，解析失败回 `-32700`、不是对象回 `-32600`，一律 200。
+    改这里时别退回 `@RequestBody`。批量里若只有通知（没有 id），按协议回 202。
   - **可见性必须由用户决定**：`note_create` 的 `visibility` 是必填参数，传空服务端直接 400，返回里明说
     「先去问用户」。三档含义见 `Visibility` 枚举；`MEMBER` 是「用户把链接发给别人、对方登录后才能看」，
     **不进技术广场**（广场以后只收 `PUBLIC`）。改可见性语义先读 `VisibilityService`——别人能不能看还有
