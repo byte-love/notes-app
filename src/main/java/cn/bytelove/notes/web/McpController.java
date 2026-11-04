@@ -5,10 +5,11 @@ import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -33,15 +34,61 @@ public class McpController {
         this.ai = ai;
     }
 
-    @PostMapping(value = "/mcp", produces = MediaType.APPLICATION_JSON_VALUE)
+    /**
+     * 入口故意不用 {@code @RequestBody}：客户端可能发单条 JSON-RPC，也可能发批量数组（数组里装一条或多条），
+     * 还可能不带 Content-Type、或者只声明 {@code Accept: text/event-stream}。走 MVC 的参数解析和内容协商时，
+     * 这几种都会被拦成 400 / 406 / 415 的整页 HTML，AI 那边只看到「400 错误页面」，完全看不出原因
+     * （2026-11-04 同事接 Claude Code 就是这么被挡住的）。所以这里自己读原始字节、自己解析，回什么都走 JSON。
+     */
+    @PostMapping("/mcp")
     public ResponseEntity<Object> rpc(@RequestHeader(name = "Authorization", required = false) String auth,
-                                      @RequestBody Map<String, Object> body,
-                                      HttpServletRequest request) {
+                                      HttpServletRequest request) throws IOException {
+        byte[] raw;
+        try (InputStream in = request.getInputStream()) {
+            raw = in.readAllBytes();
+        }
+        Object parsed = null;
+        if (raw.length > 0) {
+            try {
+                parsed = JSON.readValue(raw, Object.class);
+            } catch (Exception e) {
+                return json(error(null, -32700, "JSON 解析失败: " + e.getMessage()));
+            }
+        }
+        if (parsed instanceof List<?> batch) {
+            // 批量：逐条处理，通知类没有回复就跳过；一条回复都没有时按协议回 202
+            List<Object> replies = new ArrayList<>();
+            for (Object one : batch) {
+                Map<String, Object> single = asMap(one);
+                if (single == null) {
+                    replies.add(error(null, -32600, "批量里混进了不是对象的消息"));
+                    continue;
+                }
+                Map<String, Object> r = handle(single, auth, request);
+                if (r != null) {
+                    replies.add(r);
+                }
+            }
+            return replies.isEmpty() ? ResponseEntity.accepted().build() : json(replies);
+        }
+        Map<String, Object> single = asMap(parsed);
+        if (single == null) {
+            return json(error(null, -32600, "收到的不是 JSON-RPC 请求"));
+        }
+        Map<String, Object> r = handle(single, auth, request);
+        return r == null ? ResponseEntity.accepted().build() : json(r);
+    }
+
+    /** 一条 JSON-RPC 消息；通知类（没有 id 的 notifications/*）返回 null，调用方据此不回包。 */
+    private Map<String, Object> handle(Map<String, Object> body, String auth, HttpServletRequest request) {
         Object id = body.get("id");
         String method = body.get("method") == null ? "" : String.valueOf(body.get("method"));
+        if (method.isEmpty()) {
+            return error(id, -32600, "缺少 method");
+        }
         // 通知类消息没有 id，按协议回 202 即可，不用给 result
         if (id == null && method.startsWith("notifications/")) {
-            return ResponseEntity.accepted().build();
+            return null;
         }
         try {
             Object result = switch (method) {
@@ -54,14 +101,31 @@ public class McpController {
                 case "tools/call" -> call(auth, body, request);
                 default -> throw new Rpc(-32601, "不支持的方法: " + method);
             };
-            return ResponseEntity.ok(reply(id, "result", result));
+            return reply(id, "result", result);
         } catch (Rpc e) {
-            return ResponseEntity.ok(reply(id, "error", Map.of("code", e.code, "message", e.getMessage())));
+            return error(id, e.code, e.getMessage());
         } catch (Exception e) {
             // 业务异常也按工具错误回给 AI，别让它看到一坨 500 页面
-            return ResponseEntity.ok(reply(id, "error", Map.of("code", -32000,
-                    "message", e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage())));
+            return error(id, -32000, e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage());
         }
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Map<String, Object> asMap(Object value) {
+        if (!(value instanceof Map<?, ?> m)) {
+            return null;
+        }
+        Map<String, Object> out = new LinkedHashMap<>();
+        m.forEach((k, v) -> out.put(String.valueOf(k), v));
+        return out;
+    }
+
+    private static ResponseEntity<Object> json(Object body) {
+        return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(body);
+    }
+
+    private static Map<String, Object> error(Object id, int code, String message) {
+        return reply(id, "error", Map.of("code", code, "message", message == null ? "" : message));
     }
 
     /** id 可能为 null（客户端没给），Map.of 不收 null，所以手搭。 */
