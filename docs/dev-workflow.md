@@ -6,12 +6,18 @@
 
 | | 正式 | 测试 |
 |---|---|---|
-| 静态站（作品集） | http://47.104.210.93:8080/ | http://47.104.210.93:8180/ |
+| 站点 | **https://byte-love.cn/**（80 自动跳 https） | http://47.104.210.93:8180/ |
 | 笔记服务 | 同上 `/app/` 路径 | 同上 `/app/` 路径 |
 | 应用进程 | `notes-app` :8081 | `notes-app-dev` :8082 |
 | 数据库 | `notes` | `notes_test` |
 | 代码目录 | `/opt/apps/notes-app` | `/opt/apps/notes-app-test` |
 | 分支 | `main` | `dev` |
+
+> 老的 IP 入口 `http://47.104.210.93:8080/` **已于 2026-11-04 关闭**（nginx `sites-enabled/00-test` 已摘掉，
+> 配置备份在 `sites-available/00-test.closed-*`）。它原来藏着 `upstream notes_prod` 的定义，
+> 挪进了 `02-domain` 开头。依赖它的两个脚本也改掉了：`/root/import-note.sh` 改成直连
+> `http://127.0.0.1:8081/app`（可用 `IMPORT_BASE` 覆盖），`/opt/deploy/site.sh prod` 的健康检查
+> 改成打 `https://byte-love.cn/`。要恢复旧入口：`ln -s ../sites-available/00-test sites-enabled/` + reload。
 
 > 2026-10-30 起 `/` **不再展示静态作品集**，nginx 里加了 `location = /` 直接 302 到 `/app/`
 > （`/index.html`、`/en/` 同理）。静态文件还留在 `/srv/sites/lab` 和 `lab-dev`，要恢复就把

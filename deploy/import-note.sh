@@ -4,7 +4,7 @@
 set -uo pipefail
 FILE="$1"; SLUG="$2"; TITLE="$3"; SUMMARY="$4"; VIS="$5"
 PARENT_SLUG="${6:-}"; SORT="${7:-0}"; KIND="${8:-NOTE}"
-BASE=http://127.0.0.1:8080/app
+BASE=${IMPORT_BASE:-http://127.0.0.1:8081/app}
 JAR=/tmp/import.jar
 PSQL() { docker exec notes-pg psql -U notes -d notes -Atc "$1"; }
 OWNER_ID="(select min(id) from app_user where role='ADMIN')"

@@ -28,7 +28,7 @@
       "command": "node",
       "args": ["D:/tools/notes-mcp.mjs"],
       "env": {
-        "NOTES_BASE": "http://47.104.210.93:8080/app",
+        "NOTES_BASE": "https://byte-love.cn/app",
         "NOTES_TOKEN": "bl_你生成的token"
       }
     }
@@ -40,7 +40,7 @@
 
 ```bash
 claude mcp add byte-love-notes \
-  -e NOTES_BASE=http://47.104.210.93:8080/app \
+  -e NOTES_BASE=https://byte-love.cn/app \
   -e NOTES_TOKEN=bl_你的token \
   -- node D:/tools/notes-mcp.mjs
 ```
@@ -53,7 +53,7 @@ claude mcp add byte-love-notes \
 
 ```bash
 claude mcp add --transport http byte-love-notes \
-  http://47.104.210.93:8080/app/mcp \
+  https://byte-love.cn/app/mcp \
   --header "Authorization: Bearer bl_你的token"
 ```
 
