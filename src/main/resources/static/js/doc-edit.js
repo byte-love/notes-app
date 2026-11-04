@@ -81,8 +81,24 @@
             .replace(/[ \t]*\n[ \t]*/g, '\n')
             .trim();
 
+    // 代码块取文本：code.js 高亮时把每一行包成了 <span class="line">，
+    // 直接 textContent 会把所有行粘成一行（保存后再打开代码就只剩一行了）。
+    // 拿不到 .line 时（没增强过的代码块 / 别的站点粘来的 div 一行一段）退回去按换行元素拆。
+    const codeText = (el) => {
+        const lines = el.querySelectorAll('.line');
+        if (lines.length) {
+            return [...lines].map((line) => line.textContent).join('\n');
+        }
+        const clone = el.cloneNode(true);
+        clone.querySelectorAll('br').forEach((br) => br.replaceWith('\n'));
+        clone.querySelectorAll('div, p, li').forEach((d) => d.append('\n'));
+        return clone.textContent;
+    };
+
     const block = (el, out) => {
         const tag = el.tagName.toLowerCase();
+        // 代码块顶部的语言条 / 复制按钮是 code.js 加的界面，不是正文
+        if (el.classList && el.classList.contains('code-head')) return;
         if (/^h[1-6]$/.test(tag)) {
             const text = tidy(inline(el));
             if (text) out.push('#'.repeat(Number(tag.slice(1))) + ' ' + text);
@@ -123,7 +139,7 @@
             const code = el.querySelector('code');
             const lang = ((code ? code.className : '').match(/language-([\w-]+)/) || [])[1] || '';
             out.push('```' + lang);
-            out.push((code || el).textContent.replace(/\n+$/, ''));
+            out.push(codeText(code || el).replace(/\n+$/, ''));
             out.push('```');
             return;
         }
