@@ -1850,7 +1850,7 @@ html[data-theme='sepia'] .item-tag {
 /* 正文里藏起来的字（作者写成 %%...%%）：作者自己那边只是一层很淡的模糊，当「这里藏了东西」的标记，
    正常读没问题；别人打开这篇时这几段原文压根不在 HTML 里 */
 .markdown .hid {
-    filter: blur(1.1px);
+    filter: blur(0.55px);
     transition: filter 0.15s ease;
 }
 
