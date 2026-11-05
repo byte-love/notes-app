@@ -10,6 +10,10 @@ import java.util.Optional;
 /**
  * project_meta.doc 的读法。原始 JSON 是中英双语、action/result 是数组，
  * 应用里只说中文，所以这里统一取 zh，缺了再回落 en。
+ * <p>
+ * 另外把正文里的 `代码` 渲染成 {@code <code>}：项目页那条目是一行行短句，
+ * 里面夹的类名 / 命令 / 参数很多，页面上一堆反引号很难看。转换时**除 code 之外一律 HTML 转义**，
+ * 模板里才能安全地用 {@code th:utext}。
  */
 public record ProjectView(
         String slug,
@@ -19,13 +23,19 @@ public record ProjectView(
         String period,
         List<String> stack,
         String problem,
+        String problemHtml,
         List<Item> actions,
-        List<String> results,
+        List<Item> results,
         String repo,
         String diagram,
         List<Shot> shots) {
 
-    public record Item(String text, String note) {
+    /** 一条「我做了什么」：原文 + 渲染好的 HTML + 可选注解（注解同样有 HTML 版）。 */
+    public record Item(String text, String textHtml, String note, String noteHtml) {
+
+        public boolean hasNote() {
+            return note != null && !note.isBlank();
+        }
     }
 
     public record Shot(String src, String caption) {
@@ -45,12 +55,18 @@ public record ProjectView(
     }
 
     static ProjectView from(JsonNode root) {
-        List<Item> actions = new ArrayList<>();
         List<String> actionTexts = strings(root, "action");
-        JsonNode notesZh = root.path("notes").path("zh");
+        List<String> actionNotes = notesZh(root);
+        List<Item> actions = new ArrayList<>();
         for (int i = 0; i < actionTexts.size(); i++) {
-            JsonNode note = notesZh.path(String.valueOf(i));
-            actions.add(new Item(actionTexts.get(i), note.isTextual() ? note.asText() : null));
+            String text = actionTexts.get(i);
+            String note = i < actionNotes.size() ? actionNotes.get(i) : null;
+            actions.add(new Item(text, inline(text), note, inline(note)));
+        }
+
+        List<Item> results = new ArrayList<>();
+        for (String r : strings(root, "result")) {
+            results.add(new Item(r, inline(r), null, null));
         }
 
         List<Shot> shots = new ArrayList<>();
@@ -61,6 +77,7 @@ public record ProjectView(
             }
         }
 
+        String problem = text(root, "problem");
         return new ProjectView(
                 root.path("slug").asText(null),
                 text(root, "title"),
@@ -68,12 +85,76 @@ public record ProjectView(
                 text(root, "role"),
                 plain(root, "period"),
                 strings(root, "stack"),
-                text(root, "problem"),
+                problem,
+                inline(problem),
                 actions,
-                strings(root, "result"),
+                results,
                 plain(root, "repo"),
                 plain(root, "diagram"),
                 shots);
+    }
+
+    /** notes 是 {"zh": {"0": "…", "1": "…"}} 这种按下标给注解，缺的留空。 */
+    private static List<String> notesZh(JsonNode root) {
+        List<String> out = new ArrayList<>();
+        JsonNode notes = root.path("notes").path("zh");
+        if (!notes.isObject()) {
+            return out;
+        }
+        int max = -1;
+        var names = notes.fieldNames();
+        while (names.hasNext()) {
+            try {
+                max = Math.max(max, Integer.parseInt(names.next()));
+            } catch (NumberFormatException ignored) {
+                // 键不是下标的（以后可能加别的注解）忽略掉
+            }
+        }
+        for (int i = 0; i <= max; i++) {
+            JsonNode n = notes.path(String.valueOf(i));
+            out.add(n.isTextual() && !n.asText().isBlank() ? n.asText() : null);
+        }
+        return out;
+    }
+
+    /**
+     * 把 `代码` 变成 {@code <code>}，其余字符（含引号、尖括号）一律转义。
+     * 反引号不成对时按普通字符输出，不会把后面的内容吞掉。
+     */
+    static String inline(String raw) {
+        if (raw == null || raw.isEmpty()) {
+            return raw;
+        }
+        StringBuilder out = new StringBuilder(raw.length() + 24);
+        int i = 0;
+        while (i < raw.length()) {
+            int open = raw.indexOf('`', i);
+            int close = open < 0 ? -1 : raw.indexOf('`', open + 1);
+            if (open < 0 || close < 0) {
+                escape(raw, i, raw.length(), out);
+                break;
+            }
+            escape(raw, i, open, out);
+            out.append("<code>");
+            escape(raw, open + 1, close, out);
+            out.append("</code>");
+            i = close + 1;
+        }
+        return out.toString();
+    }
+
+    private static void escape(String s, int from, int to, StringBuilder out) {
+        for (int i = from; i < to; i++) {
+            char c = s.charAt(i);
+            switch (c) {
+                case '&' -> out.append("&amp;");
+                case '<' -> out.append("&lt;");
+                case '>' -> out.append("&gt;");
+                case '"' -> out.append("&quot;");
+                case '\'' -> out.append("&#39;");
+                default -> out.append(c);
+            }
+        }
     }
 
     /** 双语字段取中文，没有就取英文。 */

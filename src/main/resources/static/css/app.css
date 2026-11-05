@@ -2614,7 +2614,7 @@ html.tree-no-count .tree-count {
 
 /* 标题也能直接改：不要焦点框 */
 .doc-head h1[contenteditable='true'],
-.project-head h1[contenteditable='true'] {
+.project h1[contenteditable='true'] {
     outline: none;
     caret-color: var(--accent);
     cursor: text;
@@ -3165,135 +3165,250 @@ html[data-read-size='lg'] .markdown {
 
 /* ---- 项目详情 ---- */
 
+/* 版式沿用最初静态站那一版：窄栏文档、定义列表放事实、小标签标题、圆点列表。
+   这套里没有卡片、没有竖排胶囊——项目页读起来像一篇文章，不像控制台。 */
 .project-wrap {
-    max-width: 760px;
+    max-width: 860px;
     margin: 0 auto;
-    padding: 2rem 1.5rem 3rem;
+    padding: 2rem 1.5rem 3.5rem;
 }
 
-.project-head h1 {
-    margin: 0.6rem 0;
-    font-size: 1.9rem;
+.project h1 {
+    margin: 0.4rem 0 0.35rem;
+    font-size: 1.65rem;
+    line-height: 1.35;
     letter-spacing: -0.01em;
 }
 
+.project h1[contenteditable='true']:focus {
+    background: var(--bg-2);
+    border-radius: 6px;
+    box-shadow: 0 0 0 3px var(--bg-2);
+}
+
 .project-sub {
-    margin: 0 0 1.4rem;
+    margin: 0 0 1.5rem;
     color: var(--fg-2);
     font-size: 1rem;
     line-height: 1.7;
 }
 
+/* 事实用定义列表：左列等宽小标签，右列是值 */
 .project-facts {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 2rem;
-    margin-bottom: 1.2rem;
+    display: grid;
+    grid-template-columns: 5.5rem minmax(0, 1fr);
+    gap: 0.3rem 1rem;
+    margin: 0 0 1.2rem;
+    font-size: 0.94rem;
+    align-items: baseline;
 }
 
-.project-facts > div {
-    display: flex;
-    flex-direction: column;
-    gap: 0.15rem;
-    font-size: 0.9rem;
-}
-
-.fact-label {
+.project-facts dt {
+    font-family: var(--mono);
     font-size: 0.76rem;
     color: var(--fg-3);
+    padding-top: 0.1rem;
 }
 
-.stack {
-    list-style: none;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.4rem;
-    padding: 0;
-    margin: 0 0 1.2rem;
-}
-
-.stack li {
-    font-size: 0.78rem;
-    padding: 0.15rem 0.6rem;
-    border-radius: 999px;
-    color: var(--fg-2);
-    background: var(--bg-2);
-    border: 1px solid var(--line);
-}
-
-.project section {
-    margin: 2.4rem 0;
-}
-
-.project h2 {
-    margin: 0 0 0.9rem;
-    font-size: 0.85rem;
-    font-weight: 600;
-    letter-spacing: 0.04em;
-    color: hsl(var(--kh) var(--k-sat) var(--k-l-fg));
-}
-
-.project-problem {
+.project-facts dd {
     margin: 0;
-    line-height: 1.85;
+    min-width: 0;
 }
 
-.project-list {
-    margin: 0;
-    padding-left: 1.3rem;
-    line-height: 1.85;
-}
-
-.project-list li {
-    margin-bottom: 0.6rem;
-}
-
-.project-list small {
-    display: block;
-    margin-top: 0.15rem;
-    color: var(--fg-3);
+.project-stack {
+    font-family: var(--mono);
     font-size: 0.84rem;
-    line-height: 1.6;
+    color: var(--fg-2);
 }
 
-.project-list.results {
-    list-style: none;
-    padding-left: 0;
+.project .doc-meta {
+    margin: 0 0 1.6rem;
 }
 
-.project-list.results li {
-    position: relative;
-    padding-left: 1.15rem;
+/* 小节标题：等宽大写小字 + 字距，克制的那种 */
+.project h2 {
+    margin: 2.1rem 0 0.7rem;
+    font-family: var(--mono);
+    font-size: 0.78rem;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--fg-3);
 }
 
-.project-list.results li::before {
-    content: "\25B8";
-    position: absolute;
-    left: 0;
-    color: hsl(var(--kh) var(--k-sat) var(--k-l-bar));
+.project p {
+    margin: 0 0 0.9rem;
+    line-height: 1.85;
 }
 
-.project-diagram {
-    width: 100%;
+.project-list,
+.project-results {
+    margin: 0 0 0.9rem;
+    padding-left: 1.35rem;
+    line-height: 1.85;
+}
+
+.project-results {
+    list-style: disc;
+}
+
+.project li {
+    margin: 0 0 0.4rem;
+}
+
+.project code {
+    font-family: var(--mono);
+    font-size: 0.84rem;
+    background: var(--bg-2);
+    border-radius: 4px;
+    padding: 0.05rem 0.3rem;
+}
+
+/* 「i」：点开看这一条的细节（旧静态站就是这个按钮，注解不占版面） */
+.note-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 15px;
+    height: 15px;
+    margin-left: 0.4rem;
+    padding: 0;
     border: 1px solid var(--line);
-    border-radius: 8px;
+    border-radius: 50%;
+    background: none;
+    color: var(--fg-3);
+    font-family: var(--mono);
+    font-size: 10px;
+    line-height: 1;
+    cursor: pointer;
+    vertical-align: 2px;
+}
+
+.note-btn:hover {
+    border-color: var(--fg-2);
+    color: var(--fg);
+}
+
+/* 不依赖浏览器对 dialog 的默认隐藏：WebView 里没 open 时会露出里面的空 img */
+dialog.note-dialog {
+    display: none;
+}
+
+dialog.note-dialog[open] {
+    display: block;
+}
+
+.note-dialog {
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 0.6rem 1.4rem 1.4rem;
+    width: min(640px, 92vw);
+    max-height: 78vh;
+    overflow: auto;
+    background: var(--bg);
+    color: var(--fg);
+}
+
+.note-dialog::backdrop {
+    background: rgba(0, 0, 0, 0.55);
+}
+
+.note-head {
+    display: flex;
+    justify-content: flex-end;
+}
+
+.note-close {
+    border: none;
+    background: none;
+    color: var(--fg-3);
+    font-size: 1.1rem;
+    line-height: 1;
+    padding: 0.2rem 0.3rem;
+    cursor: pointer;
+}
+
+.note-close:hover {
+    color: var(--fg);
+}
+
+.note-body {
+    margin: 0;
+    font-size: 0.92rem;
+    line-height: 1.9;
+    white-space: pre-line;
+}
+
+.note-body code {
+    font-family: var(--mono);
+    font-size: 0.84rem;
+    background: var(--bg-2);
+    border-radius: 4px;
+    padding: 0.05rem 0.3rem;
+}
+
+.project-figure {
+    margin: 0 0 1.4rem;
+}
+
+.project-figure a {
+    display: block;
+    cursor: zoom-in;
+}
+
+.project-figure img {
+    width: 100%;
+    height: auto;
+    display: block;
+    border: 1px solid var(--line);
+    border-radius: 10px;
     background: var(--bg-2);
 }
 
-.project-shot {
-    margin: 0 0 1rem;
+.project-gallery {
+    display: grid;
+    gap: 1.2rem;
 }
 
-.project-shot img {
+.project-gallery figure {
+    margin: 0;
+}
+
+.project-gallery a {
+    display: block;
+    cursor: zoom-in;
+}
+
+.project-gallery img {
     width: 100%;
     border: 1px solid var(--line);
-    border-radius: 8px;
+    border-radius: 10px;
 }
 
-.project-shot figcaption {
+.project-gallery figcaption {
     margin-top: 0.4rem;
     color: var(--fg-3);
     font-size: 0.82rem;
+}
+
+.project-repo {
+    margin: 2rem 0 0;
+}
+
+/* 窄屏：事实列表从「左标签右值」改成上下两行，跟最初静态站的断点一致 */
+@media (max-width: 640px) {
+    .project-facts {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 0.15rem;
+    }
+
+    .project-facts dt {
+        margin-top: 0.55rem;
+    }
+
+    .project-facts dt:first-child {
+        margin-top: 0;
+    }
 }
 
 /* 表单页左上角的返回入口 */
