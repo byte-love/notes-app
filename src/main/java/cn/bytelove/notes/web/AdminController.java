@@ -490,10 +490,40 @@ public class AdminController {
         ContentItem item = owned(id, viewers.current(auth));
         if (body != null) {
             item.setBody(body);
+            // 摘要一直空着的话，用正文第一句补上：广场卡片上那行简介是从摘要来的，
+            // 空着的话卡片上就什么都没有；已经写过摘要的不动
+            if (item.getSummary() == null || item.getSummary().isBlank()) {
+                String derived = summaryFrom(body);
+                if (!derived.isEmpty()) {
+                    item.setSummary(derived);
+                }
+            }
             ContentItem saved = items.save(item);
             tags.retag(saved.getId(), saved.getTitle(), saved.getBody());
         }
         return "redirect:" + safeBack(back, basePathOf(item) + "/" + item.getSlug());
+    }
+
+    /** 从正文里摘一句当摘要：跳过空行、图片、代码围栏和标题记号，最多留 80 字。 */
+    private static String summaryFrom(String body) {
+        if (body == null) {
+            return "";
+        }
+        for (String line : body.split("\\R")) {
+            String text = line.strip();
+            if (text.isEmpty() || text.startsWith("![") || text.startsWith("```")) {
+                continue;
+            }
+            text = text.replaceFirst("^#{1,6}\\s*", "")
+                    .replaceFirst("^(?:[-*+]\\s+|\\d+[.)、]\\s*)", "")
+                    .replaceFirst("^>\\s*", "")
+                    .replaceAll("[*_`~]+", "")
+                    .strip();
+            if (!text.isEmpty()) {
+                return text.length() > 80 ? text.substring(0, 80) : text;
+            }
+        }
+        return "";
     }
 
     /**

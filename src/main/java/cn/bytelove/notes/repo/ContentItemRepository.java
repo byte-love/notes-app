@@ -36,7 +36,8 @@ public interface ContentItemRepository
     List<ContentCard> findRecommendedCards(@Param("kind") ContentKind kind);
 
     /** 广场：推荐内容的完整集合，按目录顺序（分组页和卡片条数都按这个算）。 */
-    @Query(CARD_COLUMNS + "where i.kind = :kind and i.recommended = true order by i.sortOrder asc, i.id asc")
+    @Query(CARD_COLUMNS + "where i.kind = :kind and i.recommended = true and i.supplementOfId is null "
+            + "order by i.sortOrder asc, i.id asc")
     List<ContentCard> findRecommendedCardsInOrder(@Param("kind") ContentKind kind);
 
     @Query(CARD_COLUMNS + "where i.id in :ids")
