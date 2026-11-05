@@ -6,11 +6,6 @@
     if (!btn || !box || !view) return;
 
     const source = box.querySelector('.body-source');
-    // token 会随会话换掉而作废（csrf.js 会刷），所以提交时现读
-    const csrf = () => {
-        const meta = document.querySelector('meta[name="_csrf"]');
-        return meta ? meta.getAttribute('content') : '';
-    };
 
     const open = () => {
         view.hidden = true;
@@ -46,16 +41,7 @@
         act.disabled = true;
         act.textContent = '保存中…';
         try {
-            await fetch(box.dataset.save, {
-                method: 'POST',
-                credentials: 'same-origin',
-                headers: { 'content-type': 'application/x-www-form-urlencoded' },
-                body: new URLSearchParams({
-                    _csrf: csrf(),
-                    body: source.value,
-                    back: location.pathname,
-                }).toString(),
-            });
+            await App.post(box.dataset.save, { body: source.value, back: location.pathname });
             location.reload();
         } catch (err) {
             act.disabled = false;

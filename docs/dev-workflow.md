@@ -119,6 +119,38 @@ ssh root@47.104.210.93 'docker exec -i notes-pg psql -U notes -d notes -f - < /r
 删了就是真没了。要保就把这个目录一起备份（同步到对象存储或另一台机器都行）。
 目前它是应用静态资源的一部分（见 `application.yml` 的 `static-locations`），部署不会覆盖。
 
+## 量一下再改（性能改动怎么验收）
+
+先量，再改，改完再量一遍同一个指标。**「感觉快了」不算数**，这台机器上同一页面的耗时会在
+30~190ms 之间飘（cron 备份、另一个环境也在跑、JVM 刚起来还没 JIT），先后两次单独打点比不出东西。
+
+三层工具，按需要挑：
+
+| 工具 | 量什么 | 用法 |
+|---|---|---|
+| `deploy/measure.sh` | 服务端逐页耗时（登录态，排除网络） | `bash /opt/deploy/measure.sh dev 15` |
+| `deploy/ab-bench.sh` | 改动前 / 改动后**交替**打点 + 数据库块访问 | `bash /opt/deploy/ab-bench.sh <改动前的 jar> 40` |
+| `deploy/perf-probe.py` | 真实浏览器里的首屏、每批「加载更多」、DOM 节点数、长任务 | `NOTES_USER=… NOTES_PASS=… python deploy/perf-probe.py http://47.104.210.93:8180/app /app/bagu` |
+| `deploy/snap.sh` + `deploy/snap-diff.py` | 「页面应该一模一样」的回归：抓快照、归一化后逐页 diff | 见本节最后一段 |
+
+**A/B 才是能写进结论的做法**：把改动前的代码单独打一个包，在 8099 上再起一个实例（同一个库、
+同一个 context path），两个实例都预热 60 轮，然后一轮里交替打「前 / 后」，比较同一批请求。
+`ab-bench.sh` 会自己起这个临时实例、打完自己停掉。
+
+基准（2026-11-05，`ContentCard` 那次改动前后，测试环境，40 轮 p50）：
+`/bagu` 41.6→32.5ms、`/notes` 44.6→33.3ms、广场分组页 36.0→24.6ms、正文页 41.3→31.0ms、
+管理页 42.2→16.4ms；20 次 `/bagu` 的数据库块访问 5056→1757。
+
+**别被冷启动骗了**：JVM 刚起来的头几十个请求是解释执行的，能慢 3~5 倍。
+`app.sh` 里那段预热就是为这个；自己临时起实例打点时，先空跑 60 轮再采样。
+
+**改动渲染结果的回归测试——逐页 HTML 比对**：改这类「只换数据来源、页面应该一模一样」的代码时，
+先用 `bash deploy/snap.sh <base-url> <目录>` 把 29 个页面（登录态 + 游客态）抓成快照，改完再抓一遍，
+`python3 deploy/snap-diff.py <改之前> <改之后>` 必须报「0 个有差异」。它会先消掉两类无语义差异：
+`;jsessionid=…` 和开始标签里属性的顺序（`Map.of` 填充的顺序每次启动都可能变）。
+这次就是这么验的：只剩 `/app/admin` 的表格行顺序变了——`sortOrder` 和标题都相同的副本之间本来就没有
+确定的顺序，顺手给这条查询补了 `id asc` 兜底。
+
 ## 出事怎么办
 
 **应用起不来**：部署脚本换包前会把旧 jar 备份成 `notes-app.jar.bak`，直接换回去：
@@ -171,6 +203,11 @@ sudo /opt/deploy/sync-db.sh    # 正式库整库覆盖到测试库
   `/api/tree/{kind}?parent=<slug>` 补子节点
 - 静态资源带 `?v=` 版本号 + `Cache-Control: max-age=31536000`，nginx 开了 `gzip_types`（css/js）；
   nginx 到应用是长连接（`upstream ... keepalive` + `Connection ""`）
+- **正式站走 HTTP/2（2026-11-05）**：`sites-available/02-domain` 里 `listen 443 ssl http2;`，
+  一页 7~11 个请求在同一连接上并行，不再按 RTT 排队。改完 `nginx -t` 通过再
+  `systemctl reload nginx`（配置备份在 `/root/nginx-backup/`），验证：
+  `curl -sk --http2 -o /dev/null -w '%{http_version}' https://byte-love.cn/app/bagu` 应该打 `2`。
+  测试站 8180 是明文端口，浏览器不会对 h2c 协商，所以没开
 - **分区配色**（2026-11-04）：四个分区各一个色相——闪念 170 松绿 / 项目 214 靛 / 八股 34 琥珀 / 算法 272 紫。
   容器上写 `data-area="note|project|bagu|algo"`（`list.html`/`detail.html` 的 `.with-tree`、`explore.html` 的每个
   `<section>`、`explore-group.html`/`project.html` 的 `<main>`），里面用
@@ -195,6 +232,28 @@ sudo /opt/deploy/sync-db.sh    # 正式库整库覆盖到测试库
   高度固定一屏，所以线从上到下一贯到底）；③「下一篇」是固定 260×52 的小卡片，靠正文右边缘，
   标题再长也只走省略号，不跟着内容变宽
   **改了 css/js 必须同时升 `?v=`**，否则强缓存让浏览器永远跑老代码（2026-10-30 踩过：评论改了 4 版用户一直看不到）
+- **前端公共小工具 `static/js/base.js`（2026-11-05）**：`window.App.csrf()` 现读 `<meta name="_csrf">`、
+  `App.post(url, data, init?)` 发带 `_csrf` 的 urlencoded POST、`App.esc()` 转义 `& < >`。
+  它挂在 `layout.html` 的 **head** 里第一个加载——放 foot 就晚了，页面自己的脚本已经在用。
+  **别再在各个 js 里各写一份**：以前 7 个文件各有一份 CSRF 读取 / POST 拼装 / 转义，
+  其中 `tree-admin.js` 和 `detail.js` 还在**加载时**把 token 存成常量，会话换新后那份就作废（403 的老坑）
+- **正文渲染：一次解析 + LRU 缓存（2026-11-05）**：`MarkdownRenderer.render()` 一次解析同时产出
+  `html` 和 `toc`（以前 `toHtml()` + `toc()` 各解析一遍长文）；结果按
+  `术语表版本 + 正文长度 + CRC32` 缓存 160 条，`GlossaryService.version` 每次 `reload()` 自增，
+  改了术语浮窗缓存自动失效。动渲染逻辑时注意：缓存命中路径上不能有副作用
+- **列表页标签只查一次**：`TagService.load(ids)` 返回 `TagsAndCounts`（每个条目的标签 + 每个标签的条数），
+  `listing()` 里卡片标签和筛选条共用一份；`of()` / `counts()` 留成薄封装给别处用
+- **列表 / 目录 / 广场不读正文（`ContentCard`，2026-11-05）**：这些页面只显示标题、摘要、星级、标签，
+  正文是表里最大的列（每篇几 KB 到几十 KB），一次要摆几百张卡片时白读一遍没有意义。
+  `domain/ContentCard` 是同一张表的轻量视图（字段一样、少一个 `body`），
+  `ContentItemRepository` 里几条 `findCards*` 都走同一个 `CARD_COLUMNS`
+  （`select new cn.bytelove.notes.domain.ContentCard(…)`，JPQL 构造表达式，启动即校验），
+  `NoteTreeService` / `SubGroupService` / `VisibilityService` 和模板都按它工作——
+  取值器仍是 JavaBean 风格，模板里 `i.title` / `n.item.slug` 一行都不用改。
+  **要正文的地方还是查 `ContentItem`**：正文页本身、编辑页、复制到我的空间、重新打标签。
+  卡片附件上那个体积（「9.1 KB」）改成 `octet_length(body)` 一次查一批（`bodySizes`）——
+  别为了拿长度把整篇正文读进内存，也别用 JPQL 的 `length()`（它数字符，中文会小三分之二）。
+  实测见「量一下再改」那一节
 - 评论是 `content_comment(item_id, user_id, parent_id, quote, body, anchor_kind, block_index, prefix, suffix, entry_kind)`：
   锚点两种粒度——`text`（选中文字，存原文 + 前后各 20 字）和 `block`（整段 / 代码块，存正文顶层块序号）；
   楼中楼用 `parent_id`，渲染最多两层。**评论按「最初来源条目」归并**：复制出来的副本沿 `copied_from_id`
@@ -231,9 +290,14 @@ sudo /opt/deploy/sync-db.sh    # 正式库整库覆盖到测试库
   并把**每一行包成 `<span class="line">`**；token 分七类（`.tok-k` 关键字 / `.tok-t` 类型 / `.tok-f` 函数名 /
   `.tok-s` 字符串 / `.tok-n` 数字 / `.tok-c` 注释 / `.tok-a` 注解），颜色是主题块里的
   `--code-kw|type|func|str|num|cmt|ann` 七组值（浅色 / 护眼 / 深色各一套）。
-  ⚠ 行是 `<span>`，所以**从 DOM 取代码必须按 `.line` 逐行拼**（`doc-edit.js` 的 `codeText()`）——
-  直接 `textContent` 会把整段代码粘成一行，保存下去就真成一行了；`.code-head`（语言条 + 复制按钮）
-  是界面不是正文，序列化时要跳过
+  **高亮时把原文挂在元素上**：`pre.dataset.raw`（原始代码）+ `pre.dataset.lang`（语言），
+  保存序列化时 `codeText()` 优先读它——显示 DOM 怎么改都不影响落库的数据。
+  ⚠ 行是 `<span>`，换行只在 CSS 里：**绝对不要退回 `textContent`**，那会把整段代码粘成一行；
+  只有拿不到 `dataset.raw`（没走过高亮的块）才按 `.line` 逐行拼，再不行才按 `<br>` / 块级元素兜底。
+  `.code-head`（语言条 + 复制按钮）是界面不是正文，序列化时要跳过。
+  自测：`deploy/test-body-save.py <base> <path>`（`NOTES_USER` / `NOTES_PASS` 走环境变量）——
+  拦掉写库请求、敲一个字触发自动保存，比对页面与保存内容里每块代码的行数；第二遍会先拆掉
+  `.line` 的 class，专门验证序列化没有依赖显示结构
 - **往正文里粘贴**（`doc-edit.js` 的 paste）：剪贴板带 `table / pre / ul / ol / h1-6 / blockquote / img`
   就先把 HTML 洗一遍再 `insertHTML`（只留结构标签，丢掉来源页的底色、宽度、外层 div、脚本、按钮），
   页面当场就是表格 / 代码块的样子，保存时 `toMarkdown` 再按结构序列化；没有结构才退回纯文本。
@@ -491,6 +555,28 @@ grep 命中就退出，`tee` 收到 SIGPIPE，整个管道退出码变成 141，
 变成 `鍒囨崲娣辨祬鑹?`，Thymeleaf 解析报 `Incomplete structure`，`/app/login` 都变 500。
 **改模板/Java/CSS 一律用编辑器或 `edit` 工具**；非要用脚本就得显式 `[System.IO.File]::ReadAllText(path, UTF8)`
 读、`UTF8Encoding($false)` 写，改完 `grep` 一遍中文确认没坏。
+2026-11-05 又栽了一次，而且是最普通的写法：`(Get-Content x.java) -replace … | Set-Content -Encoding utf8 x.java`
+——**读的那一端就是错的**，`-Encoding utf8` 只管写，注释全变 `澶у垎绫荤殑`，`mvn` 报
+`unclosed string literal`。同一件事已经三次了：**Java/模板/CSS 只用 `edit` / `write` 工具改**。
+
+**Postgres 不认 `? is null or 列 = ?` 这种「可选条件」写法**（2026-11-05）：管理页列表想用一条 JPQL
+兼顾「有筛选 / 没筛选」，写成
+`where (:ownerId is null or i.ownerId = :ownerId) and (:since is null or i.updatedAt >= :since)`，
+运行时报 `ERROR: could not determine data type of parameter $5`——单独一个 `? is null` 让 PG 无从推断类型，
+编译期看不出来，一访问该页面就 500。要么按条件拆成几条查询，要么像现在这样**整表查出来在 Java 里过滤**
+（几百行，管理页够用）。这类「参数可空」的查询，上线前一定要真打开那个页面一次。
+
+**唯一索引不看 `deleted_at`，而 `@SQLRestriction` 只看活行——判重要按索引的规矩来**（2026-11-05）：
+`uq_content_owner_slug (owner_id, slug)` 是无条件唯一索引，进了回收站的行照样占着 slug；
+可 `existsByOwnerIdAndSlug` 是派生查询，会被 `@SQLRestriction("deleted_at is null")` 过滤掉已删除的行，
+于是「查不出来、但插不进去」。表现是**把广场的模板「移除」之后再点「加入」直接 500**
+（`duplicate key value violates unique constraint`），新建内容时用回收站里的 slug 也一样。
+现在这个方法改成原生查询、把已删除的行一起算上：判到占用就换个 `-2` 的 slug 存进去。
+
+**`Map.of(...)` 的迭代顺序每次启动都可能不一样**（2026-11-05）：`java.util.ImmutableCollections`
+里有个随机盐（防哈希洪泛），所以同一个 `Map.of` 在不同进程里遍历顺序不同。渲染器里用它拼 HTML 属性
+（`MarkdownRenderer` 的术语 `<span class="gl" data-tip …>`）就会出现「代码一个字没动、属性顺序变了」——
+逐页比对时看着像回归，其实无语义差别。要稳定的输出顺序就用 `LinkedHashMap` 往里 `put`。
 
 **`scrollbar-color` 是继承属性，别把「滚动中」做成全局状态**：挂在 `html` 上的滚动条颜色会被所有
 `overflow: auto` 的子容器继承，翻正文时左侧目录、右侧大纲的滚动条会一起被点亮（看着像它们自己在动）。
@@ -571,5 +657,14 @@ Maven 编译会产出损坏的 jar，服务起不来（`Error: Invalid or corrup
 「Java」。修法是 `codeText()` 按 `.line` 逐行拼、`block()` 开头跳过 `.code-head`。
 **验证办法**（不写库）：Playwright 里 `page.route("**/app/admin/*/body", abort)` 拦掉保存请求，
 往正文敲一个字触发自动保存，再把请求里的 `body` 参数解出来数 ``` 里的行数——行数没塌就说明没被压扁。
+要一键跑这套，用 `notes-app/deploy/test-body-save.py <base> <path>`（账号走 `NOTES_USER` / `NOTES_PASS`）。
+
+**批量改模板时 PowerShell 的循环变量会残留，凭空写出一个假文件**（2026-11-05）：
+改脚本版本号时我写了 `foreach ($f in @('list.html','form.html')) { $t = ReadAllText($f) … }`，
+而 `templates\form.html` 并不存在（真身在 `templates\admin\form.html`），读取抛异常后 `$t`
+还留着上一轮 `list.html` 的内容，`WriteAllText` 就把 list.html 写成了 `templates/form.html`，
+`git status` 里显示成 `create mode … form.html`，差点当新模板提交（已删）。
+规矩：① 批量改文件用 Python 显式列举路径；② 改完先看 `git status --porcelain` 有没有意料之外的
+`A`/`create`；③ 路径存在与否别靠字符串拼出来的猜测。
 
 

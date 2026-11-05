@@ -2,11 +2,6 @@
 // 列表页还可以用键盘刷：鼠标停在哪张卡上，按 1 / 2 / 3 打星，按 0 清空
 // 只改 data-v，颜色由 CSS 按它上色；请求失败就不动，别让页面和服务端对不上
 (() => {
-    const csrf = () => {
-        const meta = document.querySelector('meta[name="_csrf"]');
-        return meta ? meta.content : '';
-    };
-
     // 鼠标现在停在哪张卡片上（键盘刷星用），移开卡片就清掉
     let current = null;
     document.addEventListener('mouseover', (e) => {
@@ -24,16 +19,10 @@
 
     const apply = async (box, next) => {
         if (!box || !box.dataset.url || box.dataset.busy === '1') return;
-        const body = new URLSearchParams();
-        body.set('rating', String(next));
-        body.set('_csrf', csrf());
         box.dataset.busy = '1';
         try {
-            const res = await fetch(box.dataset.url, {
-                method: 'POST',
-                credentials: 'same-origin',
+            const res = await App.post(box.dataset.url, { rating: String(next) }, {
                 headers: { 'X-Requested-With': 'fetch' },
-                body,
             });
             if (!res.ok) return;
             box.dataset.v = String(next);

@@ -126,16 +126,13 @@
         const termInput = box.querySelector('.gl-term');
         const senseInput = box.querySelector('.gl-sense');
         const textInput = box.querySelector('.gl-text');
-        const csrf = () => (document.querySelector('meta[name="_csrf"]') || {}).content || '';
 
         // 正在编辑的是哪一条；id 为空 = 新增
         let editing = null;
 
         const post = async (url, data) => {
-            const body = new URLSearchParams(data);
-            body.set('_csrf', csrf());
             try {
-                const res = await fetch(url, { method: 'POST', credentials: 'same-origin', body });
+                const res = await App.post(url, data);
                 return res.ok ? await res.text() : '';
             } catch (e) {
                 return '';
@@ -219,8 +216,7 @@
     (() => {
         const box = document.querySelector('.markdown[data-slug]');
         if (!box) return;
-        const token = document.querySelector('meta[name="_csrf"]')?.content;
-        if (!token) return;
+        if (!App.csrf()) return;
 
         const slug = box.dataset.slug;
         const mine = new Set((box.dataset.anchors || '').split(',').filter(Boolean));
@@ -239,7 +235,7 @@
                 try {
                     await fetch(`/app/bookmark/${encodeURIComponent(slug)}?anchor=${encodeURIComponent(h.id)}`, {
                         method: 'POST',
-                        headers: { 'X-CSRF-TOKEN': token },
+                        headers: { 'X-CSRF-TOKEN': App.csrf() },
                         credentials: 'same-origin',
                     });
                     btn.classList.toggle('on');
@@ -423,8 +419,7 @@
     const box = document.querySelector('.markdown[data-slug]');
     if (!box) return;
     const slug = box.dataset.slug;
-    const token = document.querySelector('meta[name="_csrf"]')?.content;
-    if (!slug || !token) return;
+    if (!slug || !App.csrf()) return;
 
     const scrollable = () => document.documentElement.scrollHeight - window.innerHeight;
     const ratio = () => {
@@ -447,7 +442,7 @@
         const now = ratio();
         if (Math.abs(now - last) < 0.01) return;
         last = now;
-        const body = new URLSearchParams({ progress: now.toFixed(4), _csrf: token });
+        const body = new URLSearchParams({ progress: now.toFixed(4), _csrf: App.csrf() });
         const url = `/app/position/${encodeURIComponent(slug)}`;
         if (navigator.sendBeacon) {
             navigator.sendBeacon(url, body);

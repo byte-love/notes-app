@@ -5,22 +5,14 @@
     const pane = document.querySelector('.tree-pane');
     if (!meta || !pane) return;
 
-    const csrf = meta.getAttribute('content');
     // 应用挂在 /app 下：从样式表地址里取上下文路径（/app/css/app.css -> /app）
     const sheet = document.querySelector('link[rel="stylesheet"]');
     const href = sheet ? sheet.getAttribute('href') : '';
     const ctx = href.includes('/css/') ? href.slice(0, href.indexOf('/css/')) : '';
     const back = location.pathname + location.search;
 
-    const post = (path, params) => {
-        const body = new URLSearchParams({ _csrf: csrf, back, ...params });
-        return fetch(ctx + path, {
-            method: 'POST',
-            credentials: 'same-origin',
-            headers: { 'content-type': 'application/x-www-form-urlencoded' },
-            body: body.toString(),
-        });
-    };
+    // token 每次现取（App.csrf），别在加载时抓一份存着——会话换新后那份就作废了
+    const post = (path, params) => App.post(ctx + path, { back, ...params });
 
     // ---- 就地命名：+ 新建 ----
     let editing = null;

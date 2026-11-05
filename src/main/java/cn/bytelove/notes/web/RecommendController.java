@@ -1,6 +1,6 @@
 package cn.bytelove.notes.web;
 
-import cn.bytelove.notes.domain.ContentItem;
+import cn.bytelove.notes.domain.ContentCard;
 import cn.bytelove.notes.domain.ContentKind;
 import cn.bytelove.notes.domain.Visibility;
 import cn.bytelove.notes.service.RecommendService;
@@ -93,7 +93,7 @@ public class RecommendController {
         if (k == null) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND);
         }
-        List<ContentItem> list = recommend.group(k, slug);
+        List<ContentCard> list = recommend.group(k, slug);
         if (list.isEmpty()) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND);
         }
@@ -101,7 +101,7 @@ public class RecommendController {
         // 游客看不全的时候，锁住的那部分只列标题、不给链接
         Set<Long> lockedIds = new LinkedHashSet<>();
         if (!viewer.authenticated()) {
-            for (ContentItem i : list) {
+            for (ContentCard i : list) {
                 if (i.getVisibility() == Visibility.MEMBER) {
                     lockedIds.add(i.getId());
                 }
@@ -109,20 +109,20 @@ public class RecommendController {
         }
 
         // 根节点是路径里那一条，不是排序后的第一条
-        ContentItem root = null;
-        for (ContentItem i : list) {
+        ContentCard root = null;
+        for (ContentCard i : list) {
             if (i.getSlug().equals(slug)) {
                 root = i;
                 break;
             }
         }
-        List<ContentItem> ordered = new ArrayList<>();
+        List<ContentCard> ordered = new ArrayList<>();
         if (root == null) {
             root = list.get(0);
             ordered.addAll(list);
         } else {
             ordered.add(root);
-            for (ContentItem i : list) {
+            for (ContentCard i : list) {
                 if (!i.getId().equals(root.getId())) {
                     ordered.add(i);
                 }

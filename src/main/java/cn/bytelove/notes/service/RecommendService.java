@@ -1,5 +1,6 @@
 package cn.bytelove.notes.service;
 
+import cn.bytelove.notes.domain.ContentCard;
 import cn.bytelove.notes.domain.ContentItem;
 import cn.bytelove.notes.domain.ContentKind;
 import cn.bytelove.notes.domain.Visibility;
@@ -38,13 +39,13 @@ public class RecommendService {
     }
 
     /** 广场上的一张卡片。count 是这条加它下面所有子孙的条数。 */
-    public record Card(ContentItemRepository.CardRow item, long count) {
+    public record Card(ContentCard item, long count) {
         public boolean isContainer() {
             return count > 1;
         }
     }
 
-    /** 当前分区的全部推荐内容，不看可见性。结构、条数、复制都按这个算，才和实际复制量一致。 */
+    /** 当前分区的全部推荐内容（含正文），只有「复制到我的空间」需要它。 */
     public List<ContentItem> all(ContentKind kind) {
         return items.findByKindAndRecommendedTrueOrderBySortOrderAscIdAsc(kind);
     }
@@ -56,16 +57,16 @@ public class RecommendService {
      */
     public List<Card> cards(ContentKind kind) {
         // 只查需要的列：body 是表里最大的列，算数量和看标题用不到它
-        List<ContentItemRepository.CardRow> pool = items.findCardRows(kind);
+        List<ContentCard> pool = cardsOf(kind);
         List<Slot> slots = new ArrayList<>(pool.size());
-        for (ContentItemRepository.CardRow i : pool) {
+        for (ContentCard i : pool) {
             slots.add(new Slot(i.getId(), i.getParentId(), i.getSlug(), i.getVisibility()));
         }
         Map<Long, Long> parentOf = effectiveParents(slots);
         Map<Long, List<Long>> childrenOf = childrenMap(slots, parentOf);
 
         List<Card> cards = new ArrayList<>();
-        for (ContentItemRepository.CardRow item : pool) {
+        for (ContentCard item : pool) {
             boolean top = !parentOf.containsKey(item.getId());
             if (top && item.getVisibility() == Visibility.PUBLIC) {
                 Set<Long> seen = new HashSet<>();
@@ -81,10 +82,10 @@ public class RecommendService {
      * 只有公开的分组摆在广场上；组里的条目本身不过滤可见性，
      * 游客看不全的那部分在页面上显示成锁住的标题。
      */
-    public List<ContentItem> group(ContentKind kind, String slug) {
-        List<ContentItem> pool = all(kind);
-        ContentItem root = null;
-        for (ContentItem i : pool) {
+    public List<ContentCard> group(ContentKind kind, String slug) {
+        List<ContentCard> pool = cardsOf(kind);
+        ContentCard root = null;
+        for (ContentCard i : pool) {
             if (i.getSlug().equals(slug) && i.getVisibility() == Visibility.PUBLIC) {
                 root = i;
                 break;
@@ -94,19 +95,24 @@ public class RecommendService {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND);
         }
         List<Slot> slots = new ArrayList<>(pool.size());
-        for (ContentItem i : pool) {
+        for (ContentCard i : pool) {
             slots.add(new Slot(i.getId(), i.getParentId(), i.getSlug(), i.getVisibility()));
         }
         Map<Long, List<Long>> childrenOf = childrenMap(slots, effectiveParents(slots));
         Set<Long> keep = new HashSet<>();
         collect(root.getId(), childrenOf, keep);
-        List<ContentItem> out = new ArrayList<>();
-        for (ContentItem i : pool) {
+        List<ContentCard> out = new ArrayList<>();
+        for (ContentCard i : pool) {
             if (keep.contains(i.getId())) {
                 out.add(i);
             }
         }
         return out;
+    }
+
+    /** 广场的内容池：推荐内容，按目录顺序，不含正文。 */
+    private List<ContentCard> cardsOf(ContentKind kind) {
+        return items.findRecommendedCardsInOrder(kind);
     }
 
     /** 广场里一个条目的最小信息：算层级只用得到这几个字段。 */
@@ -191,7 +197,7 @@ public class RecommendService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
 
         List<ContentItem> pool = items.findByKindAndRecommendedTrueOrderBySortOrderAscIdAsc(source.getKind());
-        Map<Long, List<Long>> childrenOf = childrenMap(pool);
+        Map<Long, List<Long>> childrenOf = childrenMapOf(pool);
         Set<Long> keep = new HashSet<>();
         collect(source.getId(), childrenOf, keep);
 
@@ -264,15 +270,15 @@ public class RecommendService {
         if (userId == null) {
             return 0;
         }
-        List<ContentItem> mine = items.findByOwnerIdOrderByKindAscSortOrderAsc(userId);
+        List<ContentCard> mine = cardsOfOwner(userId);
         Map<Long, List<Long>> childrenOf = new HashMap<>();
-        for (ContentItem i : mine) {
+        for (ContentCard i : mine) {
             if (i.getParentId() != null) {
                 childrenOf.computeIfAbsent(i.getParentId(), k -> new ArrayList<>()).add(i.getId());
             }
         }
         int removed = 0;
-        for (ContentItem c : mine) {
+        for (ContentCard c : mine) {
             if (!sourceId.equals(c.getCopiedFromId())) {
                 continue;
             }
@@ -293,8 +299,12 @@ public class RecommendService {
         return removed;
     }
 
+    private List<ContentCard> cardsOfOwner(Long userId) {
+        return items.findCardsByOwner(userId);
+    }
+
     private List<ContentItem> inParentFirstOrder(Long rootId, Map<Long, ContentItem> byId) {
-        Map<Long, List<Long>> childrenOf = childrenMap(new ArrayList<>(byId.values()));
+        Map<Long, List<Long>> childrenOf = childrenMapOf(new ArrayList<>(byId.values()));
         List<ContentItem> out = new ArrayList<>();
         List<Long> queue = new ArrayList<>();
         queue.add(rootId);
@@ -327,7 +337,7 @@ public class RecommendService {
         throw new ResponseStatusException(HttpStatus.CONFLICT, "同名的内容太多了");
     }
 
-    private Map<Long, List<Long>> childrenMap(List<ContentItem> pool) {
+    private Map<Long, List<Long>> childrenMapOf(List<ContentItem> pool) {
         Map<Long, List<Long>> map = new HashMap<>();
         for (ContentItem i : pool) {
             if (i.getParentId() != null) {

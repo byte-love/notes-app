@@ -69,10 +69,17 @@ public class GlossaryService {
 
     private volatile Map<String, List<Entry>> byTerm;
     private volatile List<String> termsByLengthDesc;
+    /** 术语表每换一次就 +1，给正文渲染缓存当 key 用（否则改了术语浮窗还是旧的） */
+    private volatile long version;
 
     public GlossaryService(JdbcTemplate jdbc, ObjectMapper mapper) {
         this.jdbc = jdbc;
         this.mapper = mapper;
+    }
+
+    public long version() {
+        ensureLoaded();
+        return version;
     }
 
     public int size() {
@@ -231,6 +238,7 @@ public class GlossaryService {
         terms.sort(Comparator.comparingInt(String::length).reversed());
         byTerm = grouped;
         termsByLengthDesc = terms;
+        version++;
     }
 
     /** 表里一条都没有时，用 jar 里的 glossary.json 播种一次。 */

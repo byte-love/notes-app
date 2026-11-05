@@ -19,12 +19,15 @@ import org.commonmark.renderer.html.HtmlWriter;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.zip.CRC32;
+import java.nio.charset.StandardCharsets;
 
 /**
  * 原始 HTML 一律按文字输出（{@code escapeHtml(true)}）。
@@ -84,13 +87,16 @@ public class MarkdownRenderer {
             TermNode term = (TermNode) node;
             HtmlWriter writer = context.getWriter();
             writer.line();
-            // data-tid 是这条解释在库里的 id：页面上点一下就能改 / 删 / 新增
-            writer.tag("span", Map.of(
-                    "class", "gl",
-                    "data-tip", term.getEntry().tip(),
-                    "data-term", term.getEntry().term(),
-                    "data-sense", term.getEntry().sense() == null ? "" : term.getEntry().sense(),
-                    "data-tid", String.valueOf(term.getEntry().id())), false);
+            // data-tid 是这条解释在库里的 id：页面上点一下就能改 / 删 / 新增。
+            // 用 LinkedHashMap 而不是 Map.of：后者的迭代顺序每启动一次都可能不一样
+            // （ImmutableCollections 里有个随机盐），属性顺序跟着变，逐页 HTML 比对就没法比了
+            Map<String, String> attrs = new LinkedHashMap<>();
+            attrs.put("class", "gl");
+            attrs.put("data-tip", term.getEntry().tip());
+            attrs.put("data-term", term.getEntry().term());
+            attrs.put("data-sense", term.getEntry().sense() == null ? "" : term.getEntry().sense());
+            attrs.put("data-tid", String.valueOf(term.getEntry().id()));
+            writer.tag("span", attrs, false);
             writer.text(term.getText());
             writer.tag("/span");
         }
@@ -110,8 +116,45 @@ public class MarkdownRenderer {
     }
 
     public String toHtml(String markdown) {
+        return render(markdown).html();
+    }
+
+    /** 一次解析同时产出正文 HTML 和目录：以前 toHtml + toc 各解析一遍，长文白算一次 */
+    public record Rendered(String html, List<TocItem> toc) {
+    }
+
+    /** 渲染结果缓存：同一篇正文 + 同一份术语表只解析一次。key 带术语表版本号，改术语立即失效 */
+    private final Map<String, Rendered> cache = Collections.synchronizedMap(
+            new LinkedHashMap<>(64, 0.75f, true) {
+                @Override
+                protected boolean removeEldestEntry(Map.Entry<String, Rendered> eldest) {
+                    return size() > 160;
+                }
+            });
+
+    public Rendered render(String markdown) {
         if (markdown == null || markdown.isBlank()) {
-            return "";
+            return new Rendered("", List.of());
+        }
+        String key = cacheKey(markdown);
+        Rendered hit = cache.get(key);
+        if (hit != null) {
+            return hit;
+        }
+        Rendered made = renderUncached(markdown);
+        cache.put(key, made);
+        return made;
+    }
+
+    private String cacheKey(String markdown) {
+        CRC32 crc = new CRC32();
+        crc.update(markdown.getBytes(StandardCharsets.UTF_8));
+        return glossary.version() + ":" + markdown.length() + ":" + crc.getValue();
+    }
+
+    private Rendered renderUncached(String markdown) {
+        if (markdown == null || markdown.isBlank()) {
+            return new Rendered("", List.of());
         }
         Node document = parser.parse(fenceBareCode(stripFrontMatter(markdown)));        wrapGlossary(document);
 
@@ -145,7 +188,10 @@ public class MarkdownRenderer {
                 .escapeHtml(true)
                 .attributeProviderFactory(context -> attrProvider)
                 .build();
-        return stripPresentational(renderer.render(document));
+        String html = stripPresentational(renderer.render(document));
+        List<TocItem> toc = new ArrayList<>();
+        collect(document, ids, toc);
+        return new Rendered(html, toc);
     }
 
     /**
@@ -424,14 +470,7 @@ public class MarkdownRenderer {
 
     /** 只收 h2/h3，h1 是文章标题本身，放进目录没有意义。 */
     public List<TocItem> toc(String markdown) {
-        List<TocItem> items = new ArrayList<>();
-        if (markdown == null || markdown.isBlank()) {
-            return items;
-        }
-        Node document = parser.parse(stripFrontMatter(markdown));
-        Map<Heading, String> ids = assignHeadingIds(document);
-        collect(document, ids, items);
-        return items;
+        return render(markdown).toc();
     }
 
     /**
