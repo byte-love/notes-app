@@ -604,10 +604,6 @@
     // 所以不会和评论 / 注释那些 span 打架；点已标过的文字时浮出换色 / 删除的小面板。
     if (HL_ON) {
         const addUrl = hlData.dataset.add || '';
-        const csrf = () => {
-            const meta = document.querySelector('meta[name="_csrf"]');
-            return meta ? meta.content : '';
-        };
 
         // 已经画上的：{id, color, range, anchor}
         const painted = [];
@@ -671,10 +667,8 @@
         };
 
         const post = async (url, data) => {
-            const body = new URLSearchParams(data);
-            body.set('_csrf', csrf());
             try {
-                const res = await fetch(url, { method: 'POST', credentials: 'same-origin', body });
+                const res = await App.post(url, data);
                 if (!res.ok) return '';
                 return (await res.text()).trim();
             } catch (e) {

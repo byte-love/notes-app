@@ -121,37 +121,45 @@ public class TagService {
                 + " on conflict (item_id, tag) do nothing", toItemId, fromItemId);
     }
 
+    /** 列表页两处都要这份数据（卡片上的标签 + 筛选条上的条数），只查一次库 */
+    public record TagsAndCounts(Map<Long, List<String>> byItem, Map<String, Integer> counts) {
+    }
+
+    /**
+     * 一批内容的标签 + 每个标签的条数。以前 {@code of} 和 {@code counts} 各扫一遍
+     * {@code content_tag}，列表页一次请求就是两次同样的扫描，现在合并成一次。
+     */
+    public TagsAndCounts load(Collection<Long> itemIds) {
+        Map<Long, List<String>> byItem = new HashMap<>();
+        if (itemIds == null || itemIds.isEmpty()) {
+            return new TagsAndCounts(byItem, new LinkedHashMap<>());
+        }
+        Map<String, Integer> tally = new HashMap<>();
+        jdbc.query("select item_id, tag from content_tag where item_id in (" + placeholders(itemIds)
+                        + ") order by item_id, score desc, tag",
+                rs -> {
+                    long itemId = rs.getLong("item_id");
+                    String tag = rs.getString("tag");
+                    byItem.computeIfAbsent(itemId, k -> new ArrayList<>()).add(tag);
+                    tally.merge(tag, 1, Integer::sum);
+                }, itemIds.toArray());
+        List<Map.Entry<String, Integer>> rows = new ArrayList<>(tally.entrySet());
+        rows.sort((x, y) -> y.getValue() - x.getValue());
+        Map<String, Integer> counts = new LinkedHashMap<>();
+        for (Map.Entry<String, Integer> e : rows) {
+            counts.put(e.getKey(), e.getValue());
+        }
+        return new TagsAndCounts(byItem, counts);
+    }
+
     /** 一批内容的标签，按打分顺序；列表页一次取完，不要每张卡片查一次库。 */
     public Map<Long, List<String>> of(Collection<Long> itemIds) {
-        Map<Long, List<String>> out = new HashMap<>();
-        if (itemIds == null || itemIds.isEmpty()) {
-            return out;
-        }
-        String sql = "select item_id, tag from content_tag where item_id in (" + placeholders(itemIds)
-                + ") order by item_id, score desc, tag";
-        jdbc.query(sql, rs -> {
-            out.computeIfAbsent(rs.getLong("item_id"), k -> new ArrayList<>()).add(rs.getString("tag"));
-        }, itemIds.toArray());
-        return out;
+        return load(itemIds).byItem();
     }
 
     /** 这批内容里每个标签有多少条，按条数倒序：列表页那排筛选标签用。 */
     public Map<String, Integer> counts(Collection<Long> itemIds) {
-        Map<String, Integer> out = new LinkedHashMap<>();
-        if (itemIds == null || itemIds.isEmpty()) {
-            return out;
-        }
-        List<Map.Entry<String, Integer>> rows = new ArrayList<>();
-        jdbc.query("select tag, count(*) as n from content_tag where item_id in ("
-                        + placeholders(itemIds) + ") group by tag",
-                rs -> {
-                    rows.add(Map.entry(rs.getString("tag"), rs.getInt("n")));
-                }, itemIds.toArray());
-        rows.sort((x, y) -> y.getValue() - x.getValue());
-        for (Map.Entry<String, Integer> e : rows) {
-            out.put(e.getKey(), e.getValue());
-        }
-        return out;
+        return load(itemIds).counts();
     }
 
     /** 挂了某个标签的条目 id。 */

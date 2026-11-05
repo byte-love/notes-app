@@ -44,8 +44,6 @@
 
     const cache = {};
 
-    const escapeHtml = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-
     // 下标对应正则里的捕获组顺序，null 占位
     const CLASSES = [null, 'tok-c', 'tok-s', 'tok-a', 'tok-n', 'tok-k', 'tok-t', 'tok-f'];
 
@@ -56,7 +54,7 @@
         let last = 0;
         let m;
         while ((m = re.exec(text)) !== null) {
-            out += escapeHtml(text.slice(last, m.index));
+            out += App.esc(text.slice(last, m.index));
             let cls = 'tok-k';
             for (let i = 1; i < CLASSES.length; i++) {
                 if (m[i]) {
@@ -64,10 +62,10 @@
                     break;
                 }
             }
-            out += `<span class="${cls}">${escapeHtml(m[0])}</span>`;
+            out += `<span class="${cls}">${App.esc(m[0])}</span>`;
             last = m.index + m[0].length;
         }
-        out += escapeHtml(text.slice(last));
+        out += App.esc(text.slice(last));
         return out;
     };
 
@@ -85,7 +83,7 @@
         const raw = code.textContent.replace(/\n$/, '');
         const lines = raw.split('\n');
         const html = lines
-            .map((line) => `<span class="line">${lang ? highlight(line, lang) : escapeHtml(line)}</span>`)
+            .map((line) => `<span class="line">${lang ? highlight(line, lang) : App.esc(line)}</span>`)
             .join('');
 
         // 把「原文 + 语言」挂在 <pre> 上：高亮之后行就变成了 <span>，换行只在 CSS 里，

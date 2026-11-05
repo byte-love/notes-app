@@ -190,7 +190,9 @@ public class PublicController {
 
         // 标签筛选：同样只挑卡片；标签上的条数按「当前星级筛选后」的数，
         // 这样「只看三星」时还能看出三星里哪些主题多
-        Map<String, Integer> tagCounts = tags.counts(idsOf(leaves));
+        // 卡片上的标签和筛选条的条数一次查完（同一个 in 查询，别扫两遍 content_tag）
+        TagService.TagsAndCounts tagData = tags.load(idsOf(leaves));
+        Map<String, Integer> tagCounts = tagData.counts();
         String tagFilter = (tag == null || tag.isBlank()) ? null : tag.trim();
         if (tagFilter != null) {
             Set<Long> withTag = tags.itemIdsWithTag(tagFilter);
@@ -260,7 +262,8 @@ public class PublicController {
         model.addAttribute("rateCounts", counts);
         model.addAttribute("tagFilter", tagFilter);
         model.addAttribute("tagCounts", tagCounts);
-        model.addAttribute("itemTags", tags.of(idsOf(leaves)));
+        // 上面 load 的时候是多给了一张卡片的状态，按 id 查不会错；这里不再单独查一遍
+        model.addAttribute("itemTags", tagData.byItem());
         model.addAttribute("canRate", viewer.userId() != null);
         model.addAttribute("bookmarkIds", bookmarks.ids(viewer.userId()));
         model.addAttribute("lastReadId", lastReadId);
@@ -288,10 +291,12 @@ public class PublicController {
         }
         // 上次滚到哪儿：下次打开同一条时前端按这个比例滚回去
         model.addAttribute("resumeProgress", positions.progressOf(viewer.userId(), kind, item.getId()));
-        model.addAttribute("bookmarked", bookmarks.anchorsOf(viewer.userId(), item.getId()).contains(""));
+        // 这一条的收藏锚点只查一次，三处都用它（以前连着查了三遍）
+        Set<String> anchors = bookmarks.anchorsOf(viewer.userId(), item.getId());
+        model.addAttribute("bookmarked", anchors.contains(""));
         model.addAttribute("bookmarkIds", bookmarks.ids(viewer.userId()));
-        model.addAttribute("bookmarkAnchors", bookmarks.anchorsOf(viewer.userId(), item.getId()));
-        model.addAttribute("bookmarkAnchorCsv", String.join(",", bookmarks.anchorsOf(viewer.userId(), item.getId())));
+        model.addAttribute("bookmarkAnchors", anchors);
+        model.addAttribute("bookmarkAnchorCsv", String.join(",", anchors));
 
         // 项目走单独的模板：它渲染的是作品集卡片那套结构化字段，没有目录树
         if (kind == ContentKind.PROJECT) {
@@ -324,8 +329,10 @@ public class PublicController {
         model.addAttribute("item", item);
         // 正文第一行要是把标题又抄了一遍，渲染时不显示那一行（AI 存笔记时常这么写）
         String body = markdown.dropTitleEcho(item.getBody(), item.getTitle());
-        model.addAttribute("html", markdown.toHtml(body));
-        model.addAttribute("toc", markdown.toc(body));
+        // 一次解析同时拿到正文 HTML 和目录（以前 toHtml + toc 各解析一遍）
+        MarkdownRenderer.Rendered rendered = markdown.render(body);
+        model.addAttribute("html", rendered.html());
+        model.addAttribute("toc", rendered.toc());
         model.addAttribute("itemTags", tags.of(List.of(item.getId())).getOrDefault(item.getId(), List.of()));
         // 正文末尾的附件卡：挂到本文下面的补充笔记，点开就是那篇
         model.addAttribute("attachedNotes", attachedNotesOf(siblings, item, lockedIds));

@@ -8,19 +8,11 @@
     const previewUrl = src.dataset.preview || '';
     const uploadUrl = src.dataset.upload || '';
 
-    const csrf = () => {
-        const meta = document.querySelector('meta[name="_csrf"]');
-        return meta ? meta.content : '';
-    };
-
     let timer = 0;
     const render = async () => {
         if (!previewUrl) return;
-        const body = new URLSearchParams();
-        body.set('body', src.value);
-        body.set('_csrf', csrf());
         try {
-            const res = await fetch(previewUrl, { method: 'POST', credentials: 'same-origin', body });
+            const res = await App.post(previewUrl, { body: src.value });
             if (res.ok) box.innerHTML = await res.text();
         } catch (e) {
             // 预览挂了不影响保存，用户照样能把正文存下来
