@@ -131,6 +131,7 @@ ssh root@47.104.210.93 'docker exec -i notes-pg psql -U notes -d notes -f - < /r
 | `deploy/measure.sh` | 服务端逐页耗时（登录态，排除网络） | `bash /opt/deploy/measure.sh dev 15` |
 | `deploy/ab-bench.sh` | 改动前 / 改动后**交替**打点 + 数据库块访问 | `bash /opt/deploy/ab-bench.sh <改动前的 jar> 40` |
 | `deploy/perf-probe.py` | 真实浏览器里的首屏、每批「加载更多」、DOM 节点数、长任务 | `NOTES_USER=… NOTES_PASS=… python deploy/perf-probe.py http://47.104.210.93:8180/app /app/bagu` |
+| `deploy/snap.sh` + `deploy/snap-diff.py` | 「页面应该一模一样」的回归：抓快照、归一化后逐页 diff | 见本节最后一段 |
 
 **A/B 才是能写进结论的做法**：把改动前的代码单独打一个包，在 8099 上再起一个实例（同一个库、
 同一个 context path），两个实例都预热 60 轮，然后一轮里交替打「前 / 后」，比较同一批请求。
@@ -144,9 +145,11 @@ ssh root@47.104.210.93 'docker exec -i notes-pg psql -U notes -d notes -f - < /r
 `app.sh` 里那段预热就是为这个；自己临时起实例打点时，先空跑 60 轮再采样。
 
 **改动渲染结果的回归测试——逐页 HTML 比对**：改这类「只换数据来源、页面应该一模一样」的代码时，
-改之前先把一批页面抓成快照（登录态 + 游客态各一遍），改完再抓一遍，`diff -rq` 必须只有
-CSRF token / `jsessionid` 这种天然会变的东西。这次就是这么验的：29 个页面里只有
-`/app/admin` 的表格行顺序变了（`sortOrder` 和标题都相同的副本之间，SQL 本来就没有确定顺序）。
+先用 `bash deploy/snap.sh <base-url> <目录>` 把 29 个页面（登录态 + 游客态）抓成快照，改完再抓一遍，
+`python3 deploy/snap-diff.py <改之前> <改之后>` 必须报「0 个有差异」。它会先消掉两类无语义差异：
+`;jsessionid=…` 和开始标签里属性的顺序（`Map.of` 填充的顺序每次启动都可能变）。
+这次就是这么验的：只剩 `/app/admin` 的表格行顺序变了——`sortOrder` 和标题都相同的副本之间本来就没有
+确定的顺序，顺手给这条查询补了 `id asc` 兜底。
 
 ## 出事怎么办
 
@@ -562,6 +565,18 @@ grep 命中就退出，`tee` 收到 SIGPIPE，整个管道退出码变成 141，
 运行时报 `ERROR: could not determine data type of parameter $5`——单独一个 `? is null` 让 PG 无从推断类型，
 编译期看不出来，一访问该页面就 500。要么按条件拆成几条查询，要么像现在这样**整表查出来在 Java 里过滤**
 （几百行，管理页够用）。这类「参数可空」的查询，上线前一定要真打开那个页面一次。
+
+**唯一索引不看 `deleted_at`，而 `@SQLRestriction` 只看活行——判重要按索引的规矩来**（2026-11-05）：
+`uq_content_owner_slug (owner_id, slug)` 是无条件唯一索引，进了回收站的行照样占着 slug；
+可 `existsByOwnerIdAndSlug` 是派生查询，会被 `@SQLRestriction("deleted_at is null")` 过滤掉已删除的行，
+于是「查不出来、但插不进去」。表现是**把广场的模板「移除」之后再点「加入」直接 500**
+（`duplicate key value violates unique constraint`），新建内容时用回收站里的 slug 也一样。
+现在这个方法改成原生查询、把已删除的行一起算上：判到占用就换个 `-2` 的 slug 存进去。
+
+**`Map.of(...)` 的迭代顺序每次启动都可能不一样**（2026-11-05）：`java.util.ImmutableCollections`
+里有个随机盐（防哈希洪泛），所以同一个 `Map.of` 在不同进程里遍历顺序不同。渲染器里用它拼 HTML 属性
+（`MarkdownRenderer` 的术语 `<span class="gl" data-tip …>`）就会出现「代码一个字没动、属性顺序变了」——
+逐页比对时看着像回归，其实无语义差别。要稳定的输出顺序就用 `LinkedHashMap` 往里 `put`。
 
 **`scrollbar-color` 是继承属性，别把「滚动中」做成全局状态**：挂在 `html` 上的滚动条颜色会被所有
 `overflow: auto` 的子容器继承，翻正文时左侧目录、右侧大纲的滚动条会一起被点亮（看着像它们自己在动）。

@@ -87,13 +87,16 @@ public class MarkdownRenderer {
             TermNode term = (TermNode) node;
             HtmlWriter writer = context.getWriter();
             writer.line();
-            // data-tid 是这条解释在库里的 id：页面上点一下就能改 / 删 / 新增
-            writer.tag("span", Map.of(
-                    "class", "gl",
-                    "data-tip", term.getEntry().tip(),
-                    "data-term", term.getEntry().term(),
-                    "data-sense", term.getEntry().sense() == null ? "" : term.getEntry().sense(),
-                    "data-tid", String.valueOf(term.getEntry().id())), false);
+            // data-tid 是这条解释在库里的 id：页面上点一下就能改 / 删 / 新增。
+            // 用 LinkedHashMap 而不是 Map.of：后者的迭代顺序每启动一次都可能不一样
+            // （ImmutableCollections 里有个随机盐），属性顺序跟着变，逐页 HTML 比对就没法比了
+            Map<String, String> attrs = new LinkedHashMap<>();
+            attrs.put("class", "gl");
+            attrs.put("data-tip", term.getEntry().tip());
+            attrs.put("data-term", term.getEntry().term());
+            attrs.put("data-sense", term.getEntry().sense() == null ? "" : term.getEntry().sense());
+            attrs.put("data-tid", String.valueOf(term.getEntry().id()));
+            writer.tag("span", attrs, false);
             writer.text(term.getText());
             writer.tag("/span");
         }

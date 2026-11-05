@@ -46,7 +46,7 @@ public interface ContentItemRepository
     List<ContentCard> findCardsByOwner(@Param("ownerId") Long ownerId);
 
     /** 管理页列表：整表按目录顺序取一遍（几百条），筛选条件在控制器里过——省得为「可选条件」写一堆动态 SQL。 */
-    @Query(CARD_COLUMNS + "order by i.sortOrder asc, i.title asc")
+    @Query(CARD_COLUMNS + "order by i.sortOrder asc, i.title asc, i.id asc")
     List<ContentCard> findAllCards();
 
     /**
@@ -73,7 +73,15 @@ public interface ContentItemRepository
     /** slug 只在本人范围内唯一，跨用户可能重名，所以要按 id 取第一条能看的。 */
     List<ContentItem> findBySlugAndRecommendedTrueOrderByIdAsc(String slug);
 
-    boolean existsByOwnerIdAndSlug(Long ownerId, String slug);
+    /**
+     * slug 是否被占用。**回收站里的行也算占用**：唯一索引 {@code uq_content_owner_slug} 只看
+     * {@code (owner_id, slug)}，不看 {@code deleted_at}，而实体上的 {@code @SQLRestriction} 只过滤活行——
+     * 用派生查询就会「查不出来但插不进去」，表现是「加入我的空间 → 移除 → 再加入」直接 500。
+     * 所以这里走原生查询，把已删除的行一起算上。
+     */
+    @Query(value = "select exists(select 1 from content_item where owner_id = :ownerId and slug = :slug)",
+            nativeQuery = true)
+    boolean existsByOwnerIdAndSlug(@Param("ownerId") Long ownerId, @Param("slug") String slug);
 
     long countByOwnerId(Long ownerId);
 
