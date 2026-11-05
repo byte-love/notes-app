@@ -39,6 +39,10 @@
         if (node.nodeType === 3) return node.textContent.replace(/\s+/g, ' ');
         if (node.nodeType !== 1) return '';
         const tag = node.tagName.toLowerCase();
+        // 隐藏的字（%%...%%）：内部格式照常序列化，外面的标记留给渲染层认
+        if (node.classList && node.classList.contains('hid')) {
+            return '%%' + [...node.childNodes].map(inline).join('') + '%%';
+        }
         // 评论那一套会往每个块里插「＋」按钮，它不是正文
         if (tag === 'button' || node.classList.contains('cmt-block-btn')) return '';
         if (tag === 'br') return '  \n';

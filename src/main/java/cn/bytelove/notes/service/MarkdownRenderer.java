@@ -105,6 +105,8 @@ public class MarkdownRenderer {
     private final Parser parser;
     private final GlossaryService glossary;
     private final List<org.commonmark.Extension> extensions;
+    /** 隐藏段内部单独渲染用的：不带术语标注，避免和外面的 span 互相套 */
+    private final HtmlRenderer secretRenderer;
 
     public MarkdownRenderer(GlossaryService glossary) {
         this.glossary = glossary;
@@ -113,10 +115,14 @@ public class MarkdownRenderer {
                 StrikethroughExtension.create()
         );
         this.parser = Parser.builder().extensions(extensions).build();
+        this.secretRenderer = HtmlRenderer.builder()
+                .extensions(extensions)
+                .escapeHtml(true)
+                .build();
     }
 
     public String toHtml(String markdown) {
-        return render(markdown).html();
+        return render(markdown, true).html();
     }
 
     /** 一次解析同时产出正文 HTML 和目录：以前 toHtml + toc 各解析一遍，长文白算一次 */
@@ -133,30 +139,40 @@ public class MarkdownRenderer {
             });
 
     public Rendered render(String markdown) {
+        return render(markdown, true);
+    }
+
+    /**
+     * @param owner 是不是这篇的作者。正文里 {@code %%...%%} 包起来的是作者写给自己的隐私内容：
+     *              作者自己拿到模糊显示的原文字，其他人拿到的 HTML 里<b>根本没有这段原文</b>
+     *              （不是拿 CSS 藏，是压根不输出），所以别人没法从源码里读出来。
+     */
+    public Rendered render(String markdown, boolean owner) {
         if (markdown == null || markdown.isBlank()) {
             return new Rendered("", List.of());
         }
-        String key = cacheKey(markdown);
+        String key = cacheKey(markdown, owner);
         Rendered hit = cache.get(key);
         if (hit != null) {
             return hit;
         }
-        Rendered made = renderUncached(markdown);
+        Rendered made = renderUncached(markdown, owner);
         cache.put(key, made);
         return made;
     }
 
-    private String cacheKey(String markdown) {
+    private String cacheKey(String markdown, boolean owner) {
         CRC32 crc = new CRC32();
         crc.update(markdown.getBytes(StandardCharsets.UTF_8));
-        return glossary.version() + ":" + markdown.length() + ":" + crc.getValue();
+        return glossary.version() + ":" + (owner ? "o" : "g") + ":" + markdown.length() + ":" + crc.getValue();
     }
 
-    private Rendered renderUncached(String markdown) {
+    private Rendered renderUncached(String markdown, boolean owner) {
         if (markdown == null || markdown.isBlank()) {
             return new Rendered("", List.of());
         }
-        Node document = parser.parse(fenceBareCode(stripFrontMatter(markdown)));        wrapGlossary(document);
+        Split split = splitHidden(markdown);
+        Node document = parser.parse(fenceBareCode(stripFrontMatter(split.markdown())));        wrapGlossary(document);
 
         Map<Heading, String> ids = assignHeadingIds(document);
         BlockQuote firstQuote = firstBlockQuote(document);
@@ -189,9 +205,101 @@ public class MarkdownRenderer {
                 .attributeProviderFactory(context -> attrProvider)
                 .build();
         String html = stripPresentational(renderer.render(document));
+        html = restoreHidden(html, split.secrets(), owner);
         List<TocItem> toc = new ArrayList<>();
         collect(document, ids, toc);
         return new Rendered(html, toc);
+    }
+
+    /** 拆掉隐藏段之后的正文 + 被拆出去的那些原文（按出现顺序编号）。 */
+    private record Split(String markdown, List<String> secrets) {
+    }
+
+    /** 行内隐藏：%%这样%% 包起来的一段，作者写给自己看的。不跨行、里面不能再有 % */
+    private static final java.util.regex.Pattern HIDDEN =
+            java.util.regex.Pattern.compile("%%([^%\\n]{1,2000})%%");
+
+    /**
+     * 解析前先把隐藏段抠出来，正文里只留一个控制字符占位符。
+     * 放在解析前是因为占位符必须当纯文本走一遍 commonmark（里面有加粗之类的标记就丢了），
+     * 而真正的渲染在 {@link #restoreHidden} 里单独做，格式能保住。
+     * 围栏代码块里的 %% 不动。
+     */
+    private static Split splitHidden(String markdown) {
+        List<String> secrets = new ArrayList<>();
+        String[] lines = markdown.split("\n", -1);
+        boolean inFence = false;
+        for (int i = 0; i < lines.length; i++) {
+            String line = lines[i];
+            if (line.strip().startsWith("```")) {
+                inFence = !inFence;
+                continue;
+            }
+            if (inFence || line.indexOf("%%") < 0) {
+                continue;
+            }
+            java.util.regex.Matcher m = HIDDEN.matcher(line);
+            StringBuilder sb = new StringBuilder();
+            while (m.find()) {
+                secrets.add(m.group(1));
+                m.appendReplacement(sb, java.util.regex.Matcher.quoteReplacement(tokenOf(secrets.size() - 1)));
+            }
+            m.appendTail(sb);
+            lines[i] = sb.toString();
+        }
+        return new Split(String.join("\n", lines), secrets);
+    }
+
+    private static String tokenOf(int index) {
+        return "\u0001H" + index + "\u0001";
+    }
+
+    /**
+     * 把占位符换回来：作者自己这儿是一个模糊的 span（点一下能看清），
+     * 别人那儿直接删掉——原文不写进 HTML，不存在"用 CSS 藏起来"这种能被抓包读到的做法。
+     */
+    private String restoreHidden(String html, List<String> secrets, boolean owner) {
+        if (secrets.isEmpty() || html.indexOf('\u0001') < 0) {
+            return html;
+        }
+        String out = html;
+        for (int i = 0; i < secrets.size(); i++) {
+            String token = tokenOf(i);
+            if (out.indexOf(token) < 0) {
+                continue;
+            }
+            if (!owner) {
+                // 别人那边：整段 / 整条列表项都藏掉时，连外壳一起删，让后面的内容顶上来，
+                // 不然会留一块空白段落、或者一个空的白圆点
+                out = dropHiddenBlock(out, token);
+                continue;
+            }
+            String inner = secretRenderer.render(parser.parse(secrets.get(i))).strip();
+            out = out.replace(token, "<span class=\"hid\">" + unwrapParagraph(inner) + "</span>");
+        }
+        return out;
+    }
+
+    /** 占位符独占一个块（段落 / 列表项 / 标题 / 表格单元）时，把整个块删掉，只留空的行不要 */
+    private static String dropHiddenBlock(String html, String token) {
+        java.util.regex.Pattern block = java.util.regex.Pattern.compile(
+                "<(p|li|h[1-6]|td|th)\\b[^>]*>\\s*" + java.util.regex.Pattern.quote(token) + "\\s*</\\1>");
+        String stripped = block.matcher(html).replaceAll("");
+        if (!stripped.equals(html)) {
+            return stripped;
+        }
+        return html.replace(token, "");
+    }
+
+    /** 行内片段被渲染成单个段落时把外层 {@code <p>} 摘掉：span 里不能塞段落 */
+    private static String unwrapParagraph(String html) {
+        if (html.length() > 7 && html.startsWith("<p>") && html.endsWith("</p>")) {
+            String inner = html.substring(3, html.length() - 4);
+            if (inner.indexOf("<p") < 0 && inner.indexOf("</p>") < 0) {
+                return inner;
+            }
+        }
+        return html;
     }
 
     /**
