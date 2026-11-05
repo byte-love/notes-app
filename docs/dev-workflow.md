@@ -243,7 +243,14 @@ sudo /opt/deploy/sync-db.sh    # 正式库整库覆盖到测试库
   正文文字仍和标题左对齐）；② 右栏评论区左边一条 2px 竖线（`.cmt-pane` 的 `border-left`，
   高度固定一屏，所以线从上到下一贯到底）；③「下一篇」是固定 260×52 的小卡片，靠正文右边缘，
   标题再长也只走省略号，不跟着内容变宽
-  **改了 css/js 必须同时升 `?v=`**，否则强缓存让浏览器永远跑老代码（2026-10-30 踩过：评论改了 4 版用户一直看不到）
+  **改了 css/js 必须同时升 `?v=`**，否则强缓存让浏览器永远跑老代码（2026-10-30 踩过：评论改了 4 版用户一直看不到）。
+  **2026-11-05 找到真正的根因**：有缓存层（浏览器扩展、运营商缓存、旧 WebView）**按路径缓存、忽略 query string**，
+  于是 `?v=` 升到第几版都没用——用户手里一直是第一次抓到的那份 css，只有 HTML（`no-store`）是新的。
+  现在的兜底是 nginx 里给 `/app/(css|js)/` 单独一段 location，把 `Cache-Control` 换成 `no-cache`：
+  浏览器每次都必须回源校验（有 `Last-Modified`，正常回 **304**，不重下内容，所以不拖慢首屏）。
+  静态图片不走这段，仍然长期缓存。**别把这段拿掉**，否则「改了样式这边看不到」会复发；
+  判断方法：页面里 `<link>` 是 v=N，但 `document.styleSheets[0].cssRules.length` 对不上、或某个新类名查不到
+  ——就是拿到旧 css 了
 - **前端公共小工具 `static/js/base.js`（2026-11-05）**：`window.App.csrf()` 现读 `<meta name="_csrf">`、
   `App.post(url, data, init?)` 发带 `_csrf` 的 urlencoded POST、`App.esc()` 转义 `& < >`。
   它挂在 `layout.html` 的 **head** 里第一个加载——放 foot 就晚了，页面自己的脚本已经在用。
