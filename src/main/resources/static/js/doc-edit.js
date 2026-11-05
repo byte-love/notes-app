@@ -380,6 +380,54 @@
         schedule();
     });
 
+    /** 光标前面这一段还有没有字（不算「＋」那个界面按钮） */
+    const atBlockStart = (range, block) => {
+        const before = range.cloneRange();
+        before.selectNodeContents(block);
+        before.setEnd(range.startContainer, range.startOffset);
+        const box = document.createElement('div');
+        box.appendChild(before.cloneContents());
+        box.querySelectorAll('.cmt-block-btn').forEach((b) => b.remove());
+        return !(box.textContent || '').trim() && !box.querySelector('img');
+    };
+
+    // 光标停在列表项最开头按退格：只把这一项变回普通段落，别整段并到上面一块去
+    // （以前会直接并进上面的引用块里，读起来像被吃掉了）
+    body.addEventListener('keydown', (e) => {
+        if (e.key !== 'Backspace' || e.shiftKey || e.altKey || e.ctrlKey || e.metaKey) return;
+        const sel = window.getSelection();
+        if (!sel || !sel.rangeCount || !sel.isCollapsed) return;
+        const range = sel.getRangeAt(0);
+        const from = range.startContainer;
+        const el = from && (from.nodeType === 1 ? from : from.parentElement);
+        const li = el ? el.closest('li') : null;
+        if (!li || !body.contains(li) || !atBlockStart(range, li)) return;
+        e.preventDefault();
+        const ul = li.parentElement;
+        const p = document.createElement('p');
+        // 「＋」按钮的定位靠宿主上的 cmt-block-host，跟着一起搬
+        if (ul && ul.classList && ul.classList.contains('cmt-block-host')) {
+            p.classList.add('cmt-block-host');
+        }
+        while (li.firstChild) p.appendChild(li.firstChild);
+        // 段落要放到列表外面去：放进 ul 里再删 ul 会把内容一起带走
+        if (ul && (ul.tagName === 'UL' || ul.tagName === 'OL')) {
+            ul.before(p);
+            li.remove();
+            if (!ul.querySelector('li')) {
+                ul.remove();
+            }
+        } else {
+            li.replaceWith(p);
+        }
+        const r = document.createRange();
+        r.setStart(p, 0);
+        r.collapse(true);
+        sel.removeAllRanges();
+        sel.addRange(r);
+        schedule();
+    });
+
     // 插入笔记卡片：单独一个按钮 + 小表单，跟正文编辑无关
     const suppBtn = document.querySelector('[data-act="supplement"]');
     const suppForm = document.getElementById('supp-form');
