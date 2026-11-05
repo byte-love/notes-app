@@ -477,9 +477,15 @@
                 p.classList.add('cmt-block-host');
             }
             while (block.firstChild) p.appendChild(block.firstChild);
-            block.replaceWith(p);
-            if (parent && (parent.tagName === 'UL' || parent.tagName === 'OL') && !parent.querySelector('li')) {
-                parent.remove();
+            // 段落必须落在列表外面：先塞进 ul 再删空 ul，会把刚搬过去的正文一起删掉
+            if (parent && (parent.tagName === 'UL' || parent.tagName === 'OL')) {
+                parent.before(p);
+                block.remove();
+                if (!parent.querySelector('li')) {
+                    parent.remove();
+                }
+            } else {
+                block.replaceWith(p);
             }
         } else {
             const ul = document.createElement('ul');
