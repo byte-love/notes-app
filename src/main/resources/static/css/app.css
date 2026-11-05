@@ -1854,6 +1854,11 @@ html[data-theme='sepia'] .item-tag {
     transition: filter 0.15s ease;
 }
 
+/* 作者在行首自己敲了 1~3 格空格的行：整块往右挪一点，用来看出层级 */
+.markdown .indent {
+    margin-left: 1.8em;
+}
+
 /* 行内代码：等宽字体 + 强调色，和正文一眼分得开（以前既没等宽也没上色，SQL、字段名和普通文字长得一样） */
 .markdown code {
     font-family: var(--mono);
