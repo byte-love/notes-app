@@ -92,6 +92,39 @@ sudo /opt/deploy/app.sh prod
 sudo /opt/deploy/site.sh prod
 ```
 
+## 写一篇「项目」（PROJECT）
+
+项目详情页（`/app/projects/<slug>`）渲染的是「结构化字段」，正文只在没有结构化字段时兜底显示，
+所以写一篇新项目是**两段式**，缺一段页面就是空壳：
+
+1. **建条目**——照常走导入脚本（第 8 个参数是 `PROJECT`）：
+
+   ```bash
+   scp 正文.md root@47.104.210.93:/root/note.md
+   ssh root@47.104.210.93 "bash /root/import-note.sh /root/note.md <slug> '<标题>' '<摘要>' PUBLIC proj-personal <排序> PROJECT"
+   ```
+
+   `PUBLIC` 会被管理员建的内容自动带上 `recommended`，于是进技术广场；父节点填 `proj-personal`
+   （个人项目）或 `proj-internship`（实习项目），排序接在同组最后。
+   脚本只负责 `content_item`，**不写结构化字段**。
+
+2. **灌结构化字段**——`project_meta.doc`（jsonb，`ProjectView` 读它）：
+
+   ```sql
+   INSERT INTO project_meta (item_id, doc)
+   SELECT id, $doc${ …JSON… }$doc$::jsonb FROM content_item
+   WHERE slug='<slug>' AND kind='PROJECT' AND deleted_at IS NULL
+   ON CONFLICT (item_id) DO UPDATE SET doc = excluded.doc;
+   ```
+
+   字段（都可以中英双语，写成 `{"zh":…,"en":…}` 或直接写字符串）：
+   `title / subtitle / role / period / stack[] / problem / action[] / notes.zh{"0":…} / result[] / repo / diagram / shots[]`。
+   `notes.zh` 的键是 `action` 的下标，页面上就是每条后面的那个「i」；
+   正文里的反引号代码由 `ProjectView.inline()` 安全转成 `<code>`，`result` 里的 `→` 会单独上色。
+
+作品集首页的项目卡片走 `/app/api/projects`（数据在库里），`portfolio-site/src/data/projects.ts`
+只是首屏渲染的兜底。
+
 ## 改数据库
 
 先备份，再动手：
@@ -132,6 +165,7 @@ ssh root@47.104.210.93 'docker exec -i notes-pg psql -U notes -d notes -f - < /r
 | `deploy/ab-bench.sh` | 改动前 / 改动后**交替**打点 + 数据库块访问 | `bash /opt/deploy/ab-bench.sh <改动前的 jar> 40` |
 | `deploy/perf-probe.py` | 真实浏览器里的首屏、每批「加载更多」、DOM 节点数、长任务 | `NOTES_USER=… NOTES_PASS=… python deploy/perf-probe.py http://47.104.210.93:8180/app /app/bagu` |
 | `deploy/snap.sh` + `deploy/snap-diff.py` | 「页面应该一模一样」的回归：抓快照、归一化后逐页 diff | 见本节最后一段 |
+| `deploy/shot.py` | 拍页面截图（首屏 + 整页）人眼验排版，改样式后必用 | `NOTES_USER=… NOTES_PASS=… python deploy/shot.py http://47.104.210.93:8180/app /projects/notes-app` |
 
 **A/B 才是能写进结论的做法**：把改动前的代码单独打一个包，在 8099 上再起一个实例（同一个库、
 同一个 context path），两个实例都预热 60 轮，然后一轮里交替打「前 / 后」，比较同一批请求。
@@ -145,7 +179,7 @@ ssh root@47.104.210.93 'docker exec -i notes-pg psql -U notes -d notes -f - < /r
 `app.sh` 里那段预热就是为这个；自己临时起实例打点时，先空跑 60 轮再采样。
 
 **改动渲染结果的回归测试——逐页 HTML 比对**：改这类「只换数据来源、页面应该一模一样」的代码时，
-先用 `bash deploy/snap.sh <base-url> <目录>` 把 29 个页面（登录态 + 游客态）抓成快照，改完再抓一遍，
+先用 `bash deploy/snap.sh <base-url> <目录>` 把 28 个页面（登录态 + 游客态）抓成快照，改完再抓一遍，
 `python3 deploy/snap-diff.py <改之前> <改之后>` 必须报「0 个有差异」。它会先消掉两类无语义差异：
 `;jsessionid=…` 和开始标签里属性的顺序（`Map.of` 填充的顺序每次启动都可能变）。
 这次就是这么验的：只剩 `/app/admin` 的表格行顺序变了——`sortOrder` 和标题都相同的副本之间本来就没有
@@ -201,8 +235,10 @@ sudo /opt/deploy/sync-db.sh    # 正式库整库覆盖到测试库
 - 列表页（笔记/八股/算法/项目）**分批加载**：服务端按分类整组切约 40 条，滚到底再用
   `?from=N&fragment=true` 取下一批；左侧树超过 60 个节点时只渲染顶层 + 当前路径，展开时调
   `/api/tree/{kind}?parent=<slug>` 补子节点
-- 静态资源带 `?v=` 版本号 + `Cache-Control: max-age=31536000`，nginx 开了 `gzip_types`（css/js）；
-  nginx 到应用是长连接（`upstream ... keepalive` + `Connection ""`）
+- 静态资源带 `?v=` 版本号；**css/js 走 `Cache-Control: no-cache`**（每次回源校验，正常回 304），
+  图片等其它静态资源仍是 `max-age=31536000`。nginx 开了 `gzip_types`（css/js），
+  nginx 到应用是长连接（`upstream ... keepalive` + `Connection ""`）。
+  为什么 css/js 不长久缓存：见下面「改了 css/js 必须同时升 `?v=`」那条——有缓存层忽略 query string
 - **正式站走 HTTP/2（2026-11-05）**：`sites-available/02-domain` 里 `listen 443 ssl http2;`，
   一页 7~11 个请求在同一连接上并行，不再按 RTT 排队。改完 `nginx -t` 通过再
   `systemctl reload nginx`（配置备份在 `/root/nginx-backup/`），验证：
@@ -506,8 +542,13 @@ sudo /opt/deploy/sync-db.sh    # 正式库整库覆盖到测试库
   - **坑三：条目列在分组里会缩两次**。`.with-tree .item-list` 本来就限了 `min(1160px, 96%)`，
     分组外层再限一次就变成 96% 的 96%，卡片比上面的条带窄一圈，所以
     `.group-grid > .item-group .item-list { max-width: 100% }` 要留着（实测外层和内层都是 745px 才对齐）
-- **改完要看响应时间**：`bash /opt/deploy/measure.sh dev`（服务器上跑，5 个主页面各热身 6 次再采 40 次，
-  报 p50/p95 和 TTFB；源码 `deploy/measure.sh`）。2026-10-30 基线：p50 25~82ms，p95 ≤ 111ms
+- **改完要看响应时间**：`bash /opt/deploy/measure.sh dev [轮数] [路径…]`（服务器上跑，**登录态**，
+  默认打 14 个页面；采样前先整体预热 15 轮，报 p50/p95、TTFB、HTML 字节数、卡片数和标签数；
+  源码 `deploy/measure.sh`）。2026-11-05 测试环境热态基线：`/guide` 4ms、`/memo` 11ms、`/trash` 10ms、
+  `/algo` 16ms、`/changelog` 17ms、`/admin` 19ms、`/projects` 21ms、`/bookmarks` 13ms、`/me` 29ms、
+  广场分组页 33ms、正文页 38ms、`/explore` 44ms、`/notes` 37ms、`/bagu` 50ms；
+  只改了一处想单看它，就把路径传在后面（`measure.sh dev 20 /app/bagu`）。
+  **不预热时这套数字会翻 3~5 倍**，别拿冷启动的数字下结论
 - `app.sh` 部署完会自己把 4 个列表页 + 一篇正文各打 5 遍**预热**——JVM 刚起来头十几次请求是解释执行的，
   慢 5~10 倍（实测 2.7s / 850ms / 500ms 一路降到 80ms），不预热的话「刚发布完打开就很慢」
 - `/admin` 现在登录就能进，默认只看到自己的；管理员额外能看到全部

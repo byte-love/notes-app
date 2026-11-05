@@ -5,6 +5,8 @@
 ```bash
 scp deploy/app.sh deploy/site.sh deploy/sync-db.sh deploy/restore-db.sh \
     deploy/psql.sh deploy/test-owner.sql root@47.104.210.93:/opt/deploy/
+scp deploy/measure.sh deploy/ab-bench.sh deploy/snap.sh deploy/snap-diff.py \
+    deploy/perf-probe.py deploy/shot.py root@47.104.210.93:/opt/deploy/
 scp deploy/backup-pg.sh root@47.104.210.93:/srv/backup/
 ssh root@47.104.210.93 "chmod +x /opt/deploy/*.sh /srv/backup/backup-pg.sh"
 ```
@@ -83,6 +85,20 @@ ssh root@47.104.210.93 "chmod +x /opt/deploy/*.sh /srv/backup/backup-pg.sh"
 ### `import-note.sh` / `test-import.sh`
 
 往站里导内容（见 `docs/` 和根 README），不是部署脚本。
+
+## 打点与回归（不是发布，改完代码/样式后用）
+
+这些也在 `/opt/deploy/`，细节见 `docs/dev-workflow.md` 的「量一下再改」：
+
+| 脚本 | 干什么 |
+|---|---|
+| `measure.sh [dev\|prod] [轮数] [路径…]` | 登录态逐页耗时（采样前先预热 15 轮，报 p50/p95/TTFB/体积） |
+| `ab-bench.sh <改动前的 jar> [轮数]` | 另起一个实例做改动前后交替打点，顺带比数据库块访问 |
+| `snap.sh <base-url> <目录>` + `snap-diff.py` | 页面快照 + 归一化逐页 diff，验证「渲染结果没变」 |
+| `shot.py` | 拍截图人眼验排版（改样式后必用；本机也能跑，需要 playwright） |
+| `perf-probe.py` | 浏览器里的首屏 / 每批加载 / DOM 规模 / 长任务 |
+
+`shot.py`、`perf-probe.py` 是 Python，直接 `python3 /opt/deploy/xxx.py`，凭据走 `NOTES_USER` / `NOTES_PASS`。
 
 ## 权限边界
 
