@@ -272,11 +272,20 @@
 
     // 第四个选项：把选中的这段藏起来，只给自己看（正文里存成 %%...%%）。
     // 别人打开这篇时那段原文根本不会出现在 HTML 里，不是用样式遮出来的。
+    // 选中的字本来就在隐藏区里时，这个按钮变成「展示」，点一下还原成普通正文。
     const hidBtn = document.createElement('button');
     hidBtn.type = 'button';
     hidBtn.textContent = '隐藏';
+    hidBtn.dataset.mode = 'hide';
     const canHide = !!(article && article.dataset && article.dataset.save);
     if (canHide) tool.appendChild(hidBtn);
+
+    const hidAt = (range) => {
+        if (!range) return null;
+        const node = range.startContainer;
+        const el = node && (node.nodeType === 1 ? node : node.parentElement);
+        return el ? el.closest('.hid') : null;
+    };
     document.body.appendChild(tool);
 
     // ::highlight() 伪元素不认 var()：自定义属性不会带进高亮伪元素，写 var(--hl-yellow) 会解析成空、
@@ -360,6 +369,11 @@
         }
         lastRange = range.cloneRange();
         lastQuote = text;
+        if (canHide) {
+            const inHid = hidAt(range);
+            hidBtn.textContent = inHid ? '展示' : '隐藏';
+            hidBtn.dataset.mode = inHid ? 'show' : 'hide';
+        }
         tool.hidden = false;
         const top = rect.top + window.scrollY - tool.offsetHeight - 8;
         tool.style.top = `${Math.max(8, top)}px`;
@@ -389,11 +403,31 @@
         };
     };
 
-    // 隐藏：把选中的字包进一个 hid span，序列化时变成 %%...%%，保存后对人就是模糊或不存在
+    // 隐藏：把选中的字包进一个 hid span，序列化时变成 %%...%%，保存后对人就是模糊或不存在。
+    // 反过来（选中的字已经在隐藏区里）就是把这几段 hid 拆掉、还原成普通正文。
     hidBtn.addEventListener('click', () => {
         const sel = window.getSelection();
         if (!sel || sel.isCollapsed || !sel.rangeCount) return;
         const range = sel.getRangeAt(0);
+
+        if (hidBtn.dataset.mode === 'show') {
+            const targets = [...article.querySelectorAll('.hid')].filter((h) => range.intersectsNode(h));
+            for (const h of targets) {
+                const parent = h.parentNode;
+                if (!parent) continue;
+                while (h.firstChild) parent.insertBefore(h.firstChild, h);
+                parent.removeChild(h);
+            }
+            hideTool();
+            sel.removeAllRanges();
+            lastQuote = '';
+            lastRange = null;
+            if (article && article.dataset) {
+                article.dispatchEvent(new Event('input', { bubbles: true }));
+            }
+            return;
+        }
+
         // 只支持同一段里面选，跨段的选区包一个 span 会把段落结构弄乱
         if (blockOf(range.startContainer) !== blockOf(range.endContainer)) {
             hideTool();

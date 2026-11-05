@@ -517,14 +517,5 @@
     });
 })();
 
-// 正文里藏起来的字（%%...%%）：默认模糊着，点一下看清，再点又糊回去。
-// 这段 HTML 只有作者自己拿得到（别人那份里根本没有），所以这里只处理展示
-(() => {
-    const box = document.querySelector('.markdown');
-    if (!box) return;
-    box.addEventListener('click', (e) => {
-        const hid = e.target.closest('.hid');
-        if (!hid || !box.contains(hid)) return;
-        hid.classList.toggle('on');
-    });
-})();
+// 正文里藏起来的字（%%...%%）：作者自己那边只是淡淡一层模糊当标记，正常能读；
+// 别人那份 HTML 里根本没有这段，所以这里不需要做任何展示逻辑。

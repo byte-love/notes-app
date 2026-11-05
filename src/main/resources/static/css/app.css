@@ -1847,17 +1847,11 @@ html[data-theme='sepia'] .item-tag {
     text-underline-offset: 2px;
 }
 
-/* 正文里藏起来的字（作者写成 %%...%%）：默认模糊着，点一下看清、再点糊回去。
-   别人打开这篇时这几段原文压根不在 HTML 里，所以这里只管作者自己的展示效果 */
+/* 正文里藏起来的字（作者写成 %%...%%）：作者自己那边只是一层很淡的模糊，当「这里藏了东西」的标记，
+   正常读没问题；别人打开这篇时这几段原文压根不在 HTML 里 */
 .markdown .hid {
-    filter: blur(4.5px);
-    cursor: pointer;
-    border-radius: 3px;
+    filter: blur(1.1px);
     transition: filter 0.15s ease;
-}
-
-.markdown .hid.on {
-    filter: none;
 }
 
 /* 行内代码：等宽字体 + 强调色，和正文一眼分得开（以前既没等宽也没上色，SQL、字段名和普通文字长得一样） */
