@@ -286,6 +286,23 @@
         const el = node && (node.nodeType === 1 ? node : node.parentElement);
         return el ? el.closest('.hid') : null;
     };
+
+    // 第五个选项：把这一行变成列表项（已经是列表项就是取消）。
+    // 直接改页面结构，点完当场就有点，不用保存之后刷新才看得到
+    const listBtn = document.createElement('button');
+    listBtn.type = 'button';
+    listBtn.textContent = '列表';
+    if (canHide) tool.appendChild(listBtn);
+
+    const blockForList = (node) => {
+        let el = node && (node.nodeType === 1 ? node : node.parentElement);
+        while (el && el !== article) {
+            const tag = el.tagName;
+            if (tag === 'LI' || tag === 'P' || tag === 'DIV') return el;
+            el = el.parentElement;
+        }
+        return null;
+    };
     document.body.appendChild(tool);
 
     // ::highlight() 伪元素不认 var()：自定义属性不会带进高亮伪元素，写 var(--hl-yellow) 会解析成空、
@@ -442,6 +459,44 @@
         lastQuote = '';
         lastRange = null;
         // 走正文编辑那套自动保存
+        if (article && article.dataset) {
+            article.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+    });
+
+    // 列表：选中的这一行变成列表项；本来就是列表项的，点一下变回普通段落
+    listBtn.addEventListener('click', () => {
+        const sel = window.getSelection();
+        if (!sel || !sel.rangeCount) return;
+        const block = blockForList(sel.getRangeAt(0).startContainer);
+        if (!block) return;
+        const parent = block.parentElement;
+        if (block.tagName === 'LI') {
+            const p = document.createElement('p');
+            if (parent && parent.classList && parent.classList.contains('cmt-block-host')) {
+                p.classList.add('cmt-block-host');
+            }
+            while (block.firstChild) p.appendChild(block.firstChild);
+            // 段落必须落在列表外面：先塞进 ul 再删空 ul，会把刚搬过去的正文一起删掉
+            if (parent && (parent.tagName === 'UL' || parent.tagName === 'OL')) {
+                parent.before(p);
+                block.remove();
+                if (!parent.querySelector('li')) {
+                    parent.remove();
+                }
+            } else {
+                block.replaceWith(p);
+            }
+        } else {
+            const ul = document.createElement('ul');
+            const li = document.createElement('li');
+            if (block.className) ul.className = block.className;
+            while (block.firstChild) li.appendChild(block.firstChild);
+            ul.appendChild(li);
+            block.replaceWith(ul);
+        }
+        hideTool();
+        sel.removeAllRanges();
         if (article && article.dataset) {
             article.dispatchEvent(new Event('input', { bubbles: true }));
         }

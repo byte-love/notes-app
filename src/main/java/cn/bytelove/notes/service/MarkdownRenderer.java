@@ -198,6 +198,24 @@ public class MarkdownRenderer {
                 attributes.put("loading", "lazy");
                 attributes.put("decoding", "async");
             }
+            // 代码块没写语言的（``` 后面空着、或者四空格缩进那种）猜一个：
+            // 前端拿不到 language-xxx 就完全不上色，代码块是一片灰
+            if ("code".equals(tagName)) {
+                String info = null;
+                String literal = null;
+                if (node instanceof FencedCodeBlock fenced) {
+                    info = fenced.getInfo();
+                    literal = fenced.getLiteral();
+                } else if (node instanceof IndentedCodeBlock indented) {
+                    literal = indented.getLiteral();
+                }
+                if ((info == null || info.isBlank()) && literal != null) {
+                    String guess = guessLanguage(literal);
+                    if (guess != null) {
+                        attributes.put("class", "language-" + guess);
+                    }
+                }
+            }
         };
         HtmlRenderer renderer = HtmlRenderer.builder()
                 .extensions(extensions)
@@ -416,6 +434,35 @@ public class MarkdownRenderer {
         }
         return text.replaceAll("[\\s\\p{Punct}，。、：；！？（）【】〔〕「」『』《》〈〉—…·]+", "")
                 .toLowerCase(Locale.ROOT);
+    }
+
+    /**
+     * 代码块没标语言时靠内容猜一个：这个站九成是 Java，其次 SQL / 前端 / Python。
+     * 猜错了顶多颜色不对，总比整块灰着强。
+     */
+    private static String guessLanguage(String code) {
+        if (code == null || code.isBlank()) {
+            return null;
+        }
+        String head = code.strip().toLowerCase(java.util.Locale.ROOT);
+        boolean sqlLike = head.startsWith("select ") || head.startsWith("insert ")
+                || head.startsWith("update ") || head.startsWith("delete ") || head.startsWith("create ")
+                || head.startsWith("alter ") || head.startsWith("drop ")
+                || (head.contains(" from ") && head.contains(" where "));
+        if (sqlLike) {
+            return "sql";
+        }
+        if (head.contains("def ") && head.contains(":")) {
+            return "python";
+        }
+        if (head.contains("function ") || head.contains("=>") || head.contains("console.log")
+                || head.contains("const ") || head.contains("document.")) {
+            return "javascript";
+        }
+        if (head.startsWith("#!/") || head.startsWith("echo ") || head.contains("sudo ")) {
+            return "bash";
+        }
+        return "java";
     }
 
     /**
