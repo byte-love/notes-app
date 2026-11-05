@@ -333,10 +333,13 @@ public class PublicController {
         model.addAttribute("tabActive", kind.name().toLowerCase(java.util.Locale.ROOT));
 
         model.addAttribute("item", item);
+        // 只有自己的内容能标星级、能直接改正文，也才看得到正文里自己藏起来的那些段
+        // （藏起来的那部分对别人根本不输出，渲染前就得知道是谁在看）
+        boolean owner = viewer.userId() != null && viewer.userId().equals(item.getOwnerId());
         // 正文第一行要是把标题又抄了一遍，渲染时不显示那一行（AI 存笔记时常这么写）
         String body = markdown.dropTitleEcho(item.getBody(), item.getTitle());
         // 一次解析同时拿到正文 HTML 和目录（以前 toHtml + toc 各解析一遍）
-        MarkdownRenderer.Rendered rendered = markdown.render(body);
+        MarkdownRenderer.Rendered rendered = markdown.render(body, owner);
         model.addAttribute("html", rendered.html());
         model.addAttribute("toc", rendered.toc());
         model.addAttribute("itemTags", tags.of(List.of(item.getId())).getOrDefault(item.getId(), List.of()));
@@ -352,7 +355,7 @@ public class PublicController {
         model.addAttribute("prevNote", prevNoteOf(siblings, item, lockedIds));
         model.addAttribute("starred", viewer.userId() != null && stars.isStarred(viewer.userId(), item.getId()));
         // 只有自己的内容能标星级：星级是内容上的字段，不是「谁标的」，改别人的条目等于改别人的东西
-        model.addAttribute("canRate", viewer.userId() != null && viewer.userId().equals(item.getOwnerId()));
+        model.addAttribute("canRate", owner);
         // 编辑页「返回」要回到这一页；这里给的是不带 contextPath 的路径（redirect: 和 @{} 各管各的）
         model.addAttribute("editBack", basePath(kind) + "/" + item.getSlug());
 

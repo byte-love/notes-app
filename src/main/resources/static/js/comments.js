@@ -269,6 +269,14 @@
         tool.appendChild(hlBtn);
         tool.appendChild(hlRow);
     }
+
+    // 第四个选项：把选中的这段藏起来，只给自己看（正文里存成 %%...%%）。
+    // 别人打开这篇时那段原文根本不会出现在 HTML 里，不是用样式遮出来的。
+    const hidBtn = document.createElement('button');
+    hidBtn.type = 'button';
+    hidBtn.textContent = '隐藏';
+    const canHide = !!(article && article.dataset && article.dataset.save);
+    if (canHide) tool.appendChild(hidBtn);
     document.body.appendChild(tool);
 
     // ::highlight() 伪元素不认 var()：自定义属性不会带进高亮伪元素，写 var(--hl-yellow) 会解析成空、
@@ -380,6 +388,30 @@
             range: lastRange ? lastRange.cloneRange() : null,
         };
     };
+
+    // 隐藏：把选中的字包进一个 hid span，序列化时变成 %%...%%，保存后对人就是模糊或不存在
+    hidBtn.addEventListener('click', () => {
+        const sel = window.getSelection();
+        if (!sel || sel.isCollapsed || !sel.rangeCount) return;
+        const range = sel.getRangeAt(0);
+        // 只支持同一段里面选，跨段的选区包一个 span 会把段落结构弄乱
+        if (blockOf(range.startContainer) !== blockOf(range.endContainer)) {
+            hideTool();
+            return;
+        }
+        const span = document.createElement('span');
+        span.className = 'hid';
+        span.appendChild(range.extractContents());
+        range.insertNode(span);
+        hideTool();
+        sel.removeAllRanges();
+        lastQuote = '';
+        lastRange = null;
+        // 走正文编辑那套自动保存
+        if (article && article.dataset) {
+            article.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+    });
 
     toolBtn.addEventListener('click', () => {
         const anchor = currentAnchor();
