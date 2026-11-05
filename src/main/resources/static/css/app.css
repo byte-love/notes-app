@@ -3189,25 +3189,49 @@ html[data-read-size='lg'] .markdown {
 .project-sub {
     margin: 0 0 1.5rem;
     color: var(--fg-2);
-    font-size: 1rem;
-    line-height: 1.7;
+    font-size: 1.02rem;
+    line-height: 1.75;
 }
 
-/* 事实用定义列表：左列等宽小标签，右列是值 */
+/* 架构图在最上面：给个画框，点开是大图 */
+.project-figure {
+    margin: 0 0 1.5rem;
+}
+
+.project-figure a {
+    display: block;
+    cursor: zoom-in;
+}
+
+.project-figure img {
+    width: 100%;
+    height: auto;
+    display: block;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: #f7f8fa;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+/* 事实是一条信息面板：左列等宽小标签，右列是值 */
 .project-facts {
     display: grid;
-    grid-template-columns: 5.5rem minmax(0, 1fr);
-    gap: 0.3rem 1rem;
-    margin: 0 0 1.2rem;
-    font-size: 0.94rem;
+    grid-template-columns: 4.8rem minmax(0, 1fr);
+    gap: 0.4rem 1rem;
+    margin: 0 0 1rem;
+    padding: 0.95rem 1.1rem;
+    background: var(--bg-2);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    font-size: 0.93rem;
     align-items: baseline;
 }
 
 .project-facts dt {
     font-family: var(--mono);
-    font-size: 0.76rem;
+    font-size: 0.72rem;
+    letter-spacing: 0.04em;
     color: var(--fg-3);
-    padding-top: 0.1rem;
 }
 
 .project-facts dd {
@@ -3217,28 +3241,121 @@ html[data-read-size='lg'] .markdown {
 
 .project-stack {
     font-family: var(--mono);
-    font-size: 0.84rem;
+    font-size: 0.82rem;
     color: var(--fg-2);
 }
 
 .project .doc-meta {
-    margin: 0 0 1.6rem;
+    margin: 0 0 1.4rem;
 }
 
-/* 小节标题：等宽大写小字 + 字距，克制的那种 */
+/* 小节标题：等宽小字 + 一小段分区色的短线，比纯灰小标题有节奏 */
 .project h2 {
-    margin: 2.1rem 0 0.7rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 2.4rem 0 0.85rem;
     font-family: var(--mono);
     font-size: 0.78rem;
     font-weight: 500;
-    letter-spacing: 0.08em;
+    letter-spacing: 0.09em;
     text-transform: uppercase;
     color: var(--fg-3);
+}
+
+.project h2::before {
+    content: '';
+    width: 14px;
+    height: 2px;
+    border-radius: 2px;
+    background: hsl(var(--kh) var(--k-sat) var(--k-l-bar));
 }
 
 .project p {
     margin: 0 0 0.9rem;
     line-height: 1.85;
+}
+
+.project-lead {
+    font-size: 1.01rem;
+    line-height: 1.95;
+}
+
+/* 「我做了什么」：编号在左、细线串起来，像一条步骤条 */
+.project-steps {
+    counter-reset: step;
+    list-style: none;
+    position: relative;
+    margin: 0 0 0.9rem;
+    padding: 0 0 0 2.3rem;
+}
+
+.project-steps::before {
+    content: '';
+    position: absolute;
+    left: 1.55rem;
+    top: 0.55rem;
+    bottom: 0.5rem;
+    width: 1px;
+    background: var(--line);
+}
+
+.project-steps li {
+    counter-increment: step;
+    position: relative;
+    margin: 0 0 0.72rem;
+    line-height: 1.8;
+}
+
+.project-steps li::before {
+    content: counter(step, decimal-leading-zero);
+    position: absolute;
+    left: -2.3rem;
+    width: 1.3rem;
+    text-align: right;
+    padding-top: 0.24rem;
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    color: var(--fg-3);
+    background: var(--bg);
+}
+
+/* 结果：一条一张小卡片，左侧一道分区色，数字用等宽对齐，箭头单独上色 */
+.project-metrics {
+    list-style: none;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(19rem, 1fr));
+    gap: 0.55rem;
+    margin: 0 0 0.9rem;
+    padding: 0;
+}
+
+.project-metrics li {
+    position: relative;
+    padding: 0.7rem 0.95rem 0.7rem 1.05rem;
+    background: var(--bg-2);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    font-size: 0.95rem;
+    line-height: 1.75;
+    font-variant-numeric: tabular-nums;
+}
+
+.project-metrics li::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0.62rem;
+    bottom: 0.62rem;
+    width: 2px;
+    border-radius: 2px;
+    background: hsl(var(--kh) var(--k-sat) var(--k-l-bar));
+}
+
+.project-metrics .arr {
+    margin: 0 0.18rem;
+    font-weight: 600;
+    color: hsl(var(--kh) var(--k-sat) var(--k-l-fg));
 }
 
 .project-list,
@@ -3269,24 +3386,25 @@ html[data-read-size='lg'] .markdown {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 15px;
-    height: 15px;
+    width: 16px;
+    height: 16px;
     margin-left: 0.4rem;
     padding: 0;
     border: 1px solid var(--line);
     border-radius: 50%;
-    background: none;
+    background: var(--bg);
     color: var(--fg-3);
     font-family: var(--mono);
     font-size: 10px;
     line-height: 1;
     cursor: pointer;
-    vertical-align: 2px;
+    vertical-align: 1px;
 }
 
 .note-btn:hover {
     border-color: var(--fg-2);
     color: var(--fg);
+    background: var(--bg-2);
 }
 
 /* 不依赖浏览器对 dialog 的默认隐藏：WebView 里没 open 时会露出里面的空 img */
@@ -3345,24 +3463,6 @@ dialog.note-dialog[open] {
     background: var(--bg-2);
     border-radius: 4px;
     padding: 0.05rem 0.3rem;
-}
-
-.project-figure {
-    margin: 0 0 1.4rem;
-}
-
-.project-figure a {
-    display: block;
-    cursor: zoom-in;
-}
-
-.project-figure img {
-    width: 100%;
-    height: auto;
-    display: block;
-    border: 1px solid var(--line);
-    border-radius: 10px;
-    background: var(--bg-2);
 }
 
 .project-gallery {

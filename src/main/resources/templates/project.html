@@ -20,7 +20,14 @@
         <p class="project-sub" th:if="${project != null and project.subtitle != null}"
            th:text="${project.subtitle}">一句话说明</p>
 
-        <!-- 定义列表：左列是等宽小标签，右列是值；技术栈一行排开，不占竖排的版面 -->
+        <!-- 架构图放在最上面：先看图再看字，跟最初那版一样 -->
+        <figure class="project-figure" th:if="${project != null and project.diagram != null}">
+            <a th:href="${project.diagram}" target="_blank" rel="noopener">
+                <img th:src="${project.diagram}" th:alt="${item.title + ' 架构图'}">
+            </a>
+        </figure>
+
+        <!-- 事实做成一条信息面板：左列等宽小标签，右列是值 -->
         <dl class="project-facts" th:if="${project != null}">
             <th:block th:if="${project.role != null}">
                 <dt>角色</dt>
@@ -57,40 +64,33 @@
             </form>
         </div>
 
-        <section th:if="${project != null and project.problem != null}">
+        <section class="project-block" th:if="${project != null and project.problem != null}">
             <h2>背景</h2>
-            <p th:utext="${project.problemHtml}">问题背景</p>
+            <p class="project-lead" th:utext="${project.problemHtml}">问题背景</p>
         </section>
 
-        <section th:if="${project != null and !#lists.isEmpty(project.actions)}">
+        <!-- 我做了什么：带编号的步骤条，序号在左、正文在右，中间一条细线串起来 -->
+        <section class="project-block" th:if="${project != null and !#lists.isEmpty(project.actions)}">
             <h2>我做了什么</h2>
-            <ul class="project-list">
+            <ol class="project-steps">
                 <li th:each="a : ${project.actions}">
-                    <span th:utext="${a.textHtml()}">做了什么</span>
+                    <span class="project-step-text" th:utext="${a.textHtml()}">做了什么</span>
                     <button th:if="${a.hasNote()}" type="button" class="note-btn"
                             th:attr="data-note=${a.noteHtml()}"
                             aria-label="这一步的细节">i</button>
                 </li>
-            </ul>
+            </ol>
         </section>
 
-        <section th:if="${project != null and !#lists.isEmpty(project.results)}">
+        <!-- 结果：一条一张小卡片，数字对齐，箭头单独上色 -->
+        <section class="project-block" th:if="${project != null and !#lists.isEmpty(project.results)}">
             <h2>结果</h2>
-            <ul class="project-results">
+            <ul class="project-metrics">
                 <li th:each="r : ${project.results}" th:utext="${r.textHtml()}">结果</li>
             </ul>
         </section>
 
-        <section th:if="${project != null and project.diagram != null}">
-            <h2>架构</h2>
-            <figure class="project-figure">
-                <a th:href="${project.diagram}" target="_blank" rel="noopener">
-                    <img th:src="${project.diagram}" th:alt="${item.title}">
-                </a>
-            </figure>
-        </section>
-
-        <section th:if="${project != null and !#lists.isEmpty(project.shots)}">
+        <section class="project-block" th:if="${project != null and !#lists.isEmpty(project.shots)}">
             <h2>界面截图</h2>
             <div class="project-gallery">
                 <figure th:each="s : ${project.shots}">

@@ -25,7 +25,7 @@ public record ProjectView(
         String problem,
         String problemHtml,
         List<Item> actions,
-        List<Item> results,
+        List<Result> results,
         String repo,
         String diagram,
         List<Shot> shots) {
@@ -36,6 +36,13 @@ public record ProjectView(
         public boolean hasNote() {
             return note != null && !note.isBlank();
         }
+    }
+
+    /**
+     * 一条结果。里面的 {@code →} 会包成 {@code <span class="arr">}，页面上把「改之前 → 改之后」
+     * 那个箭头单独上色——结果文案几乎都靠这个箭头表达前后对比，不处理就只是普通一行字。
+     */
+    public record Result(String text, String textHtml) {
     }
 
     public record Shot(String src, String caption) {
@@ -64,9 +71,9 @@ public record ProjectView(
             actions.add(new Item(text, inline(text), note, inline(note)));
         }
 
-        List<Item> results = new ArrayList<>();
+        List<Result> results = new ArrayList<>();
         for (String r : strings(root, "result")) {
-            results.add(new Item(r, inline(r), null, null));
+            results.add(new Result(r, inline(r).replace("→", "<span class=\"arr\">→</span>")));
         }
 
         List<Shot> shots = new ArrayList<>();
