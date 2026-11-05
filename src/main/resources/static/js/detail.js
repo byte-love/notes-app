@@ -456,3 +456,63 @@
     });
     window.addEventListener('pagehide', save);
 })();
+
+// 评论区的展开 / 收起：状态记在 localStorage，收起后页面上只剩右上角那个图标
+(() => {
+    const btn = document.getElementById('cmt-toggle');
+    const pane = document.getElementById('comments');
+    if (!btn || !pane) return;
+
+    const KEY = 'cmt:folded';
+    const apply = (off) => {
+        document.body.classList.toggle('cmt-off', off);
+        btn.setAttribute('aria-expanded', off ? 'false' : 'true');
+        btn.setAttribute('aria-label', off ? '展开评论' : '收起评论');
+        try { localStorage.setItem(KEY, off ? '1' : '0'); } catch (e) {}
+    };
+
+    let folded = false;
+    try { folded = localStorage.getItem(KEY) === '1'; } catch (e) {}
+    apply(folded);
+    btn.addEventListener('click', () => apply(!document.body.classList.contains('cmt-off')));
+})();
+
+// 键盘：上下翻正文，左右跳到同分类里的上一篇 / 下一篇。
+// 焦点在输入框或正文编辑区里时不拦（那是在移动光标），有选中的文字也不拦。
+(() => {
+    const doc = document.querySelector('.doc[data-prev], .doc[data-next]');
+    if (!doc) return;
+
+    const prev = doc.dataset.prev || '';
+    const next = doc.dataset.next || '';
+    const step = () => Math.round(window.innerHeight * 0.85);
+
+    const editable = (el) => {
+        if (!el || el.nodeType !== 1) return false;
+        const tag = el.tagName.toLowerCase();
+        if (tag === 'input' || tag === 'textarea' || tag === 'select') return true;
+        return el.isContentEditable;
+    };
+
+    const overlayOpen = () =>
+        !!document.querySelector('.ann-pop:not([hidden]), .gl-edit:not([hidden]), dialog[open]');
+
+    document.addEventListener('keydown', (e) => {
+        if (e.defaultPrevented || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
+        if (overlayOpen()) return;
+        if (editable(e.target) || editable(document.activeElement)) return;
+        const sel = window.getSelection();
+        if (sel && String(sel).length) return;
+
+        if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+            e.preventDefault();
+            window.scrollBy({ top: e.key === 'ArrowDown' ? step() : -step(), behavior: 'smooth' });
+        } else if (e.key === 'ArrowRight' && next) {
+            e.preventDefault();
+            location.href = next;
+        } else if (e.key === 'ArrowLeft' && prev) {
+            e.preventDefault();
+            location.href = prev;
+        }
+    });
+})();

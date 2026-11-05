@@ -851,6 +851,55 @@ button:hover,
     color: var(--accent);
 }
 
+/* ---------- 评论区的展开 / 收起 ---------- */
+/* 收起后右栏整列让出来，只在右上角留一个圆形图标，点了再展开。
+   列宽是 detail.js 拖分隔条时写上去的内联样式，要 !important 才压得住。 */
+.cmt-toggle {
+    position: fixed;
+    top: 84px;
+    right: 22px;
+    z-index: 8;
+    display: none;
+    width: 38px;
+    height: 38px;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border: 1px solid var(--line);
+    border-radius: 50%;
+    background: var(--bg);
+    color: var(--fg-2);
+    cursor: pointer;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+    transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.cmt-toggle:hover {
+    color: var(--accent);
+    border-color: var(--accent);
+}
+
+/* 窄于 1100px 时右栏本来就不进版面，这个图标留着也没用 */
+@media (min-width: 1101px) {
+    .cmt-toggle {
+        display: inline-flex;
+    }
+}
+
+body.cmt-off .with-tree .doc-wrap {
+    grid-template-columns: minmax(0, 1fr) !important;
+}
+
+body.cmt-off .cmt-pane {
+    display: none;
+}
+
+/* 收起后正文回到有右栏时的居中上限，别横着铺满整屏 */
+body.cmt-off .with-tree.has-tree .doc-wrap:has(.toc) .doc {
+    max-width: 82ch;
+    justify-self: center;
+}
+
 /* ---------- 右栏评论区 ---------- */
 /* 评论栏左边一条竖线把正文和评论分开。线画在这一栏自己的左沿上（不是挤在正文那边），
    高度固定成一屏，所以不管点评多还是少，线都从上到下贯到底，底部不会断在半路。 */
