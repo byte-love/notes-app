@@ -195,6 +195,17 @@ sudo /opt/deploy/sync-db.sh    # 正式库整库覆盖到测试库
   高度固定一屏，所以线从上到下一贯到底）；③「下一篇」是固定 260×52 的小卡片，靠正文右边缘，
   标题再长也只走省略号，不跟着内容变宽
   **改了 css/js 必须同时升 `?v=`**，否则强缓存让浏览器永远跑老代码（2026-10-30 踩过：评论改了 4 版用户一直看不到）
+- **前端公共小工具 `static/js/base.js`（2026-11-05）**：`window.App.csrf()` 现读 `<meta name="_csrf">`、
+  `App.post(url, data, init?)` 发带 `_csrf` 的 urlencoded POST、`App.esc()` 转义 `& < >`。
+  它挂在 `layout.html` 的 **head** 里第一个加载——放 foot 就晚了，页面自己的脚本已经在用。
+  **别再在各个 js 里各写一份**：以前 7 个文件各有一份 CSRF 读取 / POST 拼装 / 转义，
+  其中 `tree-admin.js` 和 `detail.js` 还在**加载时**把 token 存成常量，会话换新后那份就作废（403 的老坑）
+- **正文渲染：一次解析 + LRU 缓存（2026-11-05）**：`MarkdownRenderer.render()` 一次解析同时产出
+  `html` 和 `toc`（以前 `toHtml()` + `toc()` 各解析一遍长文）；结果按
+  `术语表版本 + 正文长度 + CRC32` 缓存 160 条，`GlossaryService.version` 每次 `reload()` 自增，
+  改了术语浮窗缓存自动失效。动渲染逻辑时注意：缓存命中路径上不能有副作用
+- **列表页标签只查一次**：`TagService.load(ids)` 返回 `TagsAndCounts`（每个条目的标签 + 每个标签的条数），
+  `listing()` 里卡片标签和筛选条共用一份；`of()` / `counts()` 留成薄封装给别处用
 - 评论是 `content_comment(item_id, user_id, parent_id, quote, body, anchor_kind, block_index, prefix, suffix, entry_kind)`：
   锚点两种粒度——`text`（选中文字，存原文 + 前后各 20 字）和 `block`（整段 / 代码块，存正文顶层块序号）；
   楼中楼用 `parent_id`，渲染最多两层。**评论按「最初来源条目」归并**：复制出来的副本沿 `copied_from_id`
@@ -576,5 +587,14 @@ Maven 编译会产出损坏的 jar，服务起不来（`Error: Invalid or corrup
 「Java」。修法是 `codeText()` 按 `.line` 逐行拼、`block()` 开头跳过 `.code-head`。
 **验证办法**（不写库）：Playwright 里 `page.route("**/app/admin/*/body", abort)` 拦掉保存请求，
 往正文敲一个字触发自动保存，再把请求里的 `body` 参数解出来数 ``` 里的行数——行数没塌就说明没被压扁。
+要一键跑这套，用 `notes-app/deploy/test-body-save.py <base> <path>`（账号走 `NOTES_USER` / `NOTES_PASS`）。
+
+**批量改模板时 PowerShell 的循环变量会残留，凭空写出一个假文件**（2026-11-05）：
+改脚本版本号时我写了 `foreach ($f in @('list.html','form.html')) { $t = ReadAllText($f) … }`，
+而 `templates\form.html` 并不存在（真身在 `templates\admin\form.html`），读取抛异常后 `$t`
+还留着上一轮 `list.html` 的内容，`WriteAllText` 就把 list.html 写成了 `templates/form.html`，
+`git status` 里显示成 `create mode … form.html`，差点当新模板提交（已删）。
+规矩：① 批量改文件用 Python 显式列举路径；② 改完先看 `git status --porcelain` 有没有意料之外的
+`A`/`create`；③ 路径存在与否别靠字符串拼出来的猜测。
 
 
