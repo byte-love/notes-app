@@ -14,89 +14,114 @@
     </nav>
 
     <article class="project">
-        <header class="project-head">
-            <h1 th:text="${project != null and project.title != null} ? ${project.title} : ${item.title}" th:attr="contenteditable=${canRate == true} ? 'true' : null, data-item-id=${canRate == true} ? ${item.id} : null">标题</h1>
+        <h1 th:text="${project != null and project.title != null} ? ${project.title} : ${item.title}"
+            th:attr="contenteditable=${canRate == true} ? 'true' : null, data-item-id=${canRate == true} ? ${item.id} : null">标题</h1>
 
-            <p class="project-sub" th:if="${project != null and project.subtitle != null}"
-               th:text="${project.subtitle}">一句话说明</p>
+        <p class="project-sub" th:if="${project != null and project.subtitle != null}"
+           th:text="${project.subtitle}">一句话说明</p>
 
-            <div class="project-facts" th:if="${project != null}">
-                <div th:if="${project.role != null}">
-                    <span class="fact-label">角色</span>
-                    <span th:text="${project.role}">全栈</span>
-                </div>
-                <div th:if="${project.period != null}">
-                    <span class="fact-label">周期</span>
-                    <span th:text="${project.period}">2026.08 – 2026.09</span>
-                </div>
-                <div>
-                    <span class="fact-label">更新</span>
-                    <time th:text="${#temporals.format(item.updatedAt, 'yyyy-MM-dd')}">2026-10-29</time>
-                </div>
-            </div>
+        <!-- 架构图放在最上面：先看图再看字，跟最初那版一样 -->
+        <figure class="project-figure" th:if="${project != null and project.diagram != null}">
+            <a th:href="${project.diagram}" target="_blank" rel="noopener">
+                <img th:src="${project.diagram}" th:alt="${item.title + ' 架构图'}">
+            </a>
+        </figure>
 
-            <ul class="stack" th:if="${project != null and !#lists.isEmpty(project.stack)}">
-                <li th:each="s : ${project.stack}" th:text="${s}">Spring Boot</li>
-            </ul>
+        <!-- 事实做成一条信息面板：左列等宽小标签，右列是值 -->
+        <dl class="project-facts" th:if="${project != null}">
+            <th:block th:if="${project.role != null}">
+                <dt>角色</dt>
+                <dd th:text="${project.role}">全栈</dd>
+            </th:block>
+            <th:block th:if="${project.period != null}">
+                <dt>周期</dt>
+                <dd th:text="${project.period}">2026.10 – 现在</dd>
+            </th:block>
+            <th:block th:if="${!#lists.isEmpty(project.stack)}">
+                <dt>技术栈</dt>
+                <dd class="project-stack"><span th:each="s, it : ${project.stack}"
+                        th:text="${(it.index > 0 ? ' · ' : '') + s}">Spring Boot</span></dd>
+            </th:block>
+            <th:block th:if="${project.repo != null}">
+                <dt>仓库</dt>
+                <dd><a th:href="${project.repo}" target="_blank" rel="noopener"
+                       th:text="${#strings.replace(project.repo, 'https://', '')}">github.com/…</a></dd>
+            </th:block>
+            <dt>更新</dt>
+            <dd><time th:text="${#temporals.format(item.updatedAt, 'yyyy-MM-dd')}">2026-01-01</time></dd>
+        </dl>
 
-            <div class="doc-meta">
-                <form sec:authorize="isAuthenticated()" th:action="@{/star/{s}(s=${item.slug})}"
-                      method="post" class="inline">
-                    <button type="submit" class="star-btn" th:classappend="${starred} ? 'on'"
-                            th:text="${starred} ? '★ 已收藏' : '☆ 收藏'">☆ 收藏</button>
-                </form>
-                <form sec:authorize="isAuthenticated()" th:action="@{/bookmark/{s}(s=${item.slug})}"
-                      method="post" class="inline">
-                    <button type="submit" class="star-btn" th:classappend="${bookmarked} ? 'on'"
-                            th:text="${bookmarked} ? '已加书签' : '加书签'">加书签</button>
-                </form>
-            </div>
-        </header>
+        <div class="doc-meta">
+            <form sec:authorize="isAuthenticated()" th:action="@{/star/{s}(s=${item.slug})}"
+                  method="post" class="inline">
+                <button type="submit" class="star-btn" th:classappend="${starred} ? 'on'"
+                        th:text="${starred} ? '★ 已收藏' : '☆ 收藏'">☆ 收藏</button>
+            </form>
+            <form sec:authorize="isAuthenticated()" th:action="@{/bookmark/{s}(s=${item.slug})}"
+                  method="post" class="inline">
+                <button type="submit" class="star-btn" th:classappend="${bookmarked} ? 'on'"
+                        th:text="${bookmarked} ? '已加书签' : '加书签'">加书签</button>
+            </form>
+        </div>
 
-        <section th:if="${project != null and project.problem != null}">
+        <section class="project-block" th:if="${project != null and project.problem != null}">
             <h2>背景</h2>
-            <p class="project-problem" th:text="${project.problem}">问题背景</p>
+            <p class="project-lead" th:utext="${project.problemHtml}">问题背景</p>
         </section>
 
-        <section th:if="${project != null and !#lists.isEmpty(project.actions)}">
+        <!-- 我做了什么：带编号的步骤条，序号在左、正文在右，中间一条细线串起来 -->
+        <section class="project-block" th:if="${project != null and !#lists.isEmpty(project.actions)}">
             <h2>我做了什么</h2>
-            <ol class="project-list">
+            <ol class="project-steps">
                 <li th:each="a : ${project.actions}">
-                    <span th:text="${a.text}">做了什么</span>
-                    <small th:if="${a.note != null}" th:text="${a.note}">注解</small>
+                    <span class="project-step-text" th:utext="${a.textHtml()}">做了什么</span>
+                    <button th:if="${a.hasNote()}" type="button" class="note-btn"
+                            th:attr="data-note=${a.noteHtml()}"
+                            aria-label="这一步的细节">i</button>
                 </li>
             </ol>
         </section>
 
-        <section th:if="${project != null and !#lists.isEmpty(project.results)}">
+        <!-- 结果：一条一张小卡片，数字对齐，箭头单独上色 -->
+        <section class="project-block" th:if="${project != null and !#lists.isEmpty(project.results)}">
             <h2>结果</h2>
-            <ul class="project-list results">
-                <li th:each="r : ${project.results}" th:text="${r}">结果</li>
+            <ul class="project-metrics">
+                <li th:each="r : ${project.results}" th:utext="${r.textHtml()}">结果</li>
             </ul>
         </section>
 
-        <section th:if="${project != null and project.diagram != null}">
-            <h2>架构</h2>
-            <img class="project-diagram" th:src="${project.diagram}" th:alt="${item.title}">
-        </section>
-
-        <section th:if="${project != null and !#lists.isEmpty(project.shots)}">
+        <section class="project-block" th:if="${project != null and !#lists.isEmpty(project.shots)}">
             <h2>界面截图</h2>
-            <figure class="project-shot" th:each="s : ${project.shots}">
-                <img th:src="${s.src}" th:alt="${s.caption}">
-                <figcaption th:if="${s.caption != null}" th:text="${s.caption}">说明</figcaption>
-            </figure>
+            <div class="project-gallery">
+                <figure th:each="s : ${project.shots}">
+                    <a th:href="${s.src}" target="_blank" rel="noopener">
+                        <img th:src="${s.src}" th:alt="${s.caption}">
+                    </a>
+                    <figcaption th:if="${s.caption != null}" th:text="${s.caption}">说明</figcaption>
+                </figure>
+            </div>
         </section>
 
         <p class="project-repo" th:if="${project != null and project.repo != null}">
             <a th:href="${project.repo}" class="btn-quiet" target="_blank" rel="noopener">仓库</a>
         </p>
 
-        <div class="markdown" th:if="${project == null}" th:utext="${html}" th:attr="data-save=${canRate == true} ? @{/admin/{id}/body(id=${item.id})} : null, contenteditable=${canRate == true} ? 'true' : null"></div>
+        <!-- 没有结构化字段的老条目：正文直接铺在下面 -->
+        <div class="markdown" th:if="${project == null}" th:utext="${html}"
+             th:attr="data-save=${canRate == true} ? @{/admin/{id}/body(id=${item.id})} : null, contenteditable=${canRate == true} ? 'true' : null"></div>
+
+        <!-- 「i」按钮点开的注解：内容由 project.js 塞进 .note-body -->
+        <dialog id="project-note" class="note-dialog">
+            <div class="note-head">
+                <button type="button" class="note-close" aria-label="关闭">×</button>
+            </div>
+            <p class="note-body"></p>
+        </dialog>
     </article>
 </main>
 
 <footer th:replace="~{fragments/layout :: foot}"></footer>
 <script th:src="@{/js/doc-edit.js(v=10)}"></script>
+<script th:src="@{/js/project.js(v=1)}" defer></script>
 </body>
 </html>
