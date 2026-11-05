@@ -171,7 +171,8 @@ public class MarkdownRenderer {
         if (markdown == null || markdown.isBlank()) {
             return new Rendered("", List.of());
         }
-        Split split = splitHidden(markdown);
+        Split hidden = splitHidden(markdown);
+        Split split = splitIndented(hidden.markdown(), hidden.secrets());
         Node document = parser.parse(fenceBareCode(stripFrontMatter(split.markdown())));        wrapGlossary(document);
 
         Map<Heading, String> ids = assignHeadingIds(document);
@@ -205,14 +206,80 @@ public class MarkdownRenderer {
                 .attributeProviderFactory(context -> attrProvider)
                 .build();
         String html = stripPresentational(renderer.render(document));
+        html = restoreIndented(html, split.indents());
         html = restoreHidden(html, split.secrets(), owner);
         List<TocItem> toc = new ArrayList<>();
         collect(document, ids, toc);
         return new Rendered(html, toc);
     }
 
-    /** 拆掉隐藏段之后的正文 + 被拆出去的那些原文（按出现顺序编号）。 */
-    private record Split(String markdown, List<String> secrets) {
+    /** 拆掉隐藏段 / 缩进块之后的正文 + 被拆出去的那些原文（按出现顺序编号）。 */
+    private record Split(String markdown, List<String> secrets, List<String> indents) {
+    }
+
+    /**
+     * 行首自己敲了 1~3 个空格的行：作者想让这一行在页面上往右挪一点。
+     * CommonMark 对段落开头的这几个空格是不认的（当普通段落渲染），所以这里也先抠出来，
+     * 渲染完再包一层带左边距的 div。4 个空格以上不碰——那是代码块，有它自己的规矩。
+     */
+    private static boolean indentedLine(String line) {
+        if (line.isEmpty() || line.charAt(0) != ' ') {
+            return false;
+        }
+        int n = 0;
+        while (n < line.length() && line.charAt(n) == ' ') {
+            n++;
+        }
+        return n >= 1 && n <= 3 && n < line.length();
+    }
+
+    private static Split splitIndented(String markdown, List<String> secrets) {
+        List<String> indents = new ArrayList<>();
+        String[] lines = markdown.split("\n", -1);
+        StringBuilder out = new StringBuilder(markdown.length() + 64);
+        boolean inFence = false;
+        int i = 0;
+        while (i < lines.length) {
+            String line = lines[i];
+            if (line.strip().startsWith("```")) {
+                inFence = !inFence;
+                out.append(line).append('\n');
+                i++;
+                continue;
+            }
+            if (!inFence && indentedLine(line)) {
+                List<String> block = new ArrayList<>();
+                while (i < lines.length && indentedLine(lines[i])) {
+                    block.add(lines[i].replaceFirst("^ {1,3}", ""));
+                    i++;
+                }
+                indents.add(String.join("\n", block));
+                out.append("\u0004B").append(indents.size() - 1).append("\u0004").append('\n');
+                continue;
+            }
+            out.append(line).append('\n');
+            i++;
+        }
+        return new Split(out.toString(), secrets, indents);
+    }
+
+    /** 把缩进块的占位符换成带左边距的 div（占位符通常被包在一个空段落里，连外壳一起换掉） */
+    private String restoreIndented(String html, List<String> indents) {
+        if (indents.isEmpty() || html.indexOf('\u0004') < 0) {
+            return html;
+        }
+        String out = html;
+        for (int i = 0; i < indents.size(); i++) {
+            String token = "\u0004B" + i + "\u0004";
+            if (out.indexOf(token) < 0) {
+                continue;
+            }
+            String inner = secretRenderer.render(parser.parse(indents.get(i))).strip();
+            String wrapped = "<div class=\"indent\">" + inner + "</div>";
+            String withP = "<p>" + token + "</p>";
+            out = out.contains(withP) ? out.replace(withP, wrapped) : out.replace(token, wrapped);
+        }
+        return out;
     }
 
     /** 行内隐藏：%%这样%% 包起来的一段，作者写给自己看的。不跨行、里面不能再有 % */
@@ -247,7 +314,7 @@ public class MarkdownRenderer {
             m.appendTail(sb);
             lines[i] = sb.toString();
         }
-        return new Split(String.join("\n", lines), secrets);
+        return new Split(String.join("\n", lines), secrets, List.of());
     }
 
     private static String tokenOf(int index) {
