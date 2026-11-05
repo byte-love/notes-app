@@ -94,6 +94,7 @@
             <div class="markdown" th:utext="${html}"
                  th:attr="data-slug=${item.slug},data-anchors=${bookmarkAnchorCsv},data-resume=${resumeProgress},
                           data-save=${canRate == true} ? @{/admin/{id}/body(id=${item.id})} : null,
+                          data-upload=${canRate == true} ? @{/admin/upload} : null,
                           contenteditable=${canRate == true and item.body != null and #strings.length(item.body) <= 65536} ? 'true' : null"></div>
 
             <!-- 正文末尾挂的补充笔记：像附件卡一样列出来，点开就是那篇；右边给个删除 -->
@@ -159,7 +160,7 @@
     <script th:src="@{/js/rate.js(v=3)}"></script>
 <script th:src="@{/js/tree-admin.js(v=4)}"></script>
 <script th:src="@{/js/body-edit.js(v=3)}"></script>
-<script th:src="@{/js/doc-edit.js(v=10)}"></script>
+<script th:src="@{/js/doc-edit.js(v=11)}"></script>
 
 <footer th:replace="~{fragments/layout :: foot}"></footer>
 
