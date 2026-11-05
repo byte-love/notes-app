@@ -231,9 +231,14 @@ sudo /opt/deploy/sync-db.sh    # 正式库整库覆盖到测试库
   并把**每一行包成 `<span class="line">`**；token 分七类（`.tok-k` 关键字 / `.tok-t` 类型 / `.tok-f` 函数名 /
   `.tok-s` 字符串 / `.tok-n` 数字 / `.tok-c` 注释 / `.tok-a` 注解），颜色是主题块里的
   `--code-kw|type|func|str|num|cmt|ann` 七组值（浅色 / 护眼 / 深色各一套）。
-  ⚠ 行是 `<span>`，所以**从 DOM 取代码必须按 `.line` 逐行拼**（`doc-edit.js` 的 `codeText()`）——
-  直接 `textContent` 会把整段代码粘成一行，保存下去就真成一行了；`.code-head`（语言条 + 复制按钮）
-  是界面不是正文，序列化时要跳过
+  **高亮时把原文挂在元素上**：`pre.dataset.raw`（原始代码）+ `pre.dataset.lang`（语言），
+  保存序列化时 `codeText()` 优先读它——显示 DOM 怎么改都不影响落库的数据。
+  ⚠ 行是 `<span>`，换行只在 CSS 里：**绝对不要退回 `textContent`**，那会把整段代码粘成一行；
+  只有拿不到 `dataset.raw`（没走过高亮的块）才按 `.line` 逐行拼，再不行才按 `<br>` / 块级元素兜底。
+  `.code-head`（语言条 + 复制按钮）是界面不是正文，序列化时要跳过。
+  自测：`deploy/test-body-save.py <base> <path>`（`NOTES_USER` / `NOTES_PASS` 走环境变量）——
+  拦掉写库请求、敲一个字触发自动保存，比对页面与保存内容里每块代码的行数；第二遍会先拆掉
+  `.line` 的 class，专门验证序列化没有依赖显示结构
 - **往正文里粘贴**（`doc-edit.js` 的 paste）：剪贴板带 `table / pre / ul / ol / h1-6 / blockquote / img`
   就先把 HTML 洗一遍再 `insertHTML`（只留结构标签，丢掉来源页的底色、宽度、外层 div、脚本、按钮），
   页面当场就是表格 / 代码块的样子，保存时 `toMarkdown` 再按结构序列化；没有结构才退回纯文本。

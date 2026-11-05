@@ -88,6 +88,11 @@
             .map((line) => `<span class="line">${lang ? highlight(line, lang) : escapeHtml(line)}</span>`)
             .join('');
 
+        // 把「原文 + 语言」挂在 <pre> 上：高亮之后行就变成了 <span>，换行只在 CSS 里，
+        // 正文序列化（doc-edit.js 的 codeText）必须拿这份原文，不能再从显示 DOM 里拼
+        pre.dataset.raw = raw;
+        pre.dataset.lang = lang;
+
         const wrap = document.createElement('div');
         wrap.className = 'code-block';
         const head = document.createElement('div');

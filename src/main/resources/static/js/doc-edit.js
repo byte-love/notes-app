@@ -81,10 +81,13 @@
             .replace(/[ \t]*\n[ \t]*/g, '\n')
             .trim();
 
-    // 代码块取文本：code.js 高亮时把每一行包成了 <span class="line">，
-    // 直接 textContent 会把所有行粘成一行（保存后再打开代码就只剩一行了）。
-    // 拿不到 .line 时（没增强过的代码块 / 别的站点粘来的 div 一行一段）退回去按换行元素拆。
+    // 代码块取文本：优先用 code.js 高亮时挂上来的 dataset.raw（那份是原文，
+    // 跟显示结构无关）；没有就用 .line 逐行拼；再没有就按换行元素兜底。
+    // ⚠ 别退回 el.textContent——高亮后行是 <span>，换行只在 CSS 里，直接取会把整段粘成一行
     const codeText = (el) => {
+        if (el.dataset && el.dataset.raw !== undefined) {
+            return el.dataset.raw;
+        }
         const lines = el.querySelectorAll('.line');
         if (lines.length) {
             return [...lines].map((line) => line.textContent).join('\n');
@@ -137,9 +140,11 @@
         }
         if (tag === 'pre') {
             const code = el.querySelector('code');
-            const lang = ((code ? code.className : '').match(/language-([\w-]+)/) || [])[1] || '';
+            const lang = el.dataset.lang !== undefined
+                ? el.dataset.lang
+                : ((code ? code.className : '').match(/language-([\w-]+)/) || [])[1] || '';
             out.push('```' + lang);
-            out.push(codeText(code || el).replace(/\n+$/, ''));
+            out.push(codeText(el).replace(/\n+$/, ''));
             out.push('```');
             return;
         }
