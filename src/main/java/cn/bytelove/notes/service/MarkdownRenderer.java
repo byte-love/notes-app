@@ -268,14 +268,27 @@ public class MarkdownRenderer {
             if (out.indexOf(token) < 0) {
                 continue;
             }
-            String replacement = "";
-            if (owner) {
-                String inner = secretRenderer.render(parser.parse(secrets.get(i))).strip();
-                replacement = "<span class=\"hid\">" + unwrapParagraph(inner) + "</span>";
+            if (!owner) {
+                // 别人那边：整段 / 整条列表项都藏掉时，连外壳一起删，让后面的内容顶上来，
+                // 不然会留一块空白段落、或者一个空的白圆点
+                out = dropHiddenBlock(out, token);
+                continue;
             }
-            out = out.replace(token, replacement);
+            String inner = secretRenderer.render(parser.parse(secrets.get(i))).strip();
+            out = out.replace(token, "<span class=\"hid\">" + unwrapParagraph(inner) + "</span>");
         }
         return out;
+    }
+
+    /** 占位符独占一个块（段落 / 列表项 / 标题 / 表格单元）时，把整个块删掉，只留空的行不要 */
+    private static String dropHiddenBlock(String html, String token) {
+        java.util.regex.Pattern block = java.util.regex.Pattern.compile(
+                "<(p|li|h[1-6]|td|th)\\b[^>]*>\\s*" + java.util.regex.Pattern.quote(token) + "\\s*</\\1>");
+        String stripped = block.matcher(html).replaceAll("");
+        if (!stripped.equals(html)) {
+            return stripped;
+        }
+        return html.replace(token, "");
     }
 
     /** 行内片段被渲染成单个段落时把外层 {@code <p>} 摘掉：span 里不能塞段落 */
