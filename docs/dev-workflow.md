@@ -119,6 +119,35 @@ ssh root@47.104.210.93 'docker exec -i notes-pg psql -U notes -d notes -f - < /r
 删了就是真没了。要保就把这个目录一起备份（同步到对象存储或另一台机器都行）。
 目前它是应用静态资源的一部分（见 `application.yml` 的 `static-locations`），部署不会覆盖。
 
+## 量一下再改（性能改动怎么验收）
+
+先量，再改，改完再量一遍同一个指标。**「感觉快了」不算数**，这台机器上同一页面的耗时会在
+30~190ms 之间飘（cron 备份、另一个环境也在跑、JVM 刚起来还没 JIT），先后两次单独打点比不出东西。
+
+三层工具，按需要挑：
+
+| 工具 | 量什么 | 用法 |
+|---|---|---|
+| `deploy/measure.sh` | 服务端逐页耗时（登录态，排除网络） | `bash /opt/deploy/measure.sh dev 15` |
+| `deploy/ab-bench.sh` | 改动前 / 改动后**交替**打点 + 数据库块访问 | `bash /opt/deploy/ab-bench.sh <改动前的 jar> 40` |
+| `deploy/perf-probe.py` | 真实浏览器里的首屏、每批「加载更多」、DOM 节点数、长任务 | `NOTES_USER=… NOTES_PASS=… python deploy/perf-probe.py http://47.104.210.93:8180/app /app/bagu` |
+
+**A/B 才是能写进结论的做法**：把改动前的代码单独打一个包，在 8099 上再起一个实例（同一个库、
+同一个 context path），两个实例都预热 60 轮，然后一轮里交替打「前 / 后」，比较同一批请求。
+`ab-bench.sh` 会自己起这个临时实例、打完自己停掉。
+
+基准（2026-11-05，`ContentCard` 那次改动前后，测试环境，40 轮 p50）：
+`/bagu` 41.6→32.5ms、`/notes` 44.6→33.3ms、广场分组页 36.0→24.6ms、正文页 41.3→31.0ms、
+管理页 42.2→16.4ms；20 次 `/bagu` 的数据库块访问 5056→1757。
+
+**别被冷启动骗了**：JVM 刚起来的头几十个请求是解释执行的，能慢 3~5 倍。
+`app.sh` 里那段预热就是为这个；自己临时起实例打点时，先空跑 60 轮再采样。
+
+**改动渲染结果的回归测试——逐页 HTML 比对**：改这类「只换数据来源、页面应该一模一样」的代码时，
+改之前先把一批页面抓成快照（登录态 + 游客态各一遍），改完再抓一遍，`diff -rq` 必须只有
+CSRF token / `jsessionid` 这种天然会变的东西。这次就是这么验的：29 个页面里只有
+`/app/admin` 的表格行顺序变了（`sortOrder` 和标题都相同的副本之间，SQL 本来就没有确定顺序）。
+
 ## 出事怎么办
 
 **应用起不来**：部署脚本换包前会把旧 jar 备份成 `notes-app.jar.bak`，直接换回去：
@@ -171,6 +200,11 @@ sudo /opt/deploy/sync-db.sh    # 正式库整库覆盖到测试库
   `/api/tree/{kind}?parent=<slug>` 补子节点
 - 静态资源带 `?v=` 版本号 + `Cache-Control: max-age=31536000`，nginx 开了 `gzip_types`（css/js）；
   nginx 到应用是长连接（`upstream ... keepalive` + `Connection ""`）
+- **正式站走 HTTP/2（2026-11-05）**：`sites-available/02-domain` 里 `listen 443 ssl http2;`，
+  一页 7~11 个请求在同一连接上并行，不再按 RTT 排队。改完 `nginx -t` 通过再
+  `systemctl reload nginx`（配置备份在 `/root/nginx-backup/`），验证：
+  `curl -sk --http2 -o /dev/null -w '%{http_version}' https://byte-love.cn/app/bagu` 应该打 `2`。
+  测试站 8180 是明文端口，浏览器不会对 h2c 协商，所以没开
 - **分区配色**（2026-11-04）：四个分区各一个色相——闪念 170 松绿 / 项目 214 靛 / 八股 34 琥珀 / 算法 272 紫。
   容器上写 `data-area="note|project|bagu|algo"`（`list.html`/`detail.html` 的 `.with-tree`、`explore.html` 的每个
   `<section>`、`explore-group.html`/`project.html` 的 `<main>`），里面用
@@ -206,6 +240,17 @@ sudo /opt/deploy/sync-db.sh    # 正式库整库覆盖到测试库
   改了术语浮窗缓存自动失效。动渲染逻辑时注意：缓存命中路径上不能有副作用
 - **列表页标签只查一次**：`TagService.load(ids)` 返回 `TagsAndCounts`（每个条目的标签 + 每个标签的条数），
   `listing()` 里卡片标签和筛选条共用一份；`of()` / `counts()` 留成薄封装给别处用
+- **列表 / 目录 / 广场不读正文（`ContentCard`，2026-11-05）**：这些页面只显示标题、摘要、星级、标签，
+  正文是表里最大的列（每篇几 KB 到几十 KB），一次要摆几百张卡片时白读一遍没有意义。
+  `domain/ContentCard` 是同一张表的轻量视图（字段一样、少一个 `body`），
+  `ContentItemRepository` 里几条 `findCards*` 都走同一个 `CARD_COLUMNS`
+  （`select new cn.bytelove.notes.domain.ContentCard(…)`，JPQL 构造表达式，启动即校验），
+  `NoteTreeService` / `SubGroupService` / `VisibilityService` 和模板都按它工作——
+  取值器仍是 JavaBean 风格，模板里 `i.title` / `n.item.slug` 一行都不用改。
+  **要正文的地方还是查 `ContentItem`**：正文页本身、编辑页、复制到我的空间、重新打标签。
+  卡片附件上那个体积（「9.1 KB」）改成 `octet_length(body)` 一次查一批（`bodySizes`）——
+  别为了拿长度把整篇正文读进内存，也别用 JPQL 的 `length()`（它数字符，中文会小三分之二）。
+  实测见「量一下再改」那一节
 - 评论是 `content_comment(item_id, user_id, parent_id, quote, body, anchor_kind, block_index, prefix, suffix, entry_kind)`：
   锚点两种粒度——`text`（选中文字，存原文 + 前后各 20 字）和 `block`（整段 / 代码块，存正文顶层块序号）；
   楼中楼用 `parent_id`，渲染最多两层。**评论按「最初来源条目」归并**：复制出来的副本沿 `copied_from_id`
@@ -507,6 +552,16 @@ grep 命中就退出，`tee` 收到 SIGPIPE，整个管道退出码变成 141，
 变成 `鍒囨崲娣辨祬鑹?`，Thymeleaf 解析报 `Incomplete structure`，`/app/login` 都变 500。
 **改模板/Java/CSS 一律用编辑器或 `edit` 工具**；非要用脚本就得显式 `[System.IO.File]::ReadAllText(path, UTF8)`
 读、`UTF8Encoding($false)` 写，改完 `grep` 一遍中文确认没坏。
+2026-11-05 又栽了一次，而且是最普通的写法：`(Get-Content x.java) -replace … | Set-Content -Encoding utf8 x.java`
+——**读的那一端就是错的**，`-Encoding utf8` 只管写，注释全变 `澶у垎绫荤殑`，`mvn` 报
+`unclosed string literal`。同一件事已经三次了：**Java/模板/CSS 只用 `edit` / `write` 工具改**。
+
+**Postgres 不认 `? is null or 列 = ?` 这种「可选条件」写法**（2026-11-05）：管理页列表想用一条 JPQL
+兼顾「有筛选 / 没筛选」，写成
+`where (:ownerId is null or i.ownerId = :ownerId) and (:since is null or i.updatedAt >= :since)`，
+运行时报 `ERROR: could not determine data type of parameter $5`——单独一个 `? is null` 让 PG 无从推断类型，
+编译期看不出来，一访问该页面就 500。要么按条件拆成几条查询，要么像现在这样**整表查出来在 Java 里过滤**
+（几百行，管理页够用）。这类「参数可空」的查询，上线前一定要真打开那个页面一次。
 
 **`scrollbar-color` 是继承属性，别把「滚动中」做成全局状态**：挂在 `html` 上的滚动条颜色会被所有
 `overflow: auto` 的子容器继承，翻正文时左侧目录、右侧大纲的滚动条会一起被点亮（看着像它们自己在动）。

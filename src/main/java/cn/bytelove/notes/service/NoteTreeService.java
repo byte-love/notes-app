@@ -1,6 +1,6 @@
 package cn.bytelove.notes.service;
 
-import cn.bytelove.notes.domain.ContentItem;
+import cn.bytelove.notes.domain.ContentCard;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -13,6 +13,9 @@ import java.util.Set;
 
 /**
  * 单父节点的树。列表已经在 SQL 里按 sortOrder 排过，这里只做组装和防环。
+ * <p>
+ * 节点上挂的是 {@link ContentCard}（不含正文）：目录一行只需要标题、地址、星级这些，
+ * 几百条内容的分区把正文一起读进来纯属浪费。
  */
 @Service
 public class NoteTreeService {
@@ -21,30 +24,30 @@ public class NoteTreeService {
      * lazy = 有子节点但没渲染出来（前端展开时再取），避免几百条内容把整棵树塞进每个页面。
      * ordinal = 在同一个父节点下的「第几篇」（只给叶子编号，1 起；分组为 0），左树用它当行号。
      */
-    public record Node(ContentItem item, List<Node> children, boolean locked, boolean lazy, int ordinal) {
+    public record Node(ContentCard item, List<Node> children, boolean locked, boolean lazy, int ordinal) {
 
         public boolean hasChildren() {
             return !children.isEmpty();
         }
     }
 
-    private static final Comparator<ContentItem> ORDER =
-            Comparator.comparingInt(ContentItem::getSortOrder)
-                    .thenComparing(ContentItem::getTitle, Comparator.nullsLast(String::compareTo));
+    private static final Comparator<ContentCard> ORDER =
+            Comparator.comparingInt(ContentCard::getSortOrder)
+                    .thenComparing(ContentCard::getTitle, Comparator.nullsLast(String::compareTo));
 
-    public List<Node> build(List<ContentItem> items) {
+    public List<Node> build(List<ContentCard> items) {
         return build(items, Set.of());
     }
 
-    public List<Node> build(List<ContentItem> items, Set<Long> lockedIds) {
-        Map<Long, ContentItem> byId = new LinkedHashMap<>();
-        for (ContentItem item : items) {
+    public List<Node> build(List<ContentCard> items, Set<Long> lockedIds) {
+        Map<Long, ContentCard> byId = new LinkedHashMap<>();
+        for (ContentCard item : items) {
             byId.put(item.getId(), item);
         }
 
-        Map<Long, List<ContentItem>> childrenOf = new LinkedHashMap<>();
-        List<ContentItem> roots = new ArrayList<>();
-        for (ContentItem item : items) {
+        Map<Long, List<ContentCard>> childrenOf = new LinkedHashMap<>();
+        List<ContentCard> roots = new ArrayList<>();
+        for (ContentCard item : items) {
             // 补充笔记不单独上一个目录行：它跟在「本体」的卡片 / 正文里，目录里只剩本体那一行
             Long suppOf = item.getSupplementOfId();
             if (suppOf != null && byId.containsKey(suppOf) && !suppOf.equals(item.getId())) {
@@ -64,12 +67,12 @@ public class NoteTreeService {
         return toNodes(roots, childrenOf, lockedIds);
     }
 
-    private List<Node> toNodes(List<ContentItem> nodes, Map<Long, List<ContentItem>> childrenOf,
+    private List<Node> toNodes(List<ContentCard> nodes, Map<Long, List<ContentCard>> childrenOf,
                                Set<Long> lockedIds) {
         List<Node> result = new ArrayList<>();
         int leafNo = 0;
-        for (ContentItem item : nodes) {
-            List<ContentItem> kids = childrenOf.getOrDefault(item.getId(), List.of());
+        for (ContentCard item : nodes) {
+            List<ContentCard> kids = childrenOf.getOrDefault(item.getId(), List.of());
             // 行号只给叶子：同一个父节点下按顺序 1、2、3…，分组不占号
             if (kids.isEmpty()) {
                 leafNo++;
@@ -116,13 +119,13 @@ public class NoteTreeService {
     }
 
     /** 从根到目标节点的路径，用于面包屑。 */
-    public List<ContentItem> breadcrumb(List<ContentItem> all, ContentItem target) {
-        Map<Long, ContentItem> byId = new LinkedHashMap<>();
-        for (ContentItem item : all) {
+    public List<ContentCard> breadcrumb(List<ContentCard> all, ContentCard target) {
+        Map<Long, ContentCard> byId = new LinkedHashMap<>();
+        for (ContentCard item : all) {
             byId.put(item.getId(), item);
         }
-        List<ContentItem> path = new ArrayList<>();
-        ContentItem cursor = target;
+        List<ContentCard> path = new ArrayList<>();
+        ContentCard cursor = target;
         int guard = 0;
         while (cursor != null && guard++ < 64) {
             path.add(0, cursor);
@@ -130,7 +133,7 @@ public class NoteTreeService {
             if (pid == null) {
                 break;
             }
-            ContentItem parent = byId.get(pid);
+            ContentCard parent = byId.get(pid);
             if (parent == null || parent.getId().equals(cursor.getId())) {
                 break;
             }
@@ -140,9 +143,9 @@ public class NoteTreeService {
     }
 
     /** 目标节点的所有子孙 ID，用于禁止把父节点设成自己的后代。 */
-    public List<Long> descendantIds(List<ContentItem> all, Long rootId) {
+    public List<Long> descendantIds(List<ContentCard> all, Long rootId) {
         Map<Long, List<Long>> childrenOf = new LinkedHashMap<>();
-        for (ContentItem item : all) {
+        for (ContentCard item : all) {
             if (item.getParentId() != null) {
                 childrenOf.computeIfAbsent(item.getParentId(), k -> new ArrayList<>()).add(item.getId());
             }

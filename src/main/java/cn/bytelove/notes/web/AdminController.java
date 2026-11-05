@@ -1,5 +1,6 @@
 package cn.bytelove.notes.web;
 
+import cn.bytelove.notes.domain.ContentCard;
 import cn.bytelove.notes.domain.ContentItem;
 import cn.bytelove.notes.domain.ContentKind;
 import cn.bytelove.notes.domain.Visibility;
@@ -12,11 +13,8 @@ import cn.bytelove.notes.service.TrashService;
 import cn.bytelove.notes.service.ViewerService;
 import cn.bytelove.notes.service.VisibilityService.Viewer;
 import cn.bytelove.notes.web.form.ContentForm;
-import jakarta.persistence.criteria.Predicate;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
-import org.springframework.data.domain.Sort;
-import org.springframework.data.jpa.domain.Specification;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
@@ -125,36 +123,34 @@ public class AdminController {
 
         ContentKind filterKind = parseKind(kind);
         Instant since = range == null ? null : Instant.now().minus(Duration.ofDays(range));
-        String like = (q == null || q.isBlank()) ? null : "%" + q.trim().toLowerCase(Locale.ROOT) + "%";
+        String needle = (q == null || q.isBlank()) ? null : q.trim().toLowerCase(Locale.ROOT);
 
         Long ownerId = viewer.admin() ? null : viewer.userId();
-        Specification<ContentItem> spec = (root, query, cb) -> {
-            List<Predicate> parts = new ArrayList<>();
-            if (ownerId != null) {
-                parts.add(cb.equal(root.get("ownerId"), ownerId));
+        // 只查卡片（不含正文）：每行只用得到标题、地址、可见性、更新时间。
+        // 筛选放在内存里过：条件都是可选的，写成动态 SQL 反而要给每个条件准备一条查询
+        List<ContentCard> found = new ArrayList<>();
+        for (ContentCard i : items.findAllCards()) {
+            if (ownerId != null && !ownerId.equals(i.getOwnerId())) {
+                continue;
             }
-            if (filterKind != null) {
-                parts.add(cb.equal(root.get("kind"), filterKind));
+            if (filterKind != null && i.getKind() != filterKind) {
+                continue;
             }
-            if (since != null) {
-                parts.add(cb.greaterThanOrEqualTo(root.get("updatedAt"), since));
+            if (since != null && i.getUpdatedAt().isBefore(since)) {
+                continue;
             }
-            if (like != null) {
-                parts.add(cb.or(
-                        cb.like(cb.lower(root.get("title")), like),
-                        cb.like(cb.lower(root.get("slug")), like)));
+            if (needle != null
+                    && !i.getTitle().toLowerCase(Locale.ROOT).contains(needle)
+                    && !i.getSlug().toLowerCase(Locale.ROOT).contains(needle)) {
+                continue;
             }
-            // 条件为空时 cb.and() 返回恒真，等价于不过滤
-            return cb.and(parts.toArray(new Predicate[0]));
-        };
-
-        List<ContentItem> found = items.findAll(spec,
-                Sort.by(Sort.Order.asc("sortOrder"), Sort.Order.asc("title")));
+            found.add(i);
+        }
 
         // 每行要用到的值在这里一次性算好：模板里 #temporals.format 每行都会新建一次
         // formatter，300 多行加起来是几十毫秒；枚举的 label、URL 也一样
         List<AdminRow> rows = new ArrayList<>(found.size());
-        for (ContentItem i : found) {
+        for (ContentCard i : found) {
             rows.add(new AdminRow(i.getId(), i.getKind().getLabel(), i.getSlug(), i.getTitle(),
                     i.getVisibility().getLabel(), UPDATED_AT.format(i.getUpdatedAt()), i.isRecommended()));
         }
@@ -209,7 +205,7 @@ public class AdminController {
     /** 同一个父节点下已有的最大排序号 +1：新条目默认排在最后，不用手填。 */
     private int nextSortOrder(Long ownerId, Long parentId, ContentKind kind) {
         int max = 0;
-        for (ContentItem i : allFor(ownerId)) {
+        for (ContentCard i : allFor(ownerId)) {
             if (i.getKind() != kind) {
                 continue;
             }
@@ -610,39 +606,29 @@ public class AdminController {
         return item;
     }
 
-    private List<ContentItem> allFor(Long ownerId) {
-        List<ContentItem> all = new ArrayList<>();
+    private List<ContentCard> allFor(Long ownerId) {
         if (ownerId == null) {
-            return all;
+            return new ArrayList<>();
         }
-        for (ContentKind kind : ContentKind.values()) {
-            all.addAll(items.findByOwnerIdAndKindOrderBySortOrderAsc(ownerId, kind));
-        }
-        return all;
+        // 目录、候选父节点、祖先环检测都用这一个查询（不含正文）
+        return new ArrayList<>(items.findCardsByOwner(ownerId));
     }
 
     /** 可以作为父节点的候选：同一个人的内容，排除自己和自己的所有子孙。 */
-    private List<ContentItem> parentOptions(Long selfId, Long ownerId) {
-        List<ContentItem> all = allFor(ownerId);
+    private List<ContentCard> parentOptions(Long selfId, Long ownerId) {
+        List<ContentCard> all = allFor(ownerId);
         if (selfId != null) {
             List<Long> blocked = tree.descendantIds(all, selfId);
             all.removeIf(i -> i.getId().equals(selfId) || blocked.contains(i.getId()));
         }
-        all.sort(Comparator.comparing(ContentItem::getKind)
-                .thenComparing(ContentItem::getTitle, Comparator.nullsLast(String::compareTo)));
+        all.sort(Comparator.comparing(ContentCard::getKind)
+                .thenComparing(ContentCard::getTitle, Comparator.nullsLast(String::compareTo)));
         return all;
     }
 
-    /** 这篇下面挂着的那篇补充笔记（有多篇时取排最前面的那条）。 */
+    /** 这篇下面挂着的那篇补充笔记（有多篇时取排最前面的那条）。要正文，所以还是查整条。 */
     private ContentItem attachedNote(ContentItem item) {
-        ContentItem found = null;
-        for (ContentItem i : allFor(item.getOwnerId())) {
-            if (item.getId().equals(i.getSupplementOfId())
-                    && (found == null || i.getSortOrder() < found.getSortOrder())) {
-                found = i;
-            }
-        }
-        return found;
+        return items.findFirstBySupplementOfIdOrderBySortOrderAscIdAsc(item.getId()).orElse(null);
     }
 
     /**

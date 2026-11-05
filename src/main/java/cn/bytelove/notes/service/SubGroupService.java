@@ -1,6 +1,6 @@
 package cn.bytelove.notes.service;
 
-import cn.bytelove.notes.domain.ContentItem;
+import cn.bytelove.notes.domain.ContentCard;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
@@ -34,7 +34,7 @@ public class SubGroupService {
     public record Rule(String name, List<String> words) {
     }
 
-    public record SubGroup(String name, List<ContentItem> items) {
+    public record SubGroup(String name, List<ContentCard> items) {
     }
 
     private final Map<String, List<Rule>> rules = new LinkedHashMap<>();
@@ -66,7 +66,7 @@ public class SubGroupService {
     /**
      * 按分组 slug 把条目拆成几档；不满足条件返回空列表（页面就按原来的平铺渲染）。
      */
-    public List<SubGroup> split(String slug, List<ContentItem> items) {
+    public List<SubGroup> split(String slug, List<ContentCard> items) {
         if (slug == null || items == null || items.size() < MIN_ITEMS) {
             return List.of();
         }
@@ -75,13 +75,13 @@ public class SubGroupService {
             return List.of();
         }
 
-        Map<String, List<ContentItem>> buckets = new LinkedHashMap<>();
+        Map<String, List<ContentCard>> buckets = new LinkedHashMap<>();
         for (Rule r : group) {
             buckets.put(r.name(), new ArrayList<>());
         }
-        List<ContentItem> others = new ArrayList<>();
+        List<ContentCard> others = new ArrayList<>();
 
-        for (ContentItem item : items) {
+        for (ContentCard item : items) {
             String haystack = ((item.getTitle() == null ? "" : item.getTitle()) + " "
                     + (item.getSummary() == null ? "" : item.getSummary())).toLowerCase(Locale.ROOT);
             String hit = null;

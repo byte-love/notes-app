@@ -1,5 +1,6 @@
 package cn.bytelove.notes.web;
 
+import cn.bytelove.notes.domain.ContentCard;
 import cn.bytelove.notes.domain.ContentItem;
 import cn.bytelove.notes.domain.ContentKind;
 import cn.bytelove.notes.repo.ContentItemRepository;
@@ -39,7 +40,9 @@ import java.io.IOException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -166,18 +169,18 @@ public class PublicController {
                            Integer from, boolean fragment, String rate, String tag) {
         Viewer viewer = viewers.current(auth);
         Set<Long> lockedIds = new LinkedHashSet<>();
-        List<ContentItem> all = filtered(poolForListing(kind, viewer), viewer, lockedIds);
+        List<ContentCard> all = filtered(poolForListing(kind, viewer), viewer, lockedIds);
         Set<Long> starIds = stars.starredIds(viewer.userId());
 
         // 目录节点只出现在左侧树里，不混进右侧正文列表；标成「当目录用」的也一样
         Set<Long> parentIds = new LinkedHashSet<>();
-        for (ContentItem i : all) {
+        for (ContentCard i : all) {
             if (i.getParentId() != null) {
                 parentIds.add(i.getParentId());
             }
         }
-        List<ContentItem> leaves = new ArrayList<>();
-        for (ContentItem i : all) {
+        List<ContentCard> leaves = new ArrayList<>();
+        for (ContentCard i : all) {
             if (!parentIds.contains(i.getId()) && !i.isFolder()) {
                 leaves.add(i);
             }
@@ -196,8 +199,8 @@ public class PublicController {
         String tagFilter = (tag == null || tag.isBlank()) ? null : tag.trim();
         if (tagFilter != null) {
             Set<Long> withTag = tags.itemIdsWithTag(tagFilter);
-            List<ContentItem> kept = new ArrayList<>();
-            for (ContentItem i : leaves) {
+            List<ContentCard> kept = new ArrayList<>();
+            for (ContentCard i : leaves) {
                 if (withTag.contains(i.getId())) {
                     kept.add(i);
                 }
@@ -206,9 +209,9 @@ public class PublicController {
         }
 
         // 补充笔记不单独占一张卡：作为附件挂到它的「本体」卡片里（本体不可见时才退回当普通卡片）
-        Map<Long, List<ContentItem>> supplementsOf = new LinkedHashMap<>();
-        List<ContentItem> plainLeaves = new ArrayList<>();
-        for (ContentItem i : leaves) {
+        Map<Long, List<ContentCard>> supplementsOf = new LinkedHashMap<>();
+        List<ContentCard> plainLeaves = new ArrayList<>();
+        for (ContentCard i : leaves) {
             Long suppOf = i.getSupplementOfId();
             if (suppOf != null && !suppOf.equals(i.getId())) {
                 supplementsOf.computeIfAbsent(suppOf, k -> new ArrayList<>()).add(i);
@@ -217,13 +220,15 @@ public class PublicController {
             }
         }
         leaves = plainLeaves;
+        // 附件卡上写的体积要读正文长度：一次查一批，别每张卡片读一遍
+        Map<Long, String> sizes = sizesOf(allIds(supplementsOf));
         Map<Long, List<AttachedNote>> cardAttachments = new LinkedHashMap<>();
         supplementsOf.forEach((parentId, list) -> {
-            list.sort(Comparator.comparingInt(ContentItem::getSortOrder)
-                    .thenComparing(ContentItem::getTitle, Comparator.nullsLast(String::compareTo)));
+            list.sort(Comparator.comparingInt(ContentCard::getSortOrder)
+                    .thenComparing(ContentCard::getTitle, Comparator.nullsLast(String::compareTo)));
             List<AttachedNote> notes = new ArrayList<>(list.size());
-            for (ContentItem s : list) {
-                notes.add(new AttachedNote(s.getTitle(), s.getSlug(), sizeOf(s.getBody())));
+            for (ContentCard s : list) {
+                notes.add(new AttachedNote(s.getTitle(), s.getSlug(), sizes.get(s.getId())));
             }
             cardAttachments.put(parentId, notes);
         });
@@ -247,8 +252,8 @@ public class PublicController {
         model.addAttribute("nextFrom", end < grouped.size() ? end : -1);
 
         Long lastReadId = positions.find(viewer.userId(), kind);
-        ContentItem lastRead = null;
-        for (ContentItem i : all) {
+        ContentCard lastRead = null;
+        for (ContentCard i : all) {
             if (i.getId().equals(lastReadId)) {
                 lastRead = i;
                 break;
@@ -311,11 +316,12 @@ public class PublicController {
 
         Set<Long> lockedIds = new LinkedHashSet<>();
         // 侧栏树跟着这条内容的作者走：看别人的推荐内容时，列的是他自己的目录
-        List<ContentItem> siblings = filtered(
-                items.findByOwnerIdAndKindOrderByUpdatedAtDesc(item.getOwnerId(), kind), viewer, lockedIds);
+        // 这些只是「目录 + 上一条/下一条」用的，正文不用，所以查不含正文的卡片
+        List<ContentCard> siblings = filtered(
+                items.findCardsByOwnerAndKind(item.getOwnerId(), kind), viewer, lockedIds);
 
         if (kind != ContentKind.PROJECT) {
-            model.addAttribute("crumbs", tree.breadcrumb(siblings, item));
+            model.addAttribute("crumbs", tree.breadcrumb(siblings, ContentCard.of(item)));
             model.addAttribute("activeId", item.getId());
         }
         model.addAttribute("tree", visibleTree(siblings, lockedIds, item.getId()));
@@ -373,17 +379,17 @@ public class PublicController {
      * 补充笔记不参与（它跟在附录里，不是同级的正文）；锁着的条目（登录后可见）也不指过去，
      * 免得游客点进去是 403。没有下一篇就返回 null，页面显示「已经是这个分类的最后一篇」。
      */
-    private AttachedNote nextNoteOf(List<ContentItem> siblings, ContentItem current, Set<Long> lockedIds) {
-        List<ContentItem> peers = new ArrayList<>();
-        for (ContentItem s : siblings) {
+    private AttachedNote nextNoteOf(List<ContentCard> siblings, ContentItem current, Set<Long> lockedIds) {
+        List<ContentCard> peers = new ArrayList<>();
+        for (ContentCard s : siblings) {
             if (Objects.equals(s.getParentId(), current.getParentId())
                     && s.getSupplementOfId() == null
                     && !lockedIds.contains(s.getId())) {
                 peers.add(s);
             }
         }
-        peers.sort(Comparator.comparingInt(ContentItem::getSortOrder).thenComparing(ContentItem::getId));
-        for (ContentItem s : peers) {
+        peers.sort(Comparator.comparingInt(ContentCard::getSortOrder).thenComparing(ContentCard::getId));
+        for (ContentCard s : peers) {
             if (s.getId().equals(current.getId())) {
                 continue;
             }
@@ -400,9 +406,9 @@ public class PublicController {
      * 挂到当前正文下面的补充笔记（supplement_of_id = 当前条目），正文末尾用「附件卡」列出来。
      * 卡片上显示的体积按正文 UTF-8 字节数折算，只用来给个量级参考。
      */
-    private List<AttachedNote> attachedNotesOf(List<ContentItem> siblings, ContentItem current, Set<Long> lockedIds) {
-        List<ContentItem> kids = new ArrayList<>();
-        for (ContentItem s : siblings) {
+    private List<AttachedNote> attachedNotesOf(List<ContentCard> siblings, ContentItem current, Set<Long> lockedIds) {
+        List<ContentCard> kids = new ArrayList<>();
+        for (ContentCard s : siblings) {
             if (current.getId().equals(s.getSupplementOfId()) && !lockedIds.contains(s.getId())) {
                 kids.add(s);
             }
@@ -410,40 +416,64 @@ public class PublicController {
         if (kids.isEmpty()) {
             return List.of();
         }
-        kids.sort(Comparator.comparingInt(ContentItem::getSortOrder)
-                .thenComparing(ContentItem::getTitle, Comparator.nullsLast(String::compareTo)));
+        kids.sort(Comparator.comparingInt(ContentCard::getSortOrder)
+                .thenComparing(ContentCard::getTitle, Comparator.nullsLast(String::compareTo)));
+        Map<Long, String> sizes = sizesOf(idsOf(kids));
         List<AttachedNote> out = new ArrayList<>(kids.size());
-        for (ContentItem k : kids) {
-            out.add(new AttachedNote(k.getTitle(), k.getSlug(), sizeOf(k.getBody())));
+        for (ContentCard k : kids) {
+            out.add(new AttachedNote(k.getTitle(), k.getSlug(), sizes.get(k.getId())));
         }
         return out;
     }
 
     /** 当前这条是补充笔记时，找出它的「本体」，在标题下面给一条回链。 */
-    private AttachedNote parentNoteOf(List<ContentItem> siblings, ContentItem current, Set<Long> lockedIds) {
+    private AttachedNote parentNoteOf(List<ContentCard> siblings, ContentItem current, Set<Long> lockedIds) {
         if (current.getSupplementOfId() == null) {
             return null;
         }
-        for (ContentItem s : siblings) {
+        for (ContentCard s : siblings) {
             if (s.getId().equals(current.getSupplementOfId()) && !lockedIds.contains(s.getId())) {
-                return new AttachedNote(s.getTitle(), s.getSlug(), sizeOf(s.getBody()));
+                return new AttachedNote(s.getTitle(), s.getSlug(), sizesOf(List.of(s.getId())).get(s.getId()));
             }
         }
         return null;
     }
 
-    private static String sizeOf(String body) {
-        if (body == null || body.isEmpty()) {
-            return "0 KB";
+    /**
+     * 附件卡上的体积：一次查一批（正文的 UTF-8 字节数），卡片渲染时不用把正文读进内存。
+     * 返回 id → 「9.1 KB」。
+     */
+    private Map<Long, String> sizesOf(Collection<Long> ids) {
+        if (ids.isEmpty()) {
+            return Map.of();
         }
-        double kb = body.getBytes(StandardCharsets.UTF_8).length / 1024.0;
-        String num = kb >= 10 ? String.valueOf(Math.round(kb)) : String.format(java.util.Locale.ROOT, "%.1f", kb);
-        return num + " KB";
+        Map<Long, String> sizes = new HashMap<>(ids.size() * 2);
+        for (Object[] row : items.bodySizes(ids)) {
+            long id = ((Number) row[0]).longValue();
+            long bytes = row[1] == null ? 0L : ((Number) row[1]).longValue();
+            double kb = bytes / 1024.0;
+            String num = kb >= 10
+                    ? String.valueOf(Math.round(kb))
+                    : String.format(java.util.Locale.ROOT, "%.1f", kb);
+            sizes.put(id, num + " KB");
+        }
+        return sizes;
     }
 
-    /** 右栏的替代目录：同一父节点下的其他条目，至少 2 条才有意义。 */    private List<ContentItem> railOf(List<ContentItem> siblings, ContentItem current, Set<Long> lockedIds) {
-        List<ContentItem> same = new ArrayList<>();
-        for (ContentItem s : siblings) {
+    /** 一批卡片（含挂在各自下面的补充笔记）的全部 id。 */
+    private static List<Long> allIds(Map<Long, List<ContentCard>> byId) {
+        List<Long> ids = new ArrayList<>();
+        byId.values().forEach(list -> {
+            for (ContentCard c : list) {
+                ids.add(c.getId());
+            }
+        });
+        return ids;
+    }
+
+    /** 右栏的替代目录：同一父节点下的其他条目，至少 2 条才有意义。 */    private List<ContentCard> railOf(List<ContentCard> siblings, ContentItem current, Set<Long> lockedIds) {
+        List<ContentCard> same = new ArrayList<>();
+        for (ContentCard s : siblings) {
             if (s.getId().equals(current.getId()) || lockedIds.contains(s.getId())) {
                 continue;
             }
@@ -454,8 +484,8 @@ public class PublicController {
         if (same.size() < 2) {
             return List.of();
         }
-        same.sort(Comparator.comparingInt(ContentItem::getSortOrder)
-                .thenComparing(ContentItem::getTitle, Comparator.nullsLast(String::compareTo)));
+        same.sort(Comparator.comparingInt(ContentCard::getSortOrder)
+                .thenComparing(ContentCard::getTitle, Comparator.nullsLast(String::compareTo)));
         return same;
     }
 
@@ -612,10 +642,21 @@ public class PublicController {
     @GetMapping("/bookmarks")
     public String bookmarks(Model model, Authentication auth) {
         Viewer viewer = viewers.current(auth);
-        List<ContentItem> all = new ArrayList<>();
+        List<BookmarkService.Spot> spots = bookmarks.spots(viewer.userId());
+        List<Long> marked = new ArrayList<>(spots.size());
+        for (BookmarkService.Spot spot : spots) {
+            marked.add(spot.itemId());
+        }
+        Map<Long, ContentCard> byId = new LinkedHashMap<>();
+        if (!marked.isEmpty()) {
+            for (ContentCard card : items.findCardsByIds(marked)) {
+                byId.put(card.getId(), card);
+            }
+        }
+        List<ContentCard> all = new ArrayList<>();
         List<String> anchors = new ArrayList<>();
-        for (BookmarkService.Spot spot : bookmarks.spots(viewer.userId())) {
-            ContentItem item = items.findById(spot.itemId()).orElse(null);
+        for (BookmarkService.Spot spot : spots) {
+            ContentCard item = byId.get(spot.itemId());
             if (item == null || !visibility.canRead(item, viewer)) {
                 continue;
             }
@@ -662,9 +703,9 @@ public class PublicController {
     }
 
     /** 列表里这批条目的 id，标签是一次查一批，不要每张卡片查一次。 */
-    private static List<Long> idsOf(List<ContentItem> items) {
+    private static List<Long> idsOf(List<ContentCard> items) {
         List<Long> ids = new ArrayList<>(items.size());
-        for (ContentItem i : items) {
+        for (ContentCard i : items) {
             ids.add(i.getId());
         }
         return ids;
@@ -682,13 +723,13 @@ public class PublicController {
     }
 
     /** 每个标签上显示的条数，按筛选前的全部卡片数：筛完还要知道别的档有多少。 */
-    private static Map<String, Integer> rateCounts(List<ContentItem> leaves, Set<Long> starIds) {
+    private static Map<String, Integer> rateCounts(List<ContentCard> leaves, Set<Long> starIds) {
         int starred = 0;
         int r3 = 0;
         int r2 = 0;
         int r1 = 0;
         int none = 0;
-        for (ContentItem i : leaves) {
+        for (ContentCard i : leaves) {
             if (starIds.contains(i.getId())) {
                 starred++;
             }
@@ -715,12 +756,12 @@ public class PublicController {
         return counts;
     }
 
-    private static List<ContentItem> byRate(List<ContentItem> leaves, String filter, Set<Long> starIds) {
+    private static List<ContentCard> byRate(List<ContentCard> leaves, String filter, Set<Long> starIds) {
         if (filter == null) {
             return leaves;
         }
-        List<ContentItem> kept = new ArrayList<>();
-        for (ContentItem i : leaves) {
+        List<ContentCard> kept = new ArrayList<>();
+        for (ContentCard i : leaves) {
             boolean hit = switch (filter) {
                 case "star" -> starIds.contains(i.getId());
                 case "3" -> i.getRating() >= 3;
@@ -741,18 +782,18 @@ public class PublicController {
     public String memo(Model model, Authentication auth) {
         Viewer viewer = viewers.current(auth);
         List<Long> ids = stars.starredItemIds(viewer.userId());
-        List<ContentItem> starred = ids.isEmpty()
+        List<ContentCard> starred = ids.isEmpty()
                 ? new ArrayList<>()
-                : new ArrayList<>(items.findAllById(ids));
+                : new ArrayList<>(items.findCardsByIds(ids));
         starred.removeIf(i -> !visibility.canRead(i, viewer));
-        starred.sort(Comparator.comparingInt(ContentItem::getSortOrder)
-                .thenComparing(ContentItem::getTitle, Comparator.nullsLast(String::compareTo)));
+        starred.sort(Comparator.comparingInt(ContentCard::getSortOrder)
+                .thenComparing(ContentCard::getTitle, Comparator.nullsLast(String::compareTo)));
 
-        Map<String, List<ContentItem>> grouped = new LinkedHashMap<>();
+        Map<String, List<ContentCard>> grouped = new LinkedHashMap<>();
         // 固定顺序：笔记 -> 八股 -> 算法 -> 项目，避免按枚举名字母序排成「算法/八股/笔记/项目」
         for (ContentKind k : new ContentKind[]{ContentKind.NOTE, ContentKind.BAGU,
                 ContentKind.ALGO, ContentKind.PROJECT}) {
-            for (ContentItem item : starred) {
+            for (ContentCard item : starred) {
                 if (item.getKind() == k) {
                     grouped.computeIfAbsent(kindLabel(k), key -> new ArrayList<>()).add(item);
                 }
@@ -776,7 +817,7 @@ public class PublicController {
      * subGroups 非空时页面多一层小标题（条目太多的小节才拆），subGroups 为空就平铺。
      * preview 是这一组前两条的标题，收起时用它在卡片里撑住右边的空当。
      */
-    public record ItemGroup(String title, String slug, List<ContentItem> items,
+    public record ItemGroup(String title, String slug, List<ContentCard> items,
                             List<SubGroupService.SubGroup> subGroups, String preview) {
         public boolean hasSub() {
             return subGroups != null && !subGroups.isEmpty();
@@ -794,7 +835,7 @@ public class PublicController {
     private static final int BATCH_ITEMS = 40;
 
     /** 小分区照旧整棵渲染；几百条内容的分区只给顶层和当前这条的路径。 */
-    private List<NoteTreeService.Node> visibleTree(List<ContentItem> all, Set<Long> lockedIds, Long activeId) {
+    private List<NoteTreeService.Node> visibleTree(List<ContentCard> all, Set<Long> lockedIds, Long activeId) {
         List<NoteTreeService.Node> built = tree.build(all, lockedIds);
         return countNodes(built) > TREE_LAZY_OVER ? tree.pruned(built, activeId) : built;
     }
@@ -820,23 +861,23 @@ public class PublicController {
         }
         Viewer viewer = viewers.current(auth);
         Set<Long> lockedIds = new LinkedHashSet<>();
-        List<ContentItem> all = filtered(poolForListing(k, viewer), viewer, lockedIds);
+        List<ContentCard> all = filtered(poolForListing(k, viewer), viewer, lockedIds);
 
         Set<Long> parentIds = new LinkedHashSet<>();
-        for (ContentItem i : all) {
+        for (ContentCard i : all) {
             if (i.getParentId() != null) {
                 parentIds.add(i.getParentId());
             }
         }
-        List<ContentItem> leaves = new ArrayList<>();
-        for (ContentItem i : all) {
+        List<ContentCard> leaves = new ArrayList<>();
+        for (ContentCard i : all) {
             if (!parentIds.contains(i.getId())) {
                 leaves.add(i);
             }
         }
 
-        ContentItem root = null;
-        for (ContentItem i : all) {
+        ContentCard root = null;
+        for (ContentCard i : all) {
             if (parentSlug.equals(i.getSlug())) {
                 root = i;
                 break;
@@ -845,8 +886,8 @@ public class PublicController {
         if (root == null) {
             model.addAttribute("nodes", List.of());
         } else {
-            List<ContentItem> kids = new ArrayList<>();
-            for (ContentItem i : leaves) {
+            List<ContentCard> kids = new ArrayList<>();
+            for (ContentCard i : leaves) {
                 if (root.getId().equals(i.getParentId())) {
                     kids.add(i);
                 }
@@ -862,20 +903,20 @@ public class PublicController {
     }
 
     /** 按父节点把列表拆成小节，小节顺序跟左侧树一致（sortOrder + 标题）。 */
-    private List<ItemGroup> groups(List<ContentItem> all, List<ContentItem> leaves) {
-        Map<Long, ContentItem> byId = new LinkedHashMap<>();
-        for (ContentItem item : all) {
+    private List<ItemGroup> groups(List<ContentCard> all, List<ContentCard> leaves) {
+        Map<Long, ContentCard> byId = new LinkedHashMap<>();
+        for (ContentCard item : all) {
             byId.put(item.getId(), item);
         }
 
-        Map<Long, List<ContentItem>> buckets = new LinkedHashMap<>();
-        for (ContentItem leaf : leaves) {
+        Map<Long, List<ContentCard>> buckets = new LinkedHashMap<>();
+        for (ContentCard leaf : leaves) {
             Long pid = leaf.getParentId();
             Long key = (pid != null && byId.containsKey(pid)) ? pid : 0L;
             buckets.computeIfAbsent(key, k -> new ArrayList<>()).add(leaf);
         }
         // 目录即使还空着也占一个分组，新建完立刻能在列表上看到它
-        for (ContentItem item : all) {
+        for (ContentCard item : all) {
             if (item.isFolder()) {
                 buckets.computeIfAbsent(item.getId(), k -> new ArrayList<>());
             }
@@ -887,8 +928,8 @@ public class PublicController {
                 .sorted(Comparator.comparingInt((Long id) -> byId.get(id).getSortOrder())
                         .thenComparing(id -> byId.get(id).getTitle(), Comparator.nullsLast(String::compareTo)))
                 .forEach(id -> {
-                    ContentItem parent = byId.get(id);
-                    List<ContentItem> list = buckets.get(id);
+                    ContentCard parent = byId.get(id);
+                    List<ContentCard> list = buckets.get(id);
                     result.add(new ItemGroup(parent.getTitle(), parent.getSlug(), list,
                             subGroups.split(parent.getSlug(), list), previewOf(list)));
                 });
@@ -899,10 +940,10 @@ public class PublicController {
     }
 
     /** 组内前两条标题，拼成一行给收起时的卡片用；标题太长由 CSS 截断。 */
-    private static String previewOf(List<ContentItem> list) {
+    private static String previewOf(List<ContentCard> list) {
         StringBuilder sb = new StringBuilder();
         int n = 0;
-        for (ContentItem item : list) {
+        for (ContentCard item : list) {
             if (n++ > 0) {
                 sb.append(" · ");
             }
@@ -916,18 +957,19 @@ public class PublicController {
 
     /**
      * 列表页的内容池：登录后是自己的空间，游客看的是推荐栏里公开的那部分。
+     * 两者都只查卡片（不含正文）：一次要算整棵目录和全部卡片，正文在这个页面用不上。
      */
-    private List<ContentItem> poolForListing(ContentKind kind, Viewer viewer) {
+    private List<ContentCard> poolForListing(ContentKind kind, Viewer viewer) {
         if (viewer.userId() != null) {
-            return items.findByOwnerIdAndKindOrderByUpdatedAtDesc(viewer.userId(), kind);
+            return items.findCardsByOwnerAndKind(viewer.userId(), kind);
         }
-        return items.findByKindAndRecommendedTrueOrderByUpdatedAtDesc(kind);
+        return items.findRecommendedCards(kind);
     }
 
     /** 能看的留下，只能看标题的收进 lockedIds。 */
-    private List<ContentItem> filtered(List<ContentItem> pool, Viewer viewer, Set<Long> lockedIds) {
-        List<ContentItem> kept = new ArrayList<>();
-        for (ContentItem item : pool) {
+    private List<ContentCard> filtered(List<ContentCard> pool, Viewer viewer, Set<Long> lockedIds) {
+        List<ContentCard> kept = new ArrayList<>();
+        for (ContentCard item : pool) {
             if (visibility.canRead(item, viewer)) {
                 kept.add(item);
             } else if (visibility.isLocked(item, viewer)) {

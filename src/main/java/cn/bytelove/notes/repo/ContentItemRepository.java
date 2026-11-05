@@ -1,13 +1,15 @@
 package cn.bytelove.notes.repo;
 
+import cn.bytelove.notes.domain.ContentCard;
 import cn.bytelove.notes.domain.ContentItem;
 import cn.bytelove.notes.domain.ContentKind;
-import cn.bytelove.notes.domain.Visibility;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.Instant;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -15,38 +17,47 @@ public interface ContentItemRepository
         extends JpaRepository<ContentItem, Long>, JpaSpecificationExecutor<ContentItem> {
 
     /**
-     * 推荐栏只用到 id/父节点/标题/摘要这些字段，body 是表里最大的列（几十上百 KB），
-     * 只为了算数量和标题就把它一起读出来太贵，所以单独给一条只查需要的列的查询。
+     * 列表 / 目录 / 广场用的查询：直接查出 {@link ContentCard}，不含正文。
+     * <p>
+     * body 是表里最大的列（每篇几 KB 到几十 KB），摆几十张卡片用不到它；
+     * 几条卡片查询都用这一个 select，别各写各的。要正文的地方查 {@link ContentItem}。
      */
-    interface CardRow {
-        Long getId();
+    String CARD_COLUMNS = "select new cn.bytelove.notes.domain.ContentCard("
+            + "i.id, i.ownerId, i.kind, i.slug, i.title, i.summary, i.visibility, i.parentId, "
+            + "i.sortOrder, i.rating, i.recommended, i.copiedFromId, i.folder, i.supplementOfId, "
+            + "i.createdAt, i.updatedAt) from ContentItem i ";
 
-        Long getParentId();
+    /** 自己某个分区的全部条目（列表页的内容池）。 */
+    @Query(CARD_COLUMNS + "where i.ownerId = :ownerId and i.kind = :kind order by i.updatedAt desc")
+    List<ContentCard> findCardsByOwnerAndKind(@Param("ownerId") Long ownerId, @Param("kind") ContentKind kind);
 
-        Long getOwnerId();
+    /** 推荐栏（游客看的内容池）。 */
+    @Query(CARD_COLUMNS + "where i.kind = :kind and i.recommended = true order by i.updatedAt desc")
+    List<ContentCard> findRecommendedCards(@Param("kind") ContentKind kind);
 
-        String getSlug();
+    /** 广场：推荐内容的完整集合，按目录顺序（分组页和卡片条数都按这个算）。 */
+    @Query(CARD_COLUMNS + "where i.kind = :kind and i.recommended = true order by i.sortOrder asc, i.id asc")
+    List<ContentCard> findRecommendedCardsInOrder(@Param("kind") ContentKind kind);
 
-        String getTitle();
+    @Query(CARD_COLUMNS + "where i.id in :ids")
+    List<ContentCard> findCardsByIds(@Param("ids") Collection<Long> ids);
 
-        String getSummary();
+    @Query(CARD_COLUMNS + "where i.ownerId = :ownerId order by i.kind asc, i.sortOrder asc")
+    List<ContentCard> findCardsByOwner(@Param("ownerId") Long ownerId);
 
-        Visibility getVisibility();
+    /** 管理页列表：整表按目录顺序取一遍（几百条），筛选条件在控制器里过——省得为「可选条件」写一堆动态 SQL。 */
+    @Query(CARD_COLUMNS + "order by i.sortOrder asc, i.title asc")
+    List<ContentCard> findAllCards();
 
-        boolean isRecommended();
-    }
+    /**
+     * 卡片附件上显示的体积：正文的 UTF-8 字节数。走原生查询是因为 JPQL 的 length() 数字符，
+     * 中文按字符算会小三分之二，卡片上的「9.1 KB」就变成「3.1 KB」了。
+     */
+    @Query(value = "select id, octet_length(body) from content_item where id in (:ids)", nativeQuery = true)
+    List<Object[]> bodySizes(@Param("ids") Collection<Long> ids);
 
-    @Query("select i.id as id, i.parentId as parentId, i.ownerId as ownerId, i.slug as slug, "
-            + "i.title as title, i.summary as summary, i.visibility as visibility, "
-            + "i.recommended as recommended from ContentItem i "
-            + "where i.kind = :kind and i.recommended = true order by i.sortOrder asc, i.id asc")
-    List<CardRow> findCardRows(@Param("kind") ContentKind kind);
-
-    /** 某个用户自己的某一类内容。 */
+    /** 某个用户自己的某一类内容（含正文）。 */
     List<ContentItem> findByOwnerIdAndKindOrderByUpdatedAtDesc(Long ownerId, ContentKind kind);
-
-    /** 推荐栏：所有标为推荐的内容，不分作者。 */
-    List<ContentItem> findByKindAndRecommendedTrueOrderByUpdatedAtDesc(ContentKind kind);
 
     List<ContentItem> findByKindAndRecommendedTrueOrderBySortOrderAscIdAsc(ContentKind kind);
 
@@ -55,6 +66,9 @@ public interface ContentItemRepository
     List<ContentItem> findByOwnerIdOrderByKindAscSortOrderAsc(Long ownerId);
 
     Optional<ContentItem> findByOwnerIdAndSlug(Long ownerId, String slug);
+
+    /** 挂在某一条下面的补充笔记（有多篇时取排最前面的那条）。 */
+    Optional<ContentItem> findFirstBySupplementOfIdOrderBySortOrderAscIdAsc(Long supplementOfId);
 
     /** slug 只在本人范围内唯一，跨用户可能重名，所以要按 id 取第一条能看的。 */
     List<ContentItem> findBySlugAndRecommendedTrueOrderByIdAsc(String slug);
@@ -67,8 +81,7 @@ public interface ContentItemRepository
 
     long countByOwnerIdAndCopiedFromId(Long ownerId, Long copiedFromId);
 
-    @org.springframework.data.jpa.repository.Query(
-            "select i.copiedFromId from ContentItem i where i.ownerId = ?1 "
-                    + "and i.copiedFromId is not null and i.deletedAt is null")
-    java.util.List<Long> findCopiedFromIds(Long ownerId);
+    @Query("select i.copiedFromId from ContentItem i where i.ownerId = ?1 "
+            + "and i.copiedFromId is not null and i.deletedAt is null")
+    List<Long> findCopiedFromIds(Long ownerId);
 }
