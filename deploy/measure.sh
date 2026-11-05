@@ -37,6 +37,12 @@ fi
 
 pct() { sort -n | awk -v p="$1" '{a[NR]=$1} END{i=int(NR*p/100); if(i<1)i=1; if(i>NR)i=NR; printf "%.0f", a[i]}'; }
 echo "环境 $ENV ($H)  登录=$([ -s "$CJ" ] && echo ok || echo 失败)"
+
+# 整体预热：JVM 头几十个请求是解释执行的，能慢 3~5 倍；不预热的话每页那 4 次热身根本不够
+for round in $(seq 1 15); do
+  for u in "${URLS[@]}"; do curl -s -b "$CJ" -o /dev/null --compressed "$H$u"; done
+done
+
 printf '%-40s %6s %6s %6s %8s %6s %6s\n' 页面 p50ms p95ms ttfb html卡片 标签数
 for u in "${URLS[@]}"; do
   for i in 1 2 3 4; do curl -s -b "$CJ" -o /dev/null --compressed "$H$u"; done
