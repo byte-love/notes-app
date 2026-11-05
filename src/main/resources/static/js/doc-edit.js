@@ -272,9 +272,53 @@
         return box.textContent.trim() || box.querySelector('img') ? box.innerHTML : '';
     };
 
+    // 剪贴板里直接是图片文件时（截图工具那种）：先当场插成 base64 保证立刻能看到，
+    // 同时后台上传一份；传成了就把那段 base64 换成 /app/media/notes/xxx.png 的短地址，
+    // 正文不至于被几十 K 的 base64 撑爆（过了 65536 这页就不能直接编辑了）。
+    // 传不成或没登录就留着 base64，图不会丢。
+    const uploadPasted = async (file, dataUrl) => {
+        const url = body.dataset.upload;
+        if (!url || !file) return;
+        try {
+            const form = new FormData();
+            form.append('file', file, file.name || 'paste.png');
+            const res = await fetch(url, {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: { 'X-CSRF-TOKEN': App.csrf() },
+                body: form,
+            });
+            if (!res.ok) return;
+            const out = await res.json();
+            if (!out || !out.url) return;
+            const img = [...body.querySelectorAll('img')].find((i) => i.getAttribute('src') === dataUrl);
+            if (!img) return;
+            img.setAttribute('src', out.url);
+            schedule();
+        } catch (err) {
+            // 上传失败就保持 base64
+        }
+    };
+
     body.addEventListener('paste', (e) => {
         const dt = e.clipboardData;
         if (!dt) return;
+        const files = [...(dt.files || [])].filter((f) => /^image\//.test(f.type || ''));
+        if (files.length) {
+            e.preventDefault();
+            for (const file of files) {
+                const reader = new FileReader();
+                reader.onload = () => {
+                    const dataUrl = String(reader.result || '');
+                    if (!dataUrl) return;
+                    document.execCommand('insertHTML', false, '<img src="' + dataUrl + '" alt="">');
+                    schedule();
+                    uploadPasted(file, dataUrl);
+                };
+                reader.readAsDataURL(file);
+            }
+            return;
+        }
         const html = dt.getData('text/html');
         const text = dt.getData('text/plain');
         let marked = '';

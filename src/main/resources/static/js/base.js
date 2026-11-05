@@ -8,15 +8,54 @@ window.App = (() => {
         return meta ? meta.getAttribute('content') : '';
     };
 
-    // 表单式 POST：自动带 _csrf、same-origin、urlencoded
-    const post = (url, data, init) => {
-        const body = new URLSearchParams(Object.assign({ _csrf: csrf() }, data || {}));
-        return fetch(url, Object.assign({
-            method: 'POST',
-            credentials: 'same-origin',
-            headers: { 'content-type': 'application/x-www-form-urlencoded' },
-            body: body.toString(),
-        }, init || {}));
+    // 从 /csrf 换一份新 token，写回 meta 和页面里所有表单
+    const refreshCsrf = async () => {
+        const endpointMeta = document.querySelector('meta[name="csrf-endpoint"]');
+        if (!endpointMeta) return '';
+        try {
+            const res = await fetch(endpointMeta.getAttribute('content'),
+                { credentials: 'same-origin', cache: 'no-store' });
+            if (!res.ok) return '';
+            const data = await res.json();
+            const token = (data && data.token) || '';
+            if (!token) return '';
+            document.querySelectorAll('meta[name="_csrf"]').forEach((m) => m.setAttribute('content', token));
+            document.querySelectorAll('input[name="_csrf"]').forEach((i) => {
+                i.value = token;
+            });
+            return token;
+        } catch (e) {
+            return '';
+        }
+    };
+
+    // 表单式 POST：自动带 _csrf、same-origin、urlencoded。
+    // 进程重启 / 会话过期之后页面里那份 token 就作废，第一次提交会被拦成 403；
+    // 这里换一份新的重试一次，用户不用刷新、也不用重写一遍。
+    // 注意头是合并不是替换：调用方传 headers（比如 X-Requested-With）时，
+    // 不能把 content-type 顶掉，否则 body 变成 text/plain，服务端读不到 _csrf，直接 403。
+    const post = async (url, data, init) => {
+        const send = (token) => {
+            const extra = init || {};
+            const base = {
+                method: 'POST',
+                credentials: 'same-origin',
+                body: new URLSearchParams(Object.assign({ _csrf: token }, data || {})).toString(),
+            };
+            return fetch(url, Object.assign({}, base, extra, {
+                headers: Object.assign(
+                    { 'content-type': 'application/x-www-form-urlencoded' },
+                    extra.headers || {},
+                ),
+            }));
+        };
+
+        let res = await send(csrf());
+        if (res.status === 403) {
+            const fresh = await refreshCsrf();
+            if (fresh) res = await send(fresh);
+        }
+        return res;
     };
 
     const esc = (value) => String(value == null ? '' : value)
@@ -24,5 +63,5 @@ window.App = (() => {
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;');
 
-    return { csrf, post, esc };
+    return { csrf, post, refreshCsrf, esc };
 })();

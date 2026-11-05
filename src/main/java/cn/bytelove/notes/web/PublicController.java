@@ -348,6 +348,8 @@ public class PublicController {
         model.addAttribute("rail", railOf(siblings, item, lockedIds));
         // 同一分类（同一个父级）里的下一篇：正文末尾给一个直达按钮，到尾了给个明确的终点
         model.addAttribute("nextNote", nextNoteOf(siblings, item, lockedIds));
+        // 上一篇只给键盘左键用，页面上不显示（正文末尾只有「下一篇」）
+        model.addAttribute("prevNote", prevNoteOf(siblings, item, lockedIds));
         model.addAttribute("starred", viewer.userId() != null && stars.isStarred(viewer.userId(), item.getId()));
         // 只有自己的内容能标星级：星级是内容上的字段，不是「谁标的」，改别人的条目等于改别人的东西
         model.addAttribute("canRate", viewer.userId() != null && viewer.userId().equals(item.getOwnerId()));
@@ -380,15 +382,7 @@ public class PublicController {
      * 免得游客点进去是 403。没有下一篇就返回 null，页面显示「已经是这个分类的最后一篇」。
      */
     private AttachedNote nextNoteOf(List<ContentCard> siblings, ContentItem current, Set<Long> lockedIds) {
-        List<ContentCard> peers = new ArrayList<>();
-        for (ContentCard s : siblings) {
-            if (Objects.equals(s.getParentId(), current.getParentId())
-                    && s.getSupplementOfId() == null
-                    && !lockedIds.contains(s.getId())) {
-                peers.add(s);
-            }
-        }
-        peers.sort(Comparator.comparingInt(ContentCard::getSortOrder).thenComparing(ContentCard::getId));
+        List<ContentCard> peers = peersOf(siblings, current, lockedIds);
         for (ContentCard s : peers) {
             if (s.getId().equals(current.getId())) {
                 continue;
@@ -400,6 +394,40 @@ public class PublicController {
             }
         }
         return null;
+    }
+
+    /**
+     * 同一分类里的上一篇：和 {@link #nextNoteOf} 一套规则（同父级、不含补充笔记、跳过锁着的），
+     * 只是方向反了。页面上不显示它（不放「上一篇」按钮），只给键盘左键用；没有就返回 null。
+     */
+    private AttachedNote prevNoteOf(List<ContentCard> siblings, ContentItem current, Set<Long> lockedIds) {
+        AttachedNote prev = null;
+        for (ContentCard s : peersOf(siblings, current, lockedIds)) {
+            if (s.getId().equals(current.getId())) {
+                continue;
+            }
+            boolean before = s.getSortOrder() < current.getSortOrder()
+                    || (s.getSortOrder() == current.getSortOrder() && s.getId() < current.getId());
+            if (before) {
+                // peers 按 sortOrder、id 排过序，循环走到最后一个「在它前面」的就是紧挨着的那篇
+                prev = new AttachedNote(s.getTitle(), s.getSlug(), null);
+            }
+        }
+        return prev;
+    }
+
+    /** 同一分类里的同级条目（不含补充笔记、跳过当前用户看不了的），按 sortOrder、id 排序。 */
+    private List<ContentCard> peersOf(List<ContentCard> siblings, ContentItem current, Set<Long> lockedIds) {
+        List<ContentCard> peers = new ArrayList<>();
+        for (ContentCard s : siblings) {
+            if (Objects.equals(s.getParentId(), current.getParentId())
+                    && s.getSupplementOfId() == null
+                    && !lockedIds.contains(s.getId())) {
+                peers.add(s);
+            }
+        }
+        peers.sort(Comparator.comparingInt(ContentCard::getSortOrder).thenComparing(ContentCard::getId));
+        return peers;
     }
 
     /**

@@ -19,7 +19,10 @@
     </aside>
 
     <main class="doc-wrap">
-        <article class="doc">
+        <!-- data-prev / data-next 只给键盘左右键用，页面上不出现「上一篇」按钮 -->
+        <article class="doc"
+                 th:attr="data-prev=${prevNote != null} ? ${basePath + '/' + prevNote.slug} : null,
+                          data-next=${nextNote != null} ? ${basePath + '/' + nextNote.slug} : null">
             <a th:replace="~{fragments/layout :: back(${basePath})}"></a>
 
             <nav class="crumbs" th:if="${crumbs != null and #lists.size(crumbs) > 1}">
@@ -91,6 +94,7 @@
             <div class="markdown" th:utext="${html}"
                  th:attr="data-slug=${item.slug},data-anchors=${bookmarkAnchorCsv},data-resume=${resumeProgress},
                           data-save=${canRate == true} ? @{/admin/{id}/body(id=${item.id})} : null,
+                          data-upload=${canRate == true} ? @{/admin/upload} : null,
                           contenteditable=${canRate == true and item.body != null and #strings.length(item.body) <= 65536} ? 'true' : null"></div>
 
             <!-- 正文末尾挂的补充笔记：像附件卡一样列出来，点开就是那篇；右边给个删除 -->
@@ -133,6 +137,15 @@
         <!-- 右栏是评论区：整篇评论 + 对正文里带下划线句子的评论 -->
         <aside th:replace="~{fragments/comments :: pane(${commentSlug}, ${threads}, ${commentCount}, ${canComment})}"></aside>
     </main>
+
+    <!-- 评论区的展开 / 收起：收起后只在右上角留这个图标 -->
+    <button type="button" class="cmt-toggle" id="cmt-toggle" aria-label="收起评论" aria-expanded="true">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor"
+             stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M20.5 14.6a2 2 0 0 1-2 2H8.2l-4.2 3.2V5.4a2 2 0 0 1 2-2h12.5a2 2 0 0 1 2 2Z"/>
+            <path d="M8.6 9.6h6.8"/>
+        </svg>
+    </button>
 </div>
 
 <!-- 注释的数据和输入框（不占版面），正文里的短虚下划线由 comments.js 读这一块画出来 -->
@@ -143,11 +156,11 @@
 
     <script th:src="@{/js/comments.js(v=16)}"></script>
     <script th:src="@{/js/code.js(v=4)}"></script>
-    <script th:src="@{/js/detail.js(v=11)}"></script>
+    <script th:src="@{/js/detail.js(v=12)}"></script>
     <script th:src="@{/js/rate.js(v=3)}"></script>
 <script th:src="@{/js/tree-admin.js(v=4)}"></script>
 <script th:src="@{/js/body-edit.js(v=3)}"></script>
-<script th:src="@{/js/doc-edit.js(v=10)}"></script>
+<script th:src="@{/js/doc-edit.js(v=11)}"></script>
 
 <footer th:replace="~{fragments/layout :: foot}"></footer>
 
