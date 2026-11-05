@@ -886,18 +886,10 @@ button:hover,
     }
 }
 
-body.cmt-off .with-tree .doc-wrap {
-    grid-template-columns: minmax(0, 1fr) !important;
-}
-
+/* 收起只把右栏自己藏起来，列宽和 gap 一概不动：
+   正文的宽度和位置跟展开时完全一样，不会因为收起评论就往右挪、往宽里撑。 */
 body.cmt-off .cmt-pane {
     display: none;
-}
-
-/* 收起后正文回到有右栏时的居中上限，别横着铺满整屏 */
-body.cmt-off .with-tree.has-tree .doc-wrap:has(.toc) .doc {
-    max-width: 82ch;
-    justify-self: center;
 }
 
 /* ---------- 右栏评论区 ---------- */
