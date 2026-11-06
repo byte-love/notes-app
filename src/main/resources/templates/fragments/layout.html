@@ -38,7 +38,7 @@
     <div class="header-inner">
         <nav class="tabs" aria-label="站点分区">
             <a class="tab" th:href="@{/notes}"
-               th:classappend="${tabActive == 'note' or tabActive == 'project' or tabActive == 'bagu' or tabActive == 'algo'} ? 'is-active'">我的笔记</a>
+               th:classappend="${tabActive == 'note' or tabActive == 'project' or tabActive == 'bagu' or tabActive == 'interview' or tabActive == 'algo'} ? 'is-active'">我的笔记</a>
             <a class="tab" th:href="@{/explore}"
                th:classappend="${tabActive == 'explore'} ? 'is-active'">技术广场</a>
             <a class="tab" th:href="@{/guide}"
@@ -70,6 +70,8 @@
        th:classappend="${tabActive == 'project'} ? 'on'">项目</a>
     <a class="mine-tab" th:href="@{/bagu}"
        th:classappend="${tabActive == 'bagu'} ? 'on'">八股</a>
+    <a class="mine-tab" th:href="@{/interview}"
+       th:classappend="${tabActive == 'interview'} ? 'on'">面试</a>
     <a class="mine-tab" th:href="@{/algo}"
        th:classappend="${tabActive == 'algo'} ? 'on'">算法</a>
 </div>

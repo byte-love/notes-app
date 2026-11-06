@@ -425,6 +425,8 @@ public class AdminController {
         switch (item.getKind()) {
             case BAGU:
                 return "/bagu";
+            case INTERVIEW:
+                return "/interview";
             case ALGO:
                 return "/algo";
             case PROJECT:

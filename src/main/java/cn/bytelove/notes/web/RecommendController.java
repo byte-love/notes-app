@@ -57,7 +57,7 @@ public class RecommendController {
         List<ContentKind> shown = new ArrayList<>();
         boolean any = false;
         for (ContentKind k : new ContentKind[]{ContentKind.NOTE, ContentKind.BAGU,
-                ContentKind.ALGO, ContentKind.PROJECT}) {
+                ContentKind.INTERVIEW, ContentKind.ALGO, ContentKind.PROJECT}) {
             List<Card> cards = recommend.cards(k);
             cardsOf.put(k, cards);
             if (!cards.isEmpty()) {
@@ -179,6 +179,7 @@ public class RecommendController {
     private static String basePath(ContentKind kind) {
         return switch (kind) {
             case BAGU -> "/bagu";
+            case INTERVIEW -> "/interview";
             case ALGO -> "/algo";
             case PROJECT -> "/projects";
             default -> "/notes";
