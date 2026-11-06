@@ -9,6 +9,7 @@ import cn.bytelove.notes.service.ApiTokenService;
 import cn.bytelove.notes.service.BookmarkService;
 import cn.bytelove.notes.service.ContentStarService;
 import cn.bytelove.notes.service.RatingService;
+import cn.bytelove.notes.service.QuestService;
 import cn.bytelove.notes.service.TrashService;
 import cn.bytelove.notes.service.UserBadge;
 import cn.bytelove.notes.service.ViewerService;
@@ -34,13 +35,14 @@ public class MeController {
     private final TrashService trash;
     private final BookmarkService bookmarks;
     private final RatingService ratings;
+    private final QuestService quests;
     private final ApiTokenService tokens;
     private final AppProperties props;
 
     public MeController(AppUserRepository users, ContentItemRepository items,
                         ContentStarService stars, ViewerService viewers, TrashService trash,
-                        BookmarkService bookmarks, RatingService ratings, ApiTokenService tokens,
-                        AppProperties props) {
+                        BookmarkService bookmarks, RatingService ratings, QuestService quests,
+                        ApiTokenService tokens, AppProperties props) {
         this.users = users;
         this.items = items;
         this.stars = stars;
@@ -48,6 +50,7 @@ public class MeController {
         this.trash = trash;
         this.bookmarks = bookmarks;
         this.ratings = ratings;
+        this.quests = quests;
         this.tokens = tokens;
         this.props = props;
     }
@@ -72,6 +75,8 @@ public class MeController {
         model.addAttribute("trashCount", trash.list(viewer.userId()).size());
         model.addAttribute("bookmarkCount", bookmarks.count(viewer.userId()));
         model.addAttribute("ratingSummary", ratings.summary(viewer.userId()));
+        model.addAttribute("questPoint", quests.point(viewer.userId()));
+        model.addAttribute("questPassed", quests.passedCount(viewer.userId()));
 
         // AI 接入：只展示 token 的前几位，明文在生成那一刻由 flash 带过来一次
         tokens.describe(viewer.userId()).ifPresent(t -> {
