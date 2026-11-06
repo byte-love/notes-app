@@ -127,6 +127,15 @@ public class PublicController {
         return listing(ContentKind.BAGU, "八股", model, auth, from, fragment, rate, tag);
     }
 
+    @GetMapping("/interview")
+    public String interview(Model model, Authentication auth,
+                            @RequestParam(name = "from", required = false) Integer from,
+                            @RequestParam(name = "fragment", defaultValue = "false") boolean fragment,
+                            @RequestParam(name = "rate", required = false) String rate,
+                            @RequestParam(name = "tag", required = false) String tag) {
+        return listing(ContentKind.INTERVIEW, "面试", model, auth, from, fragment, rate, tag);
+    }
+
     @GetMapping("/algo")
     public String algo(Model model, Authentication auth,
                        @RequestParam(name = "from", required = false) Integer from,
@@ -148,6 +157,11 @@ public class PublicController {
     @GetMapping("/bagu/{slug}")
     public String baguItem(@PathVariable String slug, Model model, Authentication auth) {
         return detail(ContentKind.BAGU, slug, model, auth);
+    }
+
+    @GetMapping("/interview/{slug}")
+    public String interviewItem(@PathVariable String slug, Model model, Authentication auth) {
+        return detail(ContentKind.INTERVIEW, slug, model, auth);
     }
 
     @GetMapping("/algo/{slug}")
@@ -821,9 +835,9 @@ public class PublicController {
                 .thenComparing(ContentCard::getTitle, Comparator.nullsLast(String::compareTo)));
 
         Map<String, List<ContentCard>> grouped = new LinkedHashMap<>();
-        // 固定顺序：笔记 -> 八股 -> 算法 -> 项目，避免按枚举名字母序排成「算法/八股/笔记/项目」
+        // 固定顺序：笔记 -> 八股 -> 算法 -> 项目 -> 面试，避免按枚举名字母序排成「算法/八股/笔记/项目」
         for (ContentKind k : new ContentKind[]{ContentKind.NOTE, ContentKind.BAGU,
-                ContentKind.ALGO, ContentKind.PROJECT}) {
+                ContentKind.ALGO, ContentKind.PROJECT, ContentKind.INTERVIEW}) {
             for (ContentCard item : starred) {
                 if (item.getKind() == k) {
                     grouped.computeIfAbsent(kindLabel(k), key -> new ArrayList<>()).add(item);
@@ -1091,6 +1105,8 @@ public class PublicController {
         switch (kind) {
             case BAGU:
                 return "八股";
+            case INTERVIEW:
+                return "面试";
             case ALGO:
                 return "算法";
             case PROJECT:
@@ -1105,6 +1121,8 @@ public class PublicController {
         switch (kind) {
             case BAGU:
                 return "/bagu";
+            case INTERVIEW:
+                return "/interview";
             case ALGO:
                 return "/algo";
             case PROJECT:

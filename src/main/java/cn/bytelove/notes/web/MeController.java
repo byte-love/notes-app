@@ -69,6 +69,7 @@ public class MeController {
 
         model.addAttribute("noteCount", items.countByOwnerIdAndKind(viewer.userId(), ContentKind.NOTE));
         model.addAttribute("baguCount", items.countByOwnerIdAndKind(viewer.userId(), ContentKind.BAGU));
+        model.addAttribute("interviewCount", items.countByOwnerIdAndKind(viewer.userId(), ContentKind.INTERVIEW));
         model.addAttribute("algoCount", items.countByOwnerIdAndKind(viewer.userId(), ContentKind.ALGO));
         model.addAttribute("projectCount", items.countByOwnerIdAndKind(viewer.userId(), ContentKind.PROJECT));
         model.addAttribute("memoCount", stars.count(viewer.userId()));

@@ -448,6 +448,7 @@ public class AiController {
         String base;
         switch (item.getKind()) {
             case BAGU -> base = "/bagu";
+            case INTERVIEW -> base = "/interview";
             case ALGO -> base = "/algo";
             case PROJECT -> base = "/projects";
             default -> base = "/notes";
