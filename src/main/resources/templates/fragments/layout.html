@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org"
       xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
 <head th:fragment="head(pageTitle)">
@@ -38,7 +38,7 @@
     <div class="header-inner">
         <nav class="tabs" aria-label="站点分区">
             <a class="tab" th:href="@{/notes}"
-               th:classappend="${tabActive == 'note' or tabActive == 'project' or tabActive == 'bagu' or tabActive == 'algo'} ? 'is-active'">我的笔记</a>
+               th:classappend="${tabActive == 'note' or tabActive == 'project' or tabActive == 'bagu' or tabActive == 'interview' or tabActive == 'algo'} ? 'is-active'">我的笔记</a>
             <a class="tab" th:href="@{/explore}"
                th:classappend="${tabActive == 'explore'} ? 'is-active'">技术广场</a>
             <a sec:authorize="isAuthenticated()" class="tab" th:href="@{/quest}"
@@ -63,7 +63,7 @@
     </div>
 </header>
 
-<!-- 「我的笔记」下的四个分区。路由不变，这里只是同一个列表页的四种内容。
+<!-- 「我的笔记」下的五个分区。路由不变，这里只是同一个列表页的几种内容。
      用 div 不用 nav：顶栏那个片段的选取器就是 nav，同名会被 Thymeleaf 按标签名一并选中 -->
 <div th:fragment="mineTabs" class="mine-tabs" role="navigation" aria-label="我的笔记分区">
     <a class="mine-tab" th:href="@{/notes}"
@@ -74,6 +74,8 @@
        th:classappend="${tabActive == 'bagu'} ? 'on'">八股</a>
     <a class="mine-tab" th:href="@{/algo}"
        th:classappend="${tabActive == 'algo'} ? 'on'">算法</a>
+    <a class="mine-tab" th:href="@{/interview}"
+       th:classappend="${tabActive == 'interview'} ? 'on'">面试</a>
 </div>
 
 <th:block th:fragment="foot">

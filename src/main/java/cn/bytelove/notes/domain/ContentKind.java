@@ -7,6 +7,7 @@ public enum ContentKind {
     NOTE("闪念", "随手记的想法、学习记录、踩坑总结"),
     PROJECT("项目", "自己做过的东西，会出现在作品集里"),
     BAGU("八股", "面试题和标准答案，通常按分类归档"),
+    INTERVIEW("面试", "面试流程、项目追问和 HR 面的经验记录"),
     ALGO("算法", "题解和思路");
 
     private final String label;

@@ -56,11 +56,13 @@ public class RecommendController {
         Map<ContentKind, List<Card>> cardsOf = new LinkedHashMap<>();
         List<ContentKind> shown = new ArrayList<>();
         boolean any = false;
+        // 固定顺序：闪念 -> 八股 -> 算法 -> 项目 -> 面试
+        // 面试分区常驻：还没有内容时也要摆出入口，不然没人知道有这块地方
         for (ContentKind k : new ContentKind[]{ContentKind.NOTE, ContentKind.BAGU,
-                ContentKind.ALGO, ContentKind.PROJECT}) {
+                ContentKind.ALGO, ContentKind.PROJECT, ContentKind.INTERVIEW}) {
             List<Card> cards = recommend.cards(k);
             cardsOf.put(k, cards);
-            if (!cards.isEmpty()) {
+            if (!cards.isEmpty() || k == ContentKind.INTERVIEW) {
                 shown.add(k);
             }
         }
@@ -179,6 +181,7 @@ public class RecommendController {
     private static String basePath(ContentKind kind) {
         return switch (kind) {
             case BAGU -> "/bagu";
+            case INTERVIEW -> "/interview";
             case ALGO -> "/algo";
             case PROJECT -> "/projects";
             default -> "/notes";
