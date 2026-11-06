@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="zh-CN">
+<head th:replace="~{fragments/layout :: head(${pageTitle + ' · byte-love'})}"></head>
+<body>
+<header th:replace="~{fragments/layout :: nav}"></header>
+
+<main class="wrap quest-level" th:attr="data-mode=${deck.mode()},data-check=@{/quest/{s}/check(s=${item.slug})}">
+    <a class="back-link" th:href="${chapterSlug != null} ? @{/quest(chapter=${chapterSlug})} : @{/quest}">返回</a>
+
+    <header class="quest-level-head">
+        <p class="quest-crumb" th:if="${chapterTitle != null}" th:text="${chapterTitle}">Java 基础</p>
+        <h1 th:text="${item.title}">题目</h1>
+        <p class="quest-meta">
+            <span class="quest-stars" th:text="${item.rating >= 3 ? '★★★' : (item.rating == 2 ? '★★' : '★')}">★★★</span>
+            <span th:text="${deck.mode() == 'cloze' ? '挖空' : '模糊背'}">挖空</span>
+            <span th:if="${progress.clears() > 0}" th:text="|练过 ${progress.clears()} 次|">练过 2 次</span>
+        </p>
+    </header>
+
+    <!-- 正文：读的时候清晰；开始背以后整篇糊掉，划到哪儿哪儿清 -->
+    <div class="q-doc" id="q-doc">
+        <div class="markdown" id="q-markdown" th:utext="${html}"></div>
+    </div>
+
+    <div class="quest-actions" id="q-actions">
+        <button type="button" class="btn-primary" id="q-start" th:if="${deck.mode() == 'cloze'}">开始自测</button>
+        <button type="button" class="btn-primary" id="q-begin" th:if="${deck.mode() != 'cloze'}">开始背</button>
+        <button type="button" class="btn-primary" id="q-done-recall" th:if="${deck.mode() != 'cloze'}" hidden>背完了</button>
+    </div>
+
+    <!-- 挖空：填完提交 -->
+    <section class="quest-step" id="step-check" hidden>
+        <div class="q-cloze">
+            <p class="q-line" th:each="line : ${deck.lines()}">
+                <th:block th:each="s : ${line.segs()}">
+                    <span th:if="${s.blank() == null}" th:text="${s.text()}"></span>
+                    <input th:if="${s.blank() != null}" class="q-blank" type="text" autocomplete="off"
+                           spellcheck="false" th:attr="data-i=${s.blank().index}"
+                           th:style="|width:${#strings.length(s.blank().answer()) + 3}ch|"/>
+                </th:block>
+            </p>
+        </div>
+        <div class="quest-actions">
+            <button type="button" class="btn-primary" id="q-submit">提交</button>
+        </div>
+    </section>
+
+    <!-- 模糊背：背完看原文，自评答成什么样 -->
+    <section class="quest-step quest-self-step" id="step-self" hidden>
+        <p class="quest-hint" id="q-hint"></p>
+        <ul class="quest-points"
+            th:if="${!#lists.isEmpty(deck.points()) and #strings.length(deck.text()) > 200}">
+            <li th:each="p : ${deck.points()}" th:text="${p}">要点</li>
+        </ul>
+        <div class="quest-self">
+            <button type="button" class="btn-quiet" data-self="all">核心要点都答对了</button>
+            <button type="button" class="btn-quiet" data-self="most">少部分要点没答对</button>
+            <button type="button" class="btn-quiet" data-self="few">大部分都没答上来</button>
+            <button type="button" class="btn-quiet" data-self="none">基本全忘了</button>
+        </div>
+    </section>
+
+    <!-- 结果 -->
+    <section class="quest-step quest-result" id="step-result" hidden>
+        <p class="quest-result-head">
+            <span id="q-verdict">过关</span>
+            <span id="q-xp" class="quest-xp-gain"></span>
+        </p>
+        <p class="quest-result-rate" id="q-rate"></p>
+        <ul class="quest-answers" id="q-answers"></ul>
+        <div class="quest-actions">
+            <button type="button" class="btn-quiet" id="q-again" th:if="${deck.mode() == 'cloze'}">再考一次</button>
+            <button type="button" class="btn-quiet" id="q-again-recall" th:if="${deck.mode() != 'cloze'}">再背一次</button>
+            <a class="btn-quiet" th:href="${chapterSlug != null} ? @{/quest(chapter=${chapterSlug})} : @{/quest}">返回</a>
+        </div>
+    </section>
+</main>
+
+<script th:src="@{/js/quest.js(v=2)}" defer></script>
+<footer th:replace="~{fragments/layout :: foot}"></footer>
+</body>
+</html>

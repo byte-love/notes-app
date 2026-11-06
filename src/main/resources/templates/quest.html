@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="zh-CN">
+<head th:replace="~{fragments/layout :: head(${pageTitle + ' · byte-love'})}"></head>
+<body>
+<header th:replace="~{fragments/layout :: nav}"></header>
+
+<main class="wrap quest-wrap">
+    <div class="quest-head">
+        <div>
+            <h1>知识考核</h1>
+            <p class="quest-sub" th:with="p=${point}">
+                <span th:text="|Lv.${p.level()} · 累计 ${p.xp()} XP|">Lv.1 · 累计 0 XP</span>
+                <span th:if="${p.streakDays() > 0}" th:text="|连续 ${p.streakDays()} 天|">连续 3 天</span>
+            </p>
+        </div>
+        <p class="quest-total">
+            已过 <strong th:text="${totalPassed}">0</strong>/<span th:text="${totalItems}">0</span>
+        </p>
+    </div>
+
+    <div class="quest-xp" th:with="p=${point}">
+        <span class="quest-xp-bar">
+            <i th:style="|width:${p.nextAt() > p.levelFrom()
+                ? (p.xp() - p.levelFrom()) * 100 / (p.nextAt() - p.levelFrom()) : 0}%|"></i>
+        </span>
+        <span class="quest-xp-tail" th:text="|${p.xp() - p.levelFrom()} / ${p.nextAt() - p.levelFrom()}|">0 / 100</span>
+    </div>
+
+    <!-- 章节列表 -->
+    <div class="quest-chapters" th:unless="${current != null}">
+        <a class="quest-chapter" th:each="c : ${chapters}"
+           th:href="@{/quest(chapter=${c.slug()})}"
+           th:attr="data-slug=${c.slug()}">
+            <span class="quest-chapter-title" th:text="${c.title()}">Java 基础</span>
+            <span class="quest-chapter-bar">
+                <i th:style="|width:${c.total() > 0 ? c.passed() * 100 / c.total() : 0}%|"></i>
+            </span>
+            <span class="quest-chapter-count" th:text="|已过 ${c.passed()}/${c.total()}|">已过 0/0</span>
+        </a>
+        <p class="empty" th:if="${#lists.isEmpty(chapters)}">暂无内容</p>
+    </div>
+
+    <!-- 某一章下面的关卡 -->
+    <div class="quest-levels" th:if="${current != null}">
+        <a class="back-link" th:href="@{/quest}">返回</a>
+        <h2 class="quest-levels-title" th:text="${current.title()}">Java 基础</h2>
+        <ul class="quest-list">
+            <li th:each="i, it : ${current.items()}">
+                <a class="quest-row" th:href="@{/quest/{s}(s=${i.slug()})}" th:classappend="${i.passed()} ? 'done'">
+                    <span class="quest-no" th:text="${it.count}">1</span>
+                    <span class="quest-row-title" th:text="${i.title()}">题目</span>
+                    <span class="quest-mode" th:text="${i.mode() == 'cloze' ? '挖空' : '模糊背'}">挖空</span>
+                    <span class="quest-tick" th:if="${i.passed()}" aria-label="已过">✓</span>
+                </a>
+            </li>
+        </ul>
+    </div>
+</main>
+
+<footer th:replace="~{fragments/layout :: foot}"></footer>
+</body>
+</html>

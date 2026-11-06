@@ -35,6 +35,15 @@
         </ul>
     </section>
 
+    <section class="me-section" th:if="${questPoint.xp() > 0}">
+        <h2>知识考核</h2>
+        <ul class="me-stats">
+            <li><a th:href="@{/quest}"><strong th:text="|Lv.${questPoint.level()}|">Lv.1</strong><span>等级</span></a></li>
+            <li><a th:href="@{/quest}"><strong th:text="${questPoint.xp()}">0</strong><span>XP</span></a></li>
+            <li><a th:href="@{/quest}"><strong th:text="${questPassed}">0</strong><span>已过</span></a></li>
+        </ul>
+    </section>
+
     <section class="me-section">
         <h2>AI 接入</h2>
 

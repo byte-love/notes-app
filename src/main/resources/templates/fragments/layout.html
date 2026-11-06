@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org"
       xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
 <head th:fragment="head(pageTitle)">
@@ -24,7 +24,7 @@
             } catch (e) {}
         })();
     </script>
-    <link rel="stylesheet" th:href="@{/css/app.css(v=162)}">
+    <link rel="stylesheet" th:href="@{/css/app.css(v=166)}">
     <!-- 通用小工具（CSRF / POST / 转义）：页面自己的脚本都要用它，所以放 head 里先加载 -->
     <script th:src="@{/js/base.js(v=2)}"></script>
 </head>
@@ -41,6 +41,8 @@
                th:classappend="${tabActive == 'note' or tabActive == 'project' or tabActive == 'bagu' or tabActive == 'algo'} ? 'is-active'">我的笔记</a>
             <a class="tab" th:href="@{/explore}"
                th:classappend="${tabActive == 'explore'} ? 'is-active'">技术广场</a>
+            <a sec:authorize="isAuthenticated()" class="tab" th:href="@{/quest}"
+               th:classappend="${tabActive == 'quest'} ? 'is-active'">知识考核</a>
             <a class="tab" th:href="@{/guide}"
                th:classappend="${tabActive == 'guide'} ? 'is-active'">用户指南</a>
             <a class="tab" th:href="@{/changelog}"

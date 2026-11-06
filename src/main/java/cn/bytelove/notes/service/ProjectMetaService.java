@@ -7,6 +7,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -18,10 +19,12 @@ import java.util.Optional;
 public class ProjectMetaService {
 
     private final JdbcTemplate jdbc;
+    private final ProjectTermAnnotator terms;
     private final ObjectMapper mapper = new ObjectMapper();
 
-    public ProjectMetaService(JdbcTemplate jdbc) {
+    public ProjectMetaService(JdbcTemplate jdbc, ProjectTermAnnotator terms) {
         this.jdbc = jdbc;
+        this.terms = terms;
     }
 
     public Optional<String> findDoc(Long itemId) {
@@ -31,7 +34,21 @@ public class ProjectMetaService {
     }
 
     public Optional<ProjectView> view(Long itemId) {
-        return findDoc(itemId).flatMap(ProjectView::parse);
+        return findDoc(itemId).flatMap(ProjectView::parse).map(this::annotated);
+    }
+
+    /** 项目页的文字也挂术语浮窗：英文缩写、字段名这些东西，看的人不一定都认识。 */
+    private ProjectView annotated(ProjectView v) {
+        List<ProjectView.Item> actions = v.actions().stream()
+                .map(a -> new ProjectView.Item(a.text(), terms.annotate(a.textHtml()),
+                        a.note(), terms.annotate(a.noteHtml())))
+                .toList();
+        List<ProjectView.Result> results = v.results().stream()
+                .map(r -> new ProjectView.Result(r.text(), terms.annotate(r.textHtml())))
+                .toList();
+        return new ProjectView(v.slug(), v.title(), v.subtitle(), v.role(), v.period(), v.stack(),
+                v.problem(), terms.annotate(v.problemHtml()), actions, results,
+                v.repo(), v.diagram(), v.shots());
     }
 
     public Map<Long, String> docs(Collection<Long> itemIds) {
