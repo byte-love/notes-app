@@ -4915,38 +4915,6 @@ html[data-theme='dark'] .cl-latest {
     border-color: var(--accent);
 }
 
-/* 每个顶层块左侧的「＋」：悬停才出现，用来评论整段 / 整个代码块 */
-.cmt-block-host {
-    position: relative;
-}
-
-.cmt-block-btn {
-    position: absolute;
-    left: -1.5rem;
-    top: 0.15rem;
-    width: 1.15rem;
-    height: 1.15rem;
-    padding: 0;
-    font-size: 0.72rem;
-    line-height: 1;
-    color: var(--fg-3);
-    background: var(--bg-2);
-    border: 1px solid var(--line);
-    border-radius: 4px;
-    cursor: pointer;
-    opacity: 0;
-    transition: opacity 0.12s ease;
-}
-
-.cmt-block-host:hover .cmt-block-btn {
-    opacity: 1;
-}
-
-.cmt-block-btn:hover {
-    color: var(--accent);
-    border-color: var(--accent);
-}
-
 /* 被评论过的整块：左边一条竖线 + 浅底 */
 .cmt-block-mark {
     border-left: 2px solid var(--accent);

@@ -574,40 +574,6 @@
     // 滚动时工具条别跟着飘
     window.addEventListener('scroll', hideTool, { passive: true });
 
-    // ---------- 整段 / 代码块左侧的 ＋ ----------
-    if (canComment) {
-        blocks.forEach((block, index) => {
-            if (!block.textContent || !block.textContent.trim()) return;
-            const btn = document.createElement('button');
-            btn.type = 'button';
-            btn.className = 'cmt-block-btn';
-            // 不可编辑：光标停在这一段开头按退格时，浏览器会往前找落点合并，
-            // 曾经把整行文字塞进这个按钮里——而按钮内容保存时是丢掉的，那一行就这么没了
-            btn.contentEditable = 'false';
-            btn.textContent = '＋';
-            btn.title = '评论这一段';
-            btn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                hideTool();
-                // 整段评论也把这一段的底铺上，跟选中文字时一样能看出评论的是哪一段
-                let range = null;
-                try {
-                    range = document.createRange();
-                    range.selectNodeContents(block);
-                } catch (err) {
-                    range = null;
-                }
-                openForm({ kind: 'block', quote: textOf(block).slice(0, 120), block: index, range });
-            });
-            block.classList.add('cmt-block-host');
-            // 列表要把按钮放进最后一项：直接塞在 <ul> 下面会让 <ul> 出现非 <li> 子元素，
-            // 光标停在某一项开头按退格时，浏览器会把整项连内容一起删掉
-            const host = (block.tagName === 'UL' || block.tagName === 'OL') && block.lastElementChild
-                ? block.lastElementChild
-                : block;
-            host.appendChild(btn);
-        });
-    }
 
     // ---------- 已有评论标回正文 ----------
     const threads = [...pane.querySelectorAll('.cmt-thread')];
