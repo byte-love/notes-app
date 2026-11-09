@@ -519,3 +519,82 @@
 
 // 正文里藏起来的字（%%...%%）：作者自己那边只是淡淡一层模糊当标记，正常能读；
 // 别人那份 HTML 里根本没有这段，所以这里不需要做任何展示逻辑。
+
+// 每个大标题前面挂一个折叠按钮（飞书那种）：点一下把这一节收起来，只留标题。
+// 折叠状态按笔记存在 localStorage，刷新、下次翻回来都还在。
+// ⚠ 按钮必须用 <button>：doc-edit.js 把正文折回 Markdown 时会跳过 button（它是界面，不是正文），
+//   换成 span / 伪元素以外的东西就会被写进正文源码。
+(() => {
+    const box = document.querySelector('.markdown[data-slug]');
+    if (!box) return;
+
+    const heads = [...box.querySelectorAll('h2[id]')];
+    if (heads.length < 2) return;   // 只有一节没什么可折的
+
+    const key = 'fold:' + box.dataset.slug;
+    const read = () => {
+        try {
+            const v = JSON.parse(localStorage.getItem(key) || '[]');
+            return new Set(Array.isArray(v) ? v : []);
+        } catch (e) { return new Set(); }
+    };
+    const state = read();
+    const save = () => {
+        try { localStorage.setItem(key, JSON.stringify([...state])); } catch (e) {}
+    };
+
+    // id -> { head, body: [] }，body 是这个标题到下一个 h1/h2 之间的兄弟节点
+    const secs = new Map();
+
+    heads.forEach((h) => {
+        const body = [];
+        let n = h.nextElementSibling;
+        while (n && !/^H[12]$/.test(n.tagName)) {
+            body.push(n);
+            n = n.nextElementSibling;
+        }
+        if (!body.length) return;   // 空标题不给按钮
+
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'head-fold';
+        btn.setAttribute('aria-label', '折叠这一段');
+        btn.title = '折叠这一段';
+
+        h.prepend(btn);
+        h.classList.add('has-fold');
+        secs.set(h.id, { head: h, body, btn });
+
+        btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            setCollapsed(h.id, !h.classList.contains('is-collapsed'));
+        });
+    });
+
+    if (!secs.size) return;
+
+    function setCollapsed(id, collapsed) {
+        const sec = secs.get(id);
+        if (!sec) return;
+        sec.head.classList.toggle('is-collapsed', collapsed);
+        sec.body.forEach((n) => n.classList.toggle('sec-hidden', collapsed));
+        sec.btn.classList.toggle('collapsed', collapsed);
+        sec.btn.setAttribute('aria-expanded', String(!collapsed));
+        sec.btn.title = collapsed ? '展开这一段' : '折叠这一段';
+        sec.btn.setAttribute('aria-label', sec.btn.title);
+        if (collapsed) state.add(id); else state.delete(id);
+        save();
+    }
+
+    // 恢复上次的折叠状态
+    state.forEach((id) => { if (secs.has(id)) setCollapsed(id, true); });
+
+    // 从目录、或者带 #锚点 进来时，目标那节如果是收着的，先展开再跳
+    const reveal = (id) => { if (secs.has(id) && secs.get(id).head.classList.contains('is-collapsed')) setCollapsed(id, false); };
+    document.querySelectorAll('.toc a[href^="#"]').forEach((a) => {
+        a.addEventListener('click', () => reveal(decodeURIComponent(a.getAttribute('href').slice(1))));
+    });
+    if (location.hash) reveal(decodeURIComponent(location.hash.slice(1)));
+    window.addEventListener('hashchange', () => reveal(decodeURIComponent(location.hash.slice(1))));
+})();

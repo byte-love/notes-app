@@ -4498,6 +4498,65 @@ html[data-theme='dark'] .cl-latest {
     background: var(--accent);
 }
 
+/* ---- 正文大标题的折叠按钮（飞书那种：标题左边一个小三角） ---- */
+
+.markdown h2.has-fold {
+    position: relative;
+}
+
+.head-fold {
+    position: absolute;
+    left: -1.05rem;
+    top: 0.2em;
+    width: 1em;
+    height: 1em;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--fg-3);
+    font: inherit;
+    line-height: 1;
+    cursor: pointer;
+    opacity: 0.3;
+    transition: opacity 0.12s ease, color 0.12s ease;
+}
+
+.head-fold::before {
+    content: "▾";
+    display: block;
+    font-size: 0.78em;
+    line-height: 1;
+}
+
+.head-fold.collapsed::before {
+    content: "▸";
+}
+
+.markdown h2:hover .head-fold,
+.head-fold:focus-visible {
+    opacity: 0.8;
+}
+
+.head-fold:hover {
+    opacity: 1;
+    color: var(--accent);
+}
+
+/* 收起来的那一节：内容整段收走，只留标题 */
+.sec-hidden {
+    display: none !important;
+}
+
+@media print {
+    .sec-hidden {
+        display: block !important;
+    }
+
+    .head-fold {
+        display: none;
+    }
+}
+
 /* ---- 拖拽调整左右两栏宽度 ---- */
 
 .with-tree {
