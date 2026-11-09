@@ -112,7 +112,9 @@ public class MarkdownRenderer {
         this.glossary = glossary;
         this.extensions = List.of(
                 TablesExtension.create(),
-                StrikethroughExtension.create()
+                // 删除线只认 ~~。默认单个 ~ 也算（requireTwoTildes 默认 false），正文里写
+                // 「3~5 轮」「10%~20%」这种区间时，两个不相干的 ~ 会被配成一对，中间整段被划掉。
+                StrikethroughExtension.builder().requireTwoTildes(true).build()
         );
         this.parser = Parser.builder().extensions(extensions).build();
         this.secretRenderer = HtmlRenderer.builder()
