@@ -72,6 +72,20 @@ sudo /opt/deploy/app.sh dev      # 改后端/模板/CSS
 `/srv/deploy` 是 `root:dev`、组可写，两个人都能往里面放包。脚本开头会打印
 `用的包: <路径> (修改时间 …, 属主 …)`，部署完看一眼就知道发的是谁传的那份。
 
+**`notes-src-prod.tar.gz` 不会自己更新。** 它和 dev 那份是两个独立文件，`git push`、
+发测试环境、merge 到 main 都不碰它，只有有人手动 scp 才变。所以发正式前必须从要发的那个
+commit 重新打一份，否则 `app.sh prod` 编译出来的还是上一次的代码（2026-11-11 差点把三天前
+的包装回线上）：
+
+```bash
+git checkout main && git archive --format=tar.gz --prefix=notes-app/ -o notes-src-prod.tar.gz HEAD
+ssh root@47.104.210.93 "cp -p /srv/deploy/notes-src-prod.tar.gz /srv/deploy/notes-src-prod.tar.gz.bak-$(date +%Y%m%d-%H%M%S)"
+scp notes-src-prod.tar.gz root@47.104.210.93:/srv/deploy/
+```
+
+`--prefix=notes-app/` 不能省：`app.sh` 解压后按 `notes-app/` 找源码，前缀不对会直接报
+「源码包结构不对」退出（不会动线上）。`app.sh` 只备份旧 jar，源码包要自己 `cp -p` 留一份。
+
 `sudo` 白名单是**精确匹配**的：`sudo /opt/deploy/app.sh dev` 能过，
 在后面多加一个参数（比如自己指定源码包路径 `... dev /tmp/x.tar.gz`）就不匹配了，
 会提示 `sudo: a password is required`。
