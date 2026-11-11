@@ -299,6 +299,14 @@ sudo /opt/deploy/sync-db.sh    # 正式库整库覆盖到测试库
   `html` 和 `toc`（以前 `toHtml()` + `toc()` 各解析一遍长文）；结果按
   `术语表版本 + 正文长度 + CRC32` 缓存 160 条，`GlossaryService.version` 每次 `reload()` 自增，
   改了术语浮窗缓存自动失效。动渲染逻辑时注意：缓存命中路径上不能有副作用
+- **删除线只认 `~~`（2026-11-09）**：`MarkdownRenderer` 里 `StrikethroughExtension.builder().requireTwoTildes(true)`。
+  commonmark 的默认值是 `false`，也就是**单个 `~` 也算定界符** —— 正文里写「3~5 轮」「10%~20%」这种区间时，
+  两个不相干的 `~` 会被配成一对，中间整段被 `<del>` 划掉（真出过，一整屏都带横线）
+- **正文大标题可折叠（2026-11-09）**：`detail.js` 给每个 `h2[id]` 前面插一个 `.head-fold` 按钮，
+  点一下把它到下一个 `h1/h2` 之间的兄弟节点加 `.sec-hidden` 收起，只留标题；折叠状态按笔记存在
+  `localStorage` 的 `fold:<slug>`，从目录或 `#锚点` 跳进收起的一节会先展开，打印时全部展开。
+  **按钮必须是 `<button>`** —— `doc-edit.js` 把正文折回 Markdown 时会跳过 button，
+  换成 span 或伪元素会被写进正文源码
 - **列表页标签只查一次**：`TagService.load(ids)` 返回 `TagsAndCounts`（每个条目的标签 + 每个标签的条数），
   `listing()` 里卡片标签和筛选条共用一份；`of()` / `counts()` 留成薄封装给别处用
 - **列表 / 目录 / 广场不读正文（`ContentCard`，2026-11-05）**：这些页面只显示标题、摘要、星级、标签，
@@ -526,8 +534,8 @@ sudo /opt/deploy/sync-db.sh    # 正式库整库覆盖到测试库
     2026-11-02 试过整体 ×1.15，被否（太挤、换行多），已还原
   - **单行加粗的引用块**（`> **回答流程**`）当标签用：`.markdown blockquote:has(> p:only-of-type > strong:only-child)`
     收窄内边距 + 纵向居中（`display:flex; align-items:center`）、**横向仍然左对齐**（试过居中，
-    用户明确要左对齐）。必须用 `:only-of-type`——注释功能会往引用块里插一个「＋」按钮，
-    用 `:only-child` 永远匹配不上（踩过一次，规则写了页面没生效）
+    用户明确要左对齐）。用 `:only-of-type`——当初是因为注释功能会往引用块里插一个「＋」按钮，
+    用 `:only-child` 永远匹配不上（踩过一次，规则写了页面没生效）。那个「＋」按钮 2026-11-09 已去掉，这行保持原样，历史原因记在这里，免得有人改回 `:only-child` 再踩一次
   - **正文里的三种下划线别撞**：评论 = 1px 实线（强调色 35% 透明，`color-mix`）、注释 = 1px 点线、
     术语浮窗 = 1px 灰虚线；评论不再铺半透明底，避免干扰阅读
   - **页面底部留白**：`.with-tree` 的 `padding-bottom` 是 **3.6rem**（2026-11-02 加）。这站
