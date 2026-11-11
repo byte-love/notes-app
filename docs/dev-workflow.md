@@ -393,6 +393,9 @@ sudo /opt/deploy/sync-db.sh    # 正式库整库覆盖到测试库
     一个词只有语境义项、又一条都没命中时宁可不标。这是为了「标签」这种词 —— Redis 段落里是 hash tag，
     模型段落里才是 label，以前一套解释套全站，在 Redis 的 Hash 结构里弹出来的是模型的 label（2026-11-02 用户指出）
   - 改/删/新增完页面会 `location.reload()` 一次（术语可能改名、新增的词要重新包标记）
+  - **用 psql 直写 `glossary_term` 不生效**：`reload()` 只在 `GlossaryService` 的 add / update / delete 里调
+    （页面上的编辑走的就是这条），没有定时刷新；直写 SQL 之后要 `systemctl restart notes-app`
+    （测试环境是 `notes-app-dev`），否则一直跑启动时那份表 —— 2026-11-11 加「意图定义」时踩过
 
 - **星级（V26）**：`content_item.rating`（0 = 没评，1–3）。改星级由 `RatingService` 的 SQL 直写，
   **不碰 `updated_at`** —— 列表是按 `updated_at` 倒序排的，标个星就把这条顶到最前，翻着翻着顺序就乱。
