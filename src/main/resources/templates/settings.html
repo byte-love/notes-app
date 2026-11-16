@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="zh-CN">
+<head th:replace="~{fragments/layout :: head('设置 · byte-love')}"></head>
+<body>
+<header th:replace="~{fragments/layout :: nav}"></header>
+
+<main class="wrap narrow">
+    <h1 class="settings-title">设置</h1>
+
+    <section class="me-section">
+        <h2>外观</h2>
+
+        <div class="me-row">
+            <span class="me-label">主题</span>
+            <div class="seg" data-setting="theme">
+                <button type="button" data-value="dark">深色</button>
+                <button type="button" data-value="light">浅色</button>
+                <button type="button" data-value="sepia">护眼</button>
+                <button type="button" data-value="mist">雾青</button>
+                <button type="button" data-value="dusk">暖霞</button>
+                <button type="button" data-value="system">跟随系统</button>
+            </div>
+        </div>
+    </section>
+
+    <section class="me-section">
+        <h2>背景</h2>
+
+        <div class="me-row">
+            <span class="me-label">样式</span>
+            <div class="seg" data-setting="bg">
+                <button type="button" data-value="aurora">渐变</button>
+                <button type="button" data-value="plain">素色</button>
+                <button type="button" data-value="paper">纸纹</button>
+                <button type="button" data-value="grid">网格</button>
+            </div>
+        </div>
+
+        <div class="me-row">
+            <span class="me-label">浓度</span>
+            <span class="me-range">
+                <input type="range" id="bgStrength" min="0" max="100" step="5" value="55">
+                <b id="bgStrengthVal">55</b>
+            </span>
+        </div>
+    </section>
+
+    <section class="me-section">
+        <h2>正文</h2>
+
+        <div class="me-row">
+            <span class="me-label">字号</span>
+            <div class="seg" data-setting="read-size">
+                <button type="button" data-value="sm">小</button>
+                <button type="button" data-value="md">标准</button>
+                <button type="button" data-value="lg">大</button>
+            </div>
+        </div>
+
+        <div class="me-row">
+            <span class="me-label">名词着色</span>
+            <div class="seg" data-setting="terms">
+                <button type="button" data-value="on">开</button>
+                <button type="button" data-value="off">关</button>
+            </div>
+        </div>
+
+        <div class="me-row">
+            <span class="me-label">首行缩进</span>
+            <div class="seg" data-setting="indent">
+                <button type="button" data-value="on">开</button>
+                <button type="button" data-value="off">关</button>
+            </div>
+        </div>
+    </section>
+</main>
+
+<script>
+    (() => {
+        const root = document.documentElement;
+        const mq = window.matchMedia('(prefers-color-scheme: dark)');
+
+        const read = (key) => {
+            try { return localStorage.getItem(key); } catch (e) { return null; }
+        };
+        const write = (key, value) => {
+            try { localStorage.setItem(key, value); } catch (e) {}
+        };
+
+        const applyTheme = (value) => {
+            if (value === 'system') {
+                delete root.dataset.theme;
+            } else {
+                root.dataset.theme = value;
+            }
+        };
+
+        const applySize = (value) => {
+            root.dataset.readSize = value;
+        };
+
+        const applyBg = (value) => {
+            if (value === 'paper' || value === 'grid' || value === 'aurora') {
+                root.dataset.bg = value;
+            } else {
+                delete root.dataset.bg;
+            }
+        };
+
+        const applyTerms = (value) => {
+            if (value === 'off') {
+                root.dataset.terms = 'off';
+            } else {
+                delete root.dataset.terms;
+            }
+        };
+
+        const applyIndent = (value) => {
+            if (value === 'off') {
+                root.dataset.indent = 'off';
+            } else {
+                delete root.dataset.indent;
+            }
+        };
+
+        const DEFAULTS = { theme: 'dark', 'read-size': 'md', bg: 'aurora', terms: 'on', indent: 'on' };
+
+        const mark = (group, value) => {
+            group.querySelectorAll('button').forEach((b) => {
+                b.classList.toggle('on', b.dataset.value === value);
+            });
+        };
+
+        document.querySelectorAll('.seg[data-setting]').forEach((group) => {
+            const key = group.dataset.setting;
+            mark(group, read(key) || DEFAULTS[key]);
+
+            group.addEventListener('click', (e) => {
+                const btn = e.target.closest('button[data-value]');
+                if (!btn) return;
+                const value = btn.dataset.value;
+                write(key, value);
+                if (key === 'theme') {
+                    applyTheme(value);
+                } else if (key === 'read-size') {
+                    applySize(value);
+                } else if (key === 'bg') {
+                    applyBg(value);
+                } else if (key === 'terms') {
+                    applyTerms(value);
+                } else if (key === 'indent') {
+                    applyIndent(value);
+                }
+                mark(group, value);
+            });
+        });
+
+        // 背景浓度：直接改 html 上的 --tex，CSS 里各种纹理都按它算透明度
+        const strength = document.getElementById('bgStrength');
+        const strengthVal = document.getElementById('bgStrengthVal');
+        if (strength) {
+            const saved = read('bg-strength');
+            if (saved) {
+                strength.value = saved;
+            }
+            strengthVal.textContent = strength.value;
+            root.style.setProperty('--tex', strength.value);
+            strength.addEventListener('input', () => {
+                strengthVal.textContent = strength.value;
+                root.style.setProperty('--tex', strength.value);
+                write('bg-strength', strength.value);
+            });
+        }
+
+        // 选「跟随系统」时，系统主题变了要立刻反映
+        mq.addEventListener('change', () => {
+            if ((read('theme') || 'system') === 'system') applyTheme('system');
+        });
+    })();
+</script>
+
+<footer th:replace="~{fragments/layout :: foot}"></footer>
+</body>
+</html>

@@ -3113,6 +3113,12 @@ html.tree-no-count .tree-count {
     color: var(--fg-2);
 }
 
+/* 设置页（/settings）：只管「页面怎么显示」，和账号页分开 */
+.settings-title {
+    font-size: 1.45rem;
+    margin: 0.4rem 0 1.6rem;
+}
+
 .me-row {
     display: flex;
     align-items: center;
