@@ -1960,6 +1960,18 @@ html[data-theme='sepia'] .item-tag {
 .markdown p {
     /* 长段落之间要有明确的呼吸：比行距再大一档，否则整屏看下来像一大块 */
     margin: 0 0 1.7rem;
+    /* 两侧对齐 + 中文按字对齐：右边不再参差，整页看着稳 */
+    text-align: justify;
+    text-justify: inter-ideograph;
+}
+
+/* 中文首行缩进：每一段开头空两字，一眼能看出段落起止（阅读设置里可以关） */
+.markdown > p {
+    text-indent: 2em;
+}
+
+html[data-indent='off'] .markdown > p {
+    text-indent: 0;
 }
 
 /* 长段落（后端按字数打 md-long）：左边一条极淡的轨道，文字位置不变（轨道落在留白里），

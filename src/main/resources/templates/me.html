@@ -137,6 +137,14 @@
         </div>
 
         <div class="me-row">
+            <span class="me-label">首行缩进</span>
+            <div class="seg" data-setting="indent">
+                <button type="button" data-value="on">开</button>
+                <button type="button" data-value="off">关</button>
+            </div>
+        </div>
+
+        <div class="me-row">
             <span class="me-label">正文字号</span>
             <div class="seg" data-setting="read-size">
                 <button type="button" data-value="sm">小</button>
@@ -213,7 +221,15 @@
             }
         };
 
-        const DEFAULTS = { theme: 'dark', 'read-size': 'md', bg: 'aurora', terms: 'on' };
+        const applyIndent = (value) => {
+            if (value === 'off') {
+                root.dataset.indent = 'off';
+            } else {
+                delete root.dataset.indent;
+            }
+        };
+
+        const DEFAULTS = { theme: 'dark', 'read-size': 'md', bg: 'aurora', terms: 'on', indent: 'on' };
 
         const mark = (group, value) => {
             group.querySelectorAll('button').forEach((b) => {
@@ -238,6 +254,8 @@
                     applyBg(value);
                 } else if (key === 'terms') {
                     applyTerms(value);
+                } else if (key === 'indent') {
+                    applyIndent(value);
                 }
                 mark(group, value);
             });
