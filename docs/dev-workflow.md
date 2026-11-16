@@ -408,6 +408,10 @@ sudo /opt/deploy/sync-db.sh    # 正式库整库覆盖到测试库
     虚线保留，悬停照旧能看解释
   - 词表在 `EN_STOPWORDS`：the / and / of 这类虚词和单字母不上色，否则满屏花
 
+- **长段落轨道（2026-11-16）**：`MarkdownRenderer` 的 AttributeProvider 给**顶层** `Paragraph` 打 `md-long`（`textOf(node).length() >= 180`），CSS 用 `border-left: 2px` + 负外边距把轨道放进留白、正文位置不变。只认顶层段落：引用块、列表项、表格本来就有框，不重复加；180 字以下不受影响（`LONG_PARAGRAPH_CHARS`）
+
+- **正文排版（2026-11-16）**：`.markdown` 行距 1.9（中文长文），`p` 段间距 1.7rem（比一行高，段落才不糊成一块），`ul/ol` 1.25rem。改这几个数要连同「长段落轨道」一起看——段距大于行距才有分块感
+
 - **主题与背景（2026-11-16）**：现在是五套主题（`light` / `dark` / `sepia` / `mist` 雾青 / `dusk` 暖霞），
   全部是 `html[data-theme='…']` 上的 token 块，切主题 = 换一组 CSS 变量，不改任何组件
   - 背景纹理三档：`html[data-bg='paper' | 'grid' | 'aurora']`，全部用 `background-image` 的渐变生成，
