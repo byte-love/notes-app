@@ -410,6 +410,7 @@ sudo /opt/deploy/sync-db.sh    # 正式库整库覆盖到测试库
 
 - **长段落轨道（2026-11-16）**：`MarkdownRenderer` 的 AttributeProvider 给**顶层** `Paragraph` 打 `md-long`（`textOf(node).length() >= 180`），CSS 用 `border-left: 2px` + 负外边距把轨道放进留白、正文位置不变。只认顶层段落：引用块、列表项、表格本来就有框，不重复加；180 字以下不受影响（`LONG_PARAGRAPH_CHARS`）
 
+- **正文对齐与缩进（2026-11-16）**：`.markdown p` 用 `text-align: justify` + `text-justify: inter-ideograph`（中文按字对齐，右边缘不参差）；`.markdown > p` 首行缩进 2em，只给顶层段落，列表/表格/引用里不加。开关是 `html[data-indent='off']`，对应阅读设置里的「首行缩进」（localStorage `indent`，默认开）
 - **正文排版（2026-11-16）**：`.markdown` 行距 1.9（中文长文），`p` 段间距 1.7rem（比一行高，段落才不糊成一块），`ul/ol` 1.25rem。改这几个数要连同「长段落轨道」一起看——段距大于行距才有分块感
 
 - **主题与背景（2026-11-16）**：现在是五套主题（`light` / `dark` / `sepia` / `mist` 雾青 / `dusk` 暖霞），
