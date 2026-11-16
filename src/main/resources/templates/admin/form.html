@@ -146,6 +146,8 @@
             </div>
             <div class="md-bar">
                 <button type="button" class="btn-quiet" id="md-image">插入图片</button>
+                <button type="button" class="btn-quiet" id="md-tidy">整理排版</button>
+                <button type="button" class="btn-quiet" id="md-undo" hidden>还原</button>
             </div>
             <div class="md-editor">
                 <textarea th:field="*{body}" rows="26" spellcheck="false" id="md-source"
@@ -178,5 +180,6 @@
 
 <footer th:replace="~{fragments/layout :: foot}"></footer>
 <script th:src="@{/js/admin-editor.js(v=5)}"></script>
+<script th:src="@{/js/editor-paste.js(v=1)}"></script>
 </body>
 </html>
