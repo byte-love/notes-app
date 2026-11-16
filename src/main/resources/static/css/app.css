@@ -140,8 +140,11 @@
 }
 
 html[data-theme='light'] {
-    --ct-bg-s: 55%;
-    --ct-bg-l: 95%;
+    /* 显式主题要把名词着色的明度也钉住：不然系统是深色时，@media 里那套浅色明度会漏过来 */
+    --tone-s: 58%;
+    --tone-l-fg: 33%;
+    --tone-l-bg: 93%;
+    --ct-bg-s: 55%;    --ct-bg-l: 95%;
     --ct-bar-s: 55%;
     --ct-bar-l: 62%;
     --ct-fg-s: 45%;
@@ -225,6 +228,9 @@ html[data-theme='dark'] {
 }
 
 html[data-theme='sepia'] {
+    --tone-s: 48%;
+    --tone-l-fg: 33%;
+    --tone-l-bg: 92%;
     --fg: #3b3227;
     --fg-2: #6b5f4f;
     --fg-3: #6f6552;
