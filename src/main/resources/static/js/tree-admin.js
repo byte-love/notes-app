@@ -142,13 +142,6 @@
         input.addEventListener('blur', () => finish(false));
     };
 
-    // ---- 目录旁边的数字：默认不显示，菜单里可以打开 ----
-    try {
-        document.documentElement.classList.toggle('tree-no-count', localStorage.getItem('tree-counts') !== 'on');
-    } catch (e) {
-        document.documentElement.classList.add('tree-no-count');
-    }
-
     // ---- ⋯ 菜单 ----
     const menu = document.createElement('div');
     menu.className = 'tree-menu';
@@ -182,14 +175,6 @@
         menu.appendChild(item('复制链接', () => {
             const url = location.origin + ctx + row.dataset.url;
             if (navigator.clipboard) navigator.clipboard.writeText(url);
-        }));
-        const hideCounts = document.documentElement.classList.contains('tree-no-count');
-        menu.appendChild(item(hideCounts ? '显示数字' : '隐藏数字', () => {
-            const root = document.documentElement;
-            root.classList.toggle('tree-no-count');
-            try {
-                localStorage.setItem('tree-counts', root.classList.contains('tree-no-count') ? 'off' : 'on');
-            } catch (e) {}
         }));
         const del = item('删除', async () => {
             const ask = '删除「' + (row.dataset.title || '') + '」？进回收站，30 天内能恢复。';

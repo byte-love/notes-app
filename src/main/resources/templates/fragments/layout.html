@@ -41,10 +41,13 @@
                 if (localStorage.getItem('indent') === 'off') {
                     document.documentElement.dataset.indent = 'off';
                 }
+                if (localStorage.getItem('tree-num') === 'off') {
+                    document.documentElement.dataset.treeNum = 'off';
+                }
             } catch (e) {}
         })();
     </script>
-    <link rel="stylesheet" th:href="@{/css/app.css(v=180)}">
+    <link rel="stylesheet" th:href="@{/css/app.css(v=183)}">
     <!-- 通用小工具（CSRF / POST / 转义）：页面自己的脚本都要用它，所以放 head 里先加载 -->
     <script th:src="@{/js/base.js(v=2)}"></script>
 </head>

@@ -73,6 +73,18 @@
             </div>
         </div>
     </section>
+
+    <section class="me-section">
+        <h2>目录</h2>
+
+        <div class="me-row">
+            <span class="me-label">序号</span>
+            <div class="seg" data-setting="tree-num">
+                <button type="button" data-value="on">开</button>
+                <button type="button" data-value="off">关</button>
+            </div>
+        </div>
+    </section>
 </main>
 
 <script>
@@ -123,7 +135,15 @@
             }
         };
 
-        const DEFAULTS = { theme: 'dark', 'read-size': 'md', bg: 'aurora', terms: 'on', indent: 'on' };
+        const applyTreeNum = (value) => {
+            if (value === 'off') {
+                root.dataset.treeNum = 'off';
+            } else {
+                delete root.dataset.treeNum;
+            }
+        };
+
+        const DEFAULTS = { theme: 'dark', 'read-size': 'md', bg: 'aurora', terms: 'on', indent: 'on', 'tree-num': 'on' };
 
         const mark = (group, value) => {
             group.querySelectorAll('button').forEach((b) => {
@@ -150,6 +170,8 @@
                     applyTerms(value);
                 } else if (key === 'indent') {
                     applyIndent(value);
+                } else if (key === 'tree-num') {
+                    applyTreeNum(value);
                 }
                 mark(group, value);
             });

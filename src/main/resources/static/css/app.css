@@ -2669,6 +2669,17 @@ html[data-terms='off'] .en {
     color: var(--accent);
 }
 
+/* 设置页「目录 · 序号」关掉时整列隐藏；标题不再给序号留位置，折行也回到同一列 */
+html[data-tree-num="off"] .tree-num {
+    display: none;
+}
+
+html[data-tree-num="off"] .tree a,
+html[data-tree-num="off"] .tree .locked {
+    padding-left: 0.6rem;
+    text-indent: 0;
+}
+
 /* 分组标题是一颗折叠按钮，不是链接；箭头用两条边画出来，比 ▾ 细一点。
    标题和右侧条数排成一行，条数用等宽数字，一行里不至于只有一串标题 */
 .tree .tree-group {
@@ -2697,36 +2708,12 @@ html[data-terms='off'] .en {
     color: var(--fg-3);
 }
 
-/* 数字默认不显示：⋯ 菜单里可以打开（存在 localStorage，见 tree-admin.js） */
-html.tree-no-count .tree-count {
-    display: none;
-}
-
 .tree .tree-group.on .tree-count {
     color: var(--accent);
 }
 
-.tree .tree-group::before {
-    content: "";
-    position: absolute;
-    left: 0.5rem;
-    top: 50%;
-    width: 0.3rem;
-    height: 0.3rem;
-    border-right: 1.4px solid var(--fg-3);
-    border-bottom: 1.4px solid var(--fg-3);
-    transform: translateY(-65%) rotate(45deg);
-    transition: transform 0.14s ease, border-color 0.14s ease;
-}
-
-.tree li.folded > .tree-group::before {
-    transform: translateY(-35%) rotate(-45deg);
-}
-
-.tree .tree-group:hover::before {
-    border-color: var(--accent);
-}
-
+/* 分组标题不带折叠箭头（2026-11-16 用户明确：不需要箭头，只留分类前面的色点）。
+   收/开照样点标题，`.tree li.folded > ul` 的隐藏规则在下面 */
 .tree li.folded > ul {
     display: none;
 }
@@ -2764,7 +2751,7 @@ html.tree-no-count .tree-count {
 }
 
 .tree > li > .tree-group {
-    padding-left: 1.6rem;
+    padding-left: 1.15rem;
 }
 
 /* 顶层分类前面一个色点：颜色来自 --h（后端按 slug 哈希给，同一个分类永远同色） */
@@ -2784,9 +2771,9 @@ html.tree-no-count .tree-count {
     transform: translateY(-50%);
 }
 
-/* 箭头让出色点的位置 */
-.tree-pane > .tree > li > .tree-row .tree-group::before {
-    left: 1.02rem;
+/* 色点在 0.6rem 起、宽 0.4rem；标题从 1.15rem 起，紧跟着点走，不给箭头留空位 */
+.tree-pane > .tree > li > .tree-row .tree-group {
+    padding-left: 1.15rem;
 }
 
 /* 条数默认不显示，鼠标移到这一行（或这一组就是当前项）才露出来 */
@@ -2805,8 +2792,7 @@ html.tree-no-count .tree-count {
     font-weight: 600;
     font-size: 0.85rem;
     color: var(--fg);
-    /* 左侧留出箭头的位，否则 padding 简写会把 .tree-group 的 padding-left 覆盖掉，箭头压到文字上 */
-    padding: 0.28rem 0.6rem 0.28rem 1.15rem;
+    padding: 0.28rem 0.6rem;
 }
 
 /* 没有嵌套子目录时（项目区那种两层结构），靠字号和间距撑出层次 */
