@@ -1907,7 +1907,8 @@ html[data-theme='sepia'] .item-tag {
 /* ---------- markdown typography ---------- */
 .markdown {
     font-size: 16px;
-    line-height: 1.8;
+    /* 中文长文行距放到 1.9：比 1.8 明显好读，又不至于散 */
+    line-height: 1.9;
 }
 
 /* 正文整块托一层很浅的底色（各主题的 --doc-bg，比页面底色亮一点点），
