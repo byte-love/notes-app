@@ -69,6 +69,19 @@
     /* 滚动条：滚动时用 active，停手后 JS 会把它插值到 idle */
     --sb-active: rgba(114, 109, 99, 0.9);
     --sb-idle: rgba(28, 27, 24, 0.042);
+    /* 名词着色的六个色相：同一个词按自己的哈希固定落一档，换主题只换明度不换色相 */
+    --t-h-0: 205;
+    --t-h-1: 265;
+    --t-h-2: 152;
+    --t-h-3: 26;
+    --t-h-4: 330;
+    --t-h-5: 186;
+    --tone-s: 58%;
+    --tone-l-fg: 33%;
+    --tone-l-bg: 93%;
+    /* 背景纹理的浓度（0–100，阅读设置里的滑杆改它） */
+    --tex: 55;
+    --tex-k: 1;
     --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
     --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
         "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
@@ -121,12 +134,19 @@
         --sw-purple: #a580f5;
         --sb-active: rgba(140, 137, 128, 0.85);
         --sb-idle: rgba(231, 229, 223, 0.035);
+        --tone-s: 50%;
+        --tone-l-fg: 74%;
+        --tone-l-bg: 24%;
+        --tex-k: 0.6;
     }
 }
 
 html[data-theme='light'] {
-    --ct-bg-s: 55%;
-    --ct-bg-l: 95%;
+    /* 显式主题要把名词着色的明度也钉住：不然系统是深色时，@media 里那套浅色明度会漏过来 */
+    --tone-s: 58%;
+    --tone-l-fg: 33%;
+    --tone-l-bg: 93%;
+    --ct-bg-s: 55%;    --ct-bg-l: 95%;
     --ct-bar-s: 55%;
     --ct-bar-l: 62%;
     --ct-fg-s: 45%;
@@ -204,9 +224,16 @@ html[data-theme='dark'] {
     --k-l-bar: 60%;
     --sb-active: rgba(140, 137, 128, 0.85);
     --sb-idle: rgba(231, 229, 223, 0.035);
+    --tone-s: 50%;
+    --tone-l-fg: 74%;
+    --tone-l-bg: 24%;
+    --tex-k: 0.6;
 }
 
 html[data-theme='sepia'] {
+    --tone-s: 48%;
+    --tone-l-fg: 33%;
+    --tone-l-bg: 92%;
     --fg: #3b3227;
     --fg-2: #6b5f4f;
     --fg-3: #6f6552;
@@ -251,6 +278,106 @@ html[data-theme='sepia'] {
     --sw-purple: #a580f5;
     --sb-active: rgba(111, 101, 82, 0.9);
     --sb-idle: rgba(59, 50, 39, 0.042);
+}
+
+/* 雾青：冷调（蓝灰底 + 青蓝强调色），和护眼的暖调是一对 */
+html[data-theme='mist'] {
+    --fg: #16242a;
+    --fg-2: #47606a;
+    --fg-3: #68808a;
+    --bg: #eaf2f5;
+    --bg-2: #e0ebef;
+    --doc-bg: #fbfdfe;
+    --code-kw: #8b3aa0;
+    --code-type: #9a6400;
+    --code-func: #1f5fa8;
+    --code-str: #38743c;
+    --code-num: #7f5a00;
+    --code-cmt: #8a9aa2;
+    --code-ann: #9c4b12;
+    --line: #cfdfe5;
+    --accent: #166a7d;
+    --accent-soft: #e3f0f4;
+    --accent-2: #9a5b2d;
+    --danger: #b02a24;
+    --tree-guide: #cbdde4;
+    --ct-bg-s: 40%;
+    --ct-bg-l: 92%;
+    --ct-bar-s: 45%;
+    --ct-bar-l: 58%;
+    --ct-fg-s: 42%;
+    --ct-fg-l: 38%;
+    --k-sat: 42%;
+    --k-sat-soft: 34%;
+    --k-l-fg: 30%;
+    --k-l-bg: 90%;
+    --k-l-line: 78%;
+    --k-l-bar: 54%;
+    --hl-yellow: rgba(246, 198, 58, 0.40);
+    --hl-green: rgba(72, 180, 110, 0.30);
+    --hl-blue: rgba(64, 140, 230, 0.24);
+    --hl-pink: rgba(240, 100, 150, 0.24);
+    --hl-purple: rgba(150, 115, 235, 0.24);
+    --sw-yellow: #f5cf49;
+    --sw-green: #4ec97a;
+    --sw-blue: #4f9dff;
+    --sw-pink: #ff6fa5;
+    --sw-purple: #a580f5;
+    --sb-active: rgba(104, 128, 138, 0.9);
+    --sb-idle: rgba(22, 36, 42, 0.045);
+    --tone-s: 55%;
+    --tone-l-fg: 32%;
+    --tone-l-bg: 93%;
+}
+
+/* 暖霞：暖调（橘粉底 + 陶土强调色），比护眼更亮一点 */
+html[data-theme='dusk'] {
+    --fg: #2a1a12;
+    --fg-2: #6b4d3c;
+    --fg-3: #8a6c58;
+    --bg: #fdf1e9;
+    --bg-2: #f8e5d8;
+    --doc-bg: #fffaf6;
+    --code-kw: #8e3a92;
+    --code-type: #a8650a;
+    --code-func: #2f63a8;
+    --code-str: #3f7f45;
+    --code-num: #8a5a00;
+    --code-cmt: #a08c7c;
+    --code-ann: #9c4b12;
+    --line: #efd7c4;
+    --accent: #a8542a;
+    --accent-soft: #fbeade;
+    --accent-2: #6b4a86;
+    --danger: #a82f2f;
+    --tree-guide: #ecd6c4;
+    --ct-bg-s: 44%;
+    --ct-bg-l: 93%;
+    --ct-bar-s: 48%;
+    --ct-bar-l: 58%;
+    --ct-fg-s: 46%;
+    --ct-fg-l: 36%;
+    --k-sat: 46%;
+    --k-sat-soft: 38%;
+    --k-l-fg: 31%;
+    --k-l-bg: 91%;
+    --k-l-line: 79%;
+    --k-l-bar: 54%;
+    --hl-yellow: rgba(248, 200, 60, 0.42);
+    --hl-green: rgba(72, 180, 110, 0.30);
+    --hl-blue: rgba(64, 140, 230, 0.22);
+    --hl-pink: rgba(240, 100, 150, 0.26);
+    --hl-purple: rgba(150, 115, 235, 0.24);
+    --sw-yellow: #f5cf49;
+    --sw-green: #4ec97a;
+    --sw-blue: #4f9dff;
+    --sw-pink: #ff6fa5;
+    --sw-purple: #a580f5;
+    --sb-active: rgba(138, 108, 88, 0.9);
+    --sb-idle: rgba(42, 26, 18, 0.045);
+    --tone-s: 56%;
+    --tone-l-fg: 34%;
+    --tone-l-bg: 94%;
 }
 
 /* 页面挂在哪个分区（.with-tree / 技术广场的分组上带 data-area），它里面所有用 --k* 的地方
@@ -312,11 +439,49 @@ html {
 
 body {
     margin: 0;
-    background: var(--bg);
+    /* 背景纹理铺在 body 上：卡片 / 正文自己有 --doc-bg，颜色不受影响，纹理只在四周留白处露出来 */
+    background-color: var(--bg);
+    background-image: var(--bg-tex, none);
+    background-repeat: var(--bg-rep, repeat);
+    background-size: var(--bg-size, auto);
+    background-attachment: var(--bg-att, scroll);
     color: var(--fg);
     font-family: var(--sans);
     line-height: 1.65;
     font-size: 16px;
+}
+
+/* 三种背景纹理，全部由渐变生成，不额外下载图片；浓度由 --tex（0–100）控制 */
+html[data-bg='paper'] body {
+    --bg-size: 5px 5px;
+    --bg-tex:
+        repeating-linear-gradient(90deg,
+            color-mix(in srgb, var(--fg) calc(var(--tex, 55) * 0.05% * var(--tex-k, 1)), transparent) 0 1px,
+            transparent 1px 5px),
+        repeating-linear-gradient(0deg,
+            color-mix(in srgb, var(--fg) calc(var(--tex, 55) * 0.04% * var(--tex-k, 1)), transparent) 0 1px,
+            transparent 1px 5px);
+}
+
+html[data-bg='grid'] body {
+    --bg-size: 28px 28px;
+    --bg-tex:
+        linear-gradient(color-mix(in srgb, var(--fg) calc(var(--tex, 55) * 0.11% * var(--tex-k, 1)), transparent) 1px, transparent 1px),
+        linear-gradient(90deg, color-mix(in srgb, var(--fg) calc(var(--tex, 55) * 0.11% * var(--tex-k, 1)), transparent) 1px, transparent 1px);
+}
+
+html[data-bg='aurora'] body {
+    --bg-rep: no-repeat;
+    --bg-size: 100% 100%;
+    --bg-att: fixed;
+    /* 渐变色只取当前主题的强调色，不跨色相：雾青主题是冷青晕、暖霞主题是暖橙晕 */
+    --bg-tex:
+        radial-gradient(55% 42% at 10% 6%,
+            color-mix(in srgb, var(--accent) calc(var(--tex, 55) * 0.55% * var(--tex-k, 1)), transparent), transparent 70%),
+        radial-gradient(50% 38% at 92% 10%,
+            color-mix(in srgb, var(--accent-2) calc(var(--tex, 55) * 0.42% * var(--tex-k, 1)), transparent), transparent 72%),
+        radial-gradient(60% 45% at 82% 94%,
+            color-mix(in srgb, var(--accent) calc(var(--tex, 55) * 0.34% * var(--tex-k, 1)), transparent), transparent 74%);
 }
 
 a {
@@ -1742,7 +1907,8 @@ html[data-theme='sepia'] .item-tag {
 /* ---------- markdown typography ---------- */
 .markdown {
     font-size: 16px;
-    line-height: 1.8;
+    /* 中文长文行距放到 1.9：比 1.8 明显好读，又不至于散 */
+    line-height: 1.9;
 }
 
 /* 正文整块托一层很浅的底色（各主题的 --doc-bg，比页面底色亮一点点），
@@ -1792,12 +1958,34 @@ html[data-theme='sepia'] .item-tag {
 }
 
 .markdown p {
-    margin: 0 0 1.15rem;
+    /* 长段落之间要有明确的呼吸：比行距再大一档，否则整屏看下来像一大块 */
+    margin: 0 0 1.7rem;
+    /* 两侧对齐 + 中文按字对齐：右边不再参差，整页看着稳 */
+    text-align: justify;
+    text-justify: inter-ideograph;
+}
+
+/* 中文首行缩进：每一段开头空两字，一眼能看出段落起止（阅读设置里可以关） */
+.markdown > p {
+    text-indent: 2em;
+}
+
+html[data-indent='off'] .markdown > p {
+    text-indent: 0;
+}
+
+/* 长段落（后端按字数打 md-long）：左边一条极淡的轨道，文字位置不变（轨道落在留白里），
+   作用是给一大片叙述一个视觉起点，读到哪儿不容易丢 */
+.markdown p.md-long {
+    border-left: 2px solid color-mix(in srgb, var(--accent) 26%, transparent);
+    padding-left: 0.85rem;
+    margin-left: -0.85rem;
+    border-radius: 1px;
 }
 
 .markdown ul,
 .markdown ol {
-    margin: 0 0 1rem;
+    margin: 0 0 1.25rem;
     padding-left: 1.6rem;
 }
 
@@ -1870,15 +2058,50 @@ html[data-theme='sepia'] .item-tag {
     border-radius: 5px;
 }
 
+/* 名词上色：有解释的词（.gl）带虚线和淡底、可以悬停看解释；没配解释的英文术语（.en）只上色。
+   颜色不写死，按 .t0–.t5 取主题里的色相，亮暗主题各自换一档明度 */
+.gl.t0 { color: hsl(var(--t-h-0) var(--tone-s) var(--tone-l-fg)); }
+.gl.t1 { color: hsl(var(--t-h-1) var(--tone-s) var(--tone-l-fg)); }
+.gl.t2 { color: hsl(var(--t-h-2) var(--tone-s) var(--tone-l-fg)); }
+.gl.t3 { color: hsl(var(--t-h-3) var(--tone-s) var(--tone-l-fg)); }
+.gl.t4 { color: hsl(var(--t-h-4) var(--tone-s) var(--tone-l-fg)); }
+.gl.t5 { color: hsl(var(--t-h-5) var(--tone-s) var(--tone-l-fg)); }
+
+.gl.t0, .gl.t1, .gl.t2, .gl.t3, .gl.t4, .gl.t5 {
+    background: color-mix(in srgb, currentColor 9%, transparent);
+    border-radius: 4px;
+    padding: 0 2px;
+}
+
+/* 英文术语加一点字重，扫读时先看到词 */
+.markdown .en {
+    font-weight: 600;
+}
+
+.en.t0 { color: hsl(var(--t-h-0) var(--tone-s) var(--tone-l-fg)); }
+.en.t1 { color: hsl(var(--t-h-1) var(--tone-s) var(--tone-l-fg)); }
+.en.t2 { color: hsl(var(--t-h-2) var(--tone-s) var(--tone-l-fg)); }
+.en.t3 { color: hsl(var(--t-h-3) var(--tone-s) var(--tone-l-fg)); }
+.en.t4 { color: hsl(var(--t-h-4) var(--tone-s) var(--tone-l-fg)); }
+.en.t5 { color: hsl(var(--t-h-5) var(--tone-s) var(--tone-l-fg)); }
+
+/* 阅读设置里关掉「名词着色」：回到正文一个颜色，虚线保留（还能悬停看解释） */
+html[data-terms='off'] .gl,
+html[data-terms='off'] .en {
+    color: inherit;
+    background: none;
+    border-bottom-color: var(--fg-3);
+}
+
 .markdown .gl {
-    border-bottom: 1px dashed var(--fg-3);
+    border-bottom: 1px dashed currentColor;
     cursor: help;
 }
 
 /* 项目页的术语：条目和注解弹窗都不在 .markdown 里，单独给一份同样的下划线 */
 .project .gl,
 .note-body .gl {
-    border-bottom: 1px dashed var(--fg-3);
+    border-bottom: 1px dashed currentColor;
     cursor: help;
 }
 
@@ -2890,6 +3113,19 @@ html.tree-no-count .tree-count {
     color: var(--fg-2);
 }
 
+/* 设置页（/settings）：只管「页面怎么显示」，和账号页分开 */
+.settings-title {
+    font-size: 1.45rem;
+    margin: 0.4rem 0 1.6rem;
+}
+
+/* 设置页的区块标题别跟账号页一样淡：这里三块是并列的一级信息 */
+.settings-page .me-section h2 {
+    font-size: 1.02rem;
+    color: var(--fg);
+    margin: 0 0 0.5rem;
+}
+
 .me-row {
     display: flex;
     align-items: center;
@@ -2970,6 +3206,26 @@ html.tree-no-count .tree-count {
     color: var(--fg);
     background: var(--bg-2);
     border-color: var(--fg-3);
+}
+
+/* 背景浓度滑杆（和 seg 并排，保持同样的行高） */
+.me-range {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+}
+
+.me-range input[type='range'] {
+    width: 150px;
+    accent-color: var(--accent);
+    cursor: pointer;
+}
+
+.me-range b {
+    font-size: 0.82rem;
+    font-variant-numeric: tabular-nums;
+    color: var(--fg-2);
+    min-width: 2.2ch;
 }
 
 /* ---- 正文字号 ---- */

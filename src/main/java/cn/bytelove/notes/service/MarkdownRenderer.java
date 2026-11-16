@@ -4,9 +4,11 @@ import org.commonmark.ext.gfm.strikethrough.StrikethroughExtension;
 import org.commonmark.ext.gfm.tables.TablesExtension;
 import org.commonmark.node.BlockQuote;
 import org.commonmark.node.Code;
+import org.commonmark.node.Document;
 import org.commonmark.node.FencedCodeBlock;
 import org.commonmark.node.Heading;
 import org.commonmark.node.IndentedCodeBlock;
+import org.commonmark.node.Link;
 import org.commonmark.node.Node;
 import org.commonmark.node.Paragraph;
 import org.commonmark.node.Text;
@@ -45,14 +47,31 @@ public class MarkdownRenderer {
     public record TocItem(int level, String id, String text) {
     }
 
-    /** 渲染成 <span class="gl" data-tip="…" data-term="…" data-tid="…">term</span> 的节点。 */
+    /** 超过这个字数的顶层段落算「长段」：CSS 会在它左边画一条淡轨道（提高长文的可读性） */
+    private static final int LONG_PARAGRAPH_CHARS = 180;
+
+    /**
+     * 名词着色用的档位：只看词本身算，同一个词在哪儿都是同一档（0..5）。
+     * 颜色由主题里的 --t-h-0..5 决定，这里不碰具体色值。
+     */
+    static int toneOf(String text) {
+        int h = 7;
+        for (int i = 0; i < text.length(); i++) {
+            h = h * 31 + Character.toLowerCase(text.charAt(i));
+        }
+        return Math.floorMod(h, 6);
+    }
+
+    /** 渲染成 <span class="gl tN" data-tip="…" data-term="…" data-tid="…">term</span> 的节点。 */
     public static class TermNode extends Node {
         private final String text;
         private final GlossaryService.Entry entry;
+        private final int tone;
 
         TermNode(String text, GlossaryService.Entry entry) {
             this.text = text;
             this.entry = entry;
+            this.tone = toneOf(text);
         }
 
         @Override
@@ -67,6 +86,34 @@ public class MarkdownRenderer {
         GlossaryService.Entry getEntry() {
             return entry;
         }
+
+        int getTone() {
+            return tone;
+        }
+    }
+
+    /** 没配解释的英文术语：只上色，不带浮窗（<span class="en tN">token</span>）。 */
+    public static class EnNode extends Node {
+        private final String text;
+        private final int tone;
+
+        EnNode(String text) {
+            this.text = text;
+            this.tone = toneOf(text);
+        }
+
+        @Override
+        public void accept(org.commonmark.node.Visitor visitor) {
+            // 同上，自己渲染
+        }
+
+        String getText() {
+            return text;
+        }
+
+        int getTone() {
+            return tone;
+        }
     }
 
     private static class TermNodeRenderer implements NodeRenderer {
@@ -79,19 +126,27 @@ public class MarkdownRenderer {
 
         @Override
         public Set<Class<? extends Node>> getNodeTypes() {
-            return Set.of(TermNode.class);
+            return Set.of(TermNode.class, EnNode.class);
         }
 
         @Override
         public void render(Node node) {
-            TermNode term = (TermNode) node;
             HtmlWriter writer = context.getWriter();
+            if (node instanceof EnNode en) {
+                Map<String, String> attrs = new LinkedHashMap<>();
+                attrs.put("class", "en t" + en.getTone());
+                writer.tag("span", attrs, false);
+                writer.text(en.getText());
+                writer.tag("/span");
+                return;
+            }
+            TermNode term = (TermNode) node;
             writer.line();
             // data-tid 是这条解释在库里的 id：页面上点一下就能改 / 删 / 新增。
             // 用 LinkedHashMap 而不是 Map.of：后者的迭代顺序每启动一次都可能不一样
             // （ImmutableCollections 里有个随机盐），属性顺序跟着变，逐页 HTML 比对就没法比了
             Map<String, String> attrs = new LinkedHashMap<>();
-            attrs.put("class", "gl");
+            attrs.put("class", "gl t" + term.getTone());
             attrs.put("data-tip", term.getEntry().tip());
             attrs.put("data-term", term.getEntry().term());
             attrs.put("data-sense", term.getEntry().sense() == null ? "" : term.getEntry().sense());
@@ -175,13 +230,19 @@ public class MarkdownRenderer {
         }
         Split hidden = splitHidden(markdown);
         Split split = splitIndented(hidden.markdown(), hidden.secrets());
-        Node document = parser.parse(fenceBareCode(stripFrontMatter(split.markdown())));        wrapGlossary(document);
+        Node document = parser.parse(fenceBareCode(stripFrontMatter(split.markdown())));        wrapTerms(document);
 
         Map<Heading, String> ids = assignHeadingIds(document);
         BlockQuote firstQuote = firstBlockQuote(document);
         AttributeProvider attrProvider = (node, tagName, attributes) -> {
             if (node instanceof Heading heading && ids.containsKey(heading)) {
                 attributes.put("id", ids.get(heading));
+            }
+            // 长篇纯叙述的段落给个标记，CSS 在左侧画一条极淡的轨道，眼睛不容易串行。
+            // 只认顶层的段落：引用块、列表项、表格里本来就有各自的框，不用再加
+            if (node instanceof Paragraph && node.getParent() instanceof Document
+                    && textOf(node).length() >= LONG_PARAGRAPH_CHARS) {
+                attributes.put("class", "md-long");
             }
             if (node instanceof BlockQuote quote) {
                 String tone = calloutTone(quote);
@@ -760,21 +821,18 @@ public class MarkdownRenderer {
         return stripped.isBlank() ? markdown : stripped;
     }
 
-    private void wrapGlossary(Node parent) {
-        if (glossary.size() == 0) {
-            return;
-        }
-        Set<String> used = glossary.newUsedSet();
-        replaceIn(parent, used);
+    private void wrapTerms(Node document) {
+        Set<String> used = glossary.size() == 0 ? null : glossary.newUsedSet();
+        replaceIn(document, used, true);
     }
 
-    private void replaceIn(Node parent, Set<String> used) {
+    private void replaceIn(Node parent, Set<String> used, boolean allowEn) {
         Node child = parent.getFirstChild();
         while (child != null) {
             Node next = child.getNext();
             if (child instanceof Text textNode) {
                 // 语境 = 这一整段（最近的块级祖先）的正文，用来给同一个术语挑义项
-                List<Node> parts = split(textNode.getLiteral(), used, textOf(blockOf(textNode)));
+                List<Node> parts = split(textNode.getLiteral(), used, textOf(blockOf(textNode)), allowEn);
                 if (parts != null) {
                     for (Node part : parts) {
                         textNode.insertBefore(part);
@@ -785,8 +843,10 @@ public class MarkdownRenderer {
                     || child instanceof FencedCodeBlock
                     || child instanceof IndentedCodeBlock
                     || child instanceof Heading
-                    || child instanceof TermNode)) {
-                replaceIn(child, used);
+                    || child instanceof TermNode
+                    || child instanceof EnNode)) {
+                // 链接文字本来就吃强调色，里面的英文不再另外上色（中文术语照旧包）
+                replaceIn(child, used, allowEn && !(child instanceof Link));
             }
             child = next;
         }
@@ -801,14 +861,14 @@ public class MarkdownRenderer {
         return n == null ? node : n;
     }
 
-    private List<Node> split(String literal, Set<String> used, String context) {
+    private List<Node> split(String literal, Set<String> used, String context, boolean allowEn) {
         List<Node> parts = new ArrayList<>();
         StringBuilder buffer = new StringBuilder();
         int i = 0;
         boolean touched = false;
 
         while (i < literal.length()) {
-            GlossaryService.Match hit = glossary.matchAt(literal, i, used, context);
+            GlossaryService.Match hit = used == null ? null : glossary.matchAt(literal, i, used, context);
             if (hit != null) {
                 if (buffer.length() > 0) {
                     parts.add(new Text(buffer.toString()));
@@ -818,10 +878,24 @@ public class MarkdownRenderer {
                 used.add(hit.canonical());
                 i += hit.displayText().length();
                 touched = true;
-            } else {
-                buffer.append(literal.charAt(i));
-                i++;
+                continue;
             }
+            if (allowEn && isAsciiLetter(literal.charAt(i))) {
+                int end = asciiWordEnd(literal, i);
+                String word = literal.substring(i, end);
+                if (colorableWord(word)) {
+                    if (buffer.length() > 0) {
+                        parts.add(new Text(buffer.toString()));
+                        buffer.setLength(0);
+                    }
+                    parts.add(new EnNode(word));
+                    i = end;
+                    touched = true;
+                    continue;
+                }
+            }
+            buffer.append(literal.charAt(i));
+            i++;
         }
 
         if (!touched) {
@@ -832,6 +906,49 @@ public class MarkdownRenderer {
         }
         return parts;
     }
+
+    private static boolean isAsciiLetter(char c) {
+        return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z');
+    }
+
+    private static boolean isWordChar(char c) {
+        return isAsciiLetter(c) || (c >= '0' && c <= '9') || c == '_';
+    }
+
+    /** 从字母开头往后吃一个英文词：允许中间带 - . + （small-to-big、gpt-4o、text-embedding-3）。 */
+    private static int asciiWordEnd(String s, int start) {
+        int j = start;
+        while (j < s.length()) {
+            char c = s.charAt(j);
+            if (isWordChar(c)) {
+                j++;
+                continue;
+            }
+            if ((c == '-' || c == '.' || c == '+') && j + 1 < s.length() && isWordChar(s.charAt(j + 1))) {
+                j++;
+                continue;
+            }
+            break;
+        }
+        return j;
+    }
+
+    /** 太短的和常见虚词不上色：满屏 the / and 会花，单字母更没意义。 */
+    private static boolean colorableWord(String word) {
+        if (word.length() < 2) {
+            return false;
+        }
+        return !EN_STOPWORDS.contains(word.toLowerCase(Locale.ROOT));
+    }
+
+    private static final Set<String> EN_STOPWORDS = Set.of(
+            "a", "an", "the", "and", "or", "of", "to", "in", "on", "at", "by", "for", "is", "are", "was",
+            "were", "be", "been", "being", "it", "its", "we", "you", "your", "my", "me", "he", "she", "they",
+            "them", "his", "her", "our", "as", "if", "so", "but", "not", "no", "yes", "do", "does", "did",
+            "can", "could", "may", "might", "will", "would", "shall", "should", "must", "with", "from",
+            "that", "this", "these", "those", "than", "then", "when", "while", "else", "via", "per", "etc",
+            "vs", "eg", "ie", "ok", "off", "out", "up", "down", "all", "any", "each", "more", "most", "some",
+            "such", "only", "also", "one", "two", "three", "new", "old", "use", "used", "using", "usage");
 
     private String textOf(Node node) {
         StringBuilder sb = new StringBuilder();
@@ -929,6 +1046,9 @@ public class MarkdownRenderer {
             } else if (child instanceof Code c) {
                 sb.append(c.getLiteral());
             } else if (child instanceof TermNode t) {
+                sb.append(t.getText());
+            } else if (child instanceof EnNode t) {
+                // 语境匹配要看到英文词本体：它们现在被包进 EnNode 了，不补回来义项关键词会失配
                 sb.append(t.getText());
             } else {
                 appendText(child, sb);
