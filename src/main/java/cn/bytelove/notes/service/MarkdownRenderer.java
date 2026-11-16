@@ -4,6 +4,7 @@ import org.commonmark.ext.gfm.strikethrough.StrikethroughExtension;
 import org.commonmark.ext.gfm.tables.TablesExtension;
 import org.commonmark.node.BlockQuote;
 import org.commonmark.node.Code;
+import org.commonmark.node.Document;
 import org.commonmark.node.FencedCodeBlock;
 import org.commonmark.node.Heading;
 import org.commonmark.node.IndentedCodeBlock;
@@ -45,6 +46,9 @@ public class MarkdownRenderer {
 
     public record TocItem(int level, String id, String text) {
     }
+
+    /** 超过这个字数的顶层段落算「长段」：CSS 会在它左边画一条淡轨道（提高长文的可读性） */
+    private static final int LONG_PARAGRAPH_CHARS = 180;
 
     /**
      * 名词着色用的档位：只看词本身算，同一个词在哪儿都是同一档（0..5）。
@@ -233,6 +237,12 @@ public class MarkdownRenderer {
         AttributeProvider attrProvider = (node, tagName, attributes) -> {
             if (node instanceof Heading heading && ids.containsKey(heading)) {
                 attributes.put("id", ids.get(heading));
+            }
+            // 长篇纯叙述的段落给个标记，CSS 在左侧画一条极淡的轨道，眼睛不容易串行。
+            // 只认顶层的段落：引用块、列表项、表格里本来就有各自的框，不用再加
+            if (node instanceof Paragraph && node.getParent() instanceof Document
+                    && textOf(node).length() >= LONG_PARAGRAPH_CHARS) {
+                attributes.put("class", "md-long");
             }
             if (node instanceof BlockQuote quote) {
                 String tone = calloutTone(quote);

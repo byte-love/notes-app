@@ -1962,6 +1962,15 @@ html[data-theme='sepia'] .item-tag {
     margin: 0 0 1.7rem;
 }
 
+/* 长段落（后端按字数打 md-long）：左边一条极淡的轨道，文字位置不变（轨道落在留白里），
+   作用是给一大片叙述一个视觉起点，读到哪儿不容易丢 */
+.markdown p.md-long {
+    border-left: 2px solid color-mix(in srgb, var(--accent) 26%, transparent);
+    padding-left: 0.85rem;
+    margin-left: -0.85rem;
+    border-radius: 1px;
+}
+
 .markdown ul,
 .markdown ol {
     margin: 0 0 1.25rem;
