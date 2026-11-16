@@ -397,6 +397,28 @@ sudo /opt/deploy/sync-db.sh    # 正式库整库覆盖到测试库
     （页面上的编辑走的就是这条），没有定时刷新；直写 SQL 之后要 `systemctl restart notes-app`
     （测试环境是 `notes-app-dev`），否则一直跑启动时那份表 —— 2026-11-11 加「意图定义」时踩过
 
+- **名词着色（2026-11-16）**：正文里的词按词上色，不落库、不改数据，全在渲染 + CSS 里做：
+  - `MarkdownRenderer` 里两类节点：`TermNode`（配了解释的词，输出 `<span class="gl tN" data-tip …>`）、
+    `EnNode`（没配解释的英文词，输出 `<span class="en tN">`）。档位 `t0–t5` 由 `toneOf(word)` 算，
+    **同一个词永远同一档**；代码块、行内代码、标题、链接文字都不上色（链接本来吃强调色）
+  - 颜色不写死：`app.css` 的 `--t-h-0..5` 给六个色相，`--tone-s / --tone-l-fg / --tone-l-bg` 给明度，
+    每套主题各一份。**显式主题块里必须重新钉住这三个明度**：不然系统是深色时，`@media (prefers-color-scheme: dark)`
+    里那套浅色明度会漏到「浅色 / 护眼」主题上，术语会变成淡色（第一版就踩了）
+  - 阅读设置里「名词着色 开/关」（`localStorage.terms = 'off'` → `html[data-terms='off']`）只去掉颜色，
+    虚线保留，悬停照旧能看解释
+  - 词表在 `EN_STOPWORDS`：the / and / of 这类虚词和单字母不上色，否则满屏花
+
+- **主题与背景（2026-11-16）**：现在是五套主题（`light` / `dark` / `sepia` / `mist` 雾青 / `dusk` 暖霞），
+  全部是 `html[data-theme='…']` 上的 token 块，切主题 = 换一组 CSS 变量，不改任何组件
+  - 背景纹理三档：`html[data-bg='paper' | 'grid' | 'aurora']`，全部用 `background-image` 的渐变生成，
+    **不加载任何图片**；浓度由 `--tex`（0–100，滑杆）控制，`--tex-k` 是给深色底压一档的系数
+  - 渐变（`aurora`）只取当前主题的 `--accent` / `--accent-2`，**不要跨色相**：第一版用了六个术语色相，
+    在暖色主题里会出现冷紫光晕，很难看
+  - 正文卡片（`.doc` / `.panel`）自带 `--doc-bg`，是**不透明**的：纹理只在页面四周留白处露出，
+    这是可读性的底线（参考 scrim 那套做法：背景图/纹理不能压过正文对比度）
+  - 设置全在 `localStorage`：`theme` / `bg` / `bg-strength` / `terms`；`layout.html` 的 head 里那段内联脚本
+    负责首屏前就贴上属性，避免闪一下
+
 - **星级（V26）**：`content_item.rating`（0 = 没评，1–3）。改星级由 `RatingService` 的 SQL 直写，
   **不碰 `updated_at`** —— 列表是按 `updated_at` 倒序排的，标个星就把这条顶到最前，翻着翻着顺序就乱。
   列表卡片右侧和正文标题下面都能点：点第 n 颗 = n 星，再点当前那颗 = 清回 0；列表里鼠标停在哪张卡上按
