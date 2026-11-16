@@ -587,7 +587,13 @@ sudo /opt/deploy/sync-db.sh    # 正式库整库覆盖到测试库
   - **左树每行带行号 + 分组带条数**：行号来自 `NoteTreeService.Node.ordinal()`（同一个父节点下
     只给叶子连续编号，分组不占号），模板里 `#numbers.formatInteger(n.ordinal(), 2)` 补成 01；
     分组标题右侧 `#lists.size(n.children)`（lazy 的那种节点子列表还没渲染，不显示）。
-    叶子行的 padding-left 是 2rem、text-indent -1.4rem，正好让号在 0.6rem 起、标题和折行对齐到 2rem
+    叶子行的 padding-left 是 2rem、text-indent -1.4rem，正好让号在 0.6rem 起、标题和折行对齐到 2rem。
+    **行号是个人偏好，不是单条菜单里的事项**（2026-11-16：原来放在只对某条生效的「⋯」菜单里，被否）：
+    开关在设置页 `设置 → 目录 → 序号`（`localStorage['tree-num']`，默认开），关掉时 `html[data-tree-num="off"]`
+    隐藏 `.tree-num`，同时把 `padding-left` 收回 0.6rem、`text-indent` 归零，标题不会留个空槽。
+    分组条数只在 hover / 当前分类时显示（纯 CSS，见 `.tree-count` 的 opacity）。
+    **分组标题不带折叠箭头**（2026-11-16 用户明确「不需要箭头」）：`::before` 那条箭头已删除，收/开照样点标题；
+    组标题的 `padding-left` 跟着收到 1.15rem，紧跟在色点后面
   - **逐行分隔线（历史）**：2026-11-02 用户要求保留 `border-top` 的逐行线（`fragments/tree :: nodes`
     是递归片段，每层 `<ul>` 都带 `.tree`，所以子层也会有线）；**2026-11-16 要求全部去掉**，
     `border-top` 和组间 `margin-top` 都已删除 —— 这块前后被来回改过三次，要动先问
@@ -645,6 +651,13 @@ sudo /opt/deploy/sync-db.sh    # 正式库整库覆盖到测试库
 - **行首 1~3 个空格**：这一行在页面上往右缩一层（`<div class="indent">`，`margin-left: 1.8em`）。
   CommonMark 自己会把段落开头那几个空格当排版噪音吞掉，所以 `MarkdownRenderer.splitIndented` 先把它抠出来、
   渲染完再包回去；序列化时 `doc-edit.js` 的 `indentOf()` 从元素原文里读回这几格。**4 个空格以上不碰** —— 那是代码块。
+- **回车和退格的规矩**（2026-11-16 用户反馈「引用块 / 列表里增删一堆 bug」后重写，`doc-edit.js`）：
+    - 列表项里回车 = 再起一项（拆成两个 `<li>`）。以前是往 `<ul>` 里塞 `<p>`，存库时那段文字会被整段丢掉；
+    - 空列表项里回车 = 退出列表，变回普通段落；
+    - 引用块里，光标后面还有字就在引用里再拆一段；已经在最后一行末尾（或这一行是空的）就把段落接到引用**外面**，
+      直接写正文，不用先删掉「> 」；
+    - 引用行最前面按退格 = 把这一行搬出引用，变回普通段落；
+    - 正文里手敲的「1. 」「2) 」保存时转义成 `1\.`，免得下次打开被当成有序列表、编号变成自动生成的改不了。
 
 代码块没写语言时（` ``` ` 后面空着、或者四空格缩进那种），`MarkdownRenderer.guessLanguage()` 按内容猜
 Java / SQL / JS / Python / Shell，其余默认 Java，猜出来写成 `language-xxx` 交给前端 `code.js` 上色。

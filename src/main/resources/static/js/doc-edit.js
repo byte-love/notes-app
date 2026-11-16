@@ -82,6 +82,10 @@
         return ' '.repeat(Math.min(3, n));
     };
 
+    // 段落里手敲的「1. xxx」「2) xxx」当文字保留：不转义的话，下次打开会被当成有序列表，
+    // 编号变成自动生成的，想改数字也改不动（2026-11-16 用户反馈）
+    const escapeOrderedMarker = (text) => text.replace(/^(\d+)([.)])(\s+)/, '$1\\$2$3');
+
     // 代码块取文本：优先用 code.js 高亮时挂上来的 dataset.raw（那份是原文，
     // 跟显示结构无关）；没有就用 .line 逐行拼；再没有就按换行元素兜底。
     // ⚠ 别退回 el.textContent——高亮后行是 <span>，换行只在 CSS 里，直接取会把整段粘成一行
@@ -121,14 +125,25 @@
                 return;
             }
             const text = tidy(inline(el));
-            if (text) out.push(indentOf(el) + text);
+            if (text) out.push(indentOf(el) + escapeOrderedMarker(text));
             return;
         }
         if (tag === 'ul' || tag === 'ol') {
             const ordered = tag === 'ol';
             let n = 1;
-            for (const li of el.children) {
-                if (li.tagName.toLowerCase() !== 'li') continue;
+            for (const child of el.childNodes) {
+                if (child.nodeType === 3) {
+                    const stray = tidy(inline(child));
+                    if (stray) out.push(escapeOrderedMarker(stray));
+                    continue;
+                }
+                if (child.nodeType !== 1) continue;
+                if (child.tagName.toLowerCase() !== 'li') {
+                    // 编辑时段落被塞进列表里也要照常输出，不然这段文字就静默丢了
+                    block(child, out);
+                    continue;
+                }
+                const li = child;
                 const nested = [...li.children].filter((c) => ['ul', 'ol'].includes(c.tagName.toLowerCase()));
                 const clone = li.cloneNode(true);
                 [...clone.children].forEach((c) => {
@@ -191,7 +206,7 @@
                 out.push('');
             } else if (node.nodeType === 3) {
                 const text = tidy(inline(node));
-                if (text) out.push(text, '');
+                if (text) out.push(escapeOrderedMarker(text), '');
             }
         }
         return out.join('\n').replace(/\n{3,}/g, '\n\n').trim() + '\n';
@@ -354,23 +369,103 @@
         schedule();
     });
 
-    // 回车另起一段（不带上一段样式）；Shift+Enter 走浏览器默认的软换行
+    /** 这一块是不是空的（「＋」按钮不算正文，图片也不算空） */
+    const isEmptyBlock = (el) => {
+        const clone = el.cloneNode(true);
+        clone.querySelectorAll('.cmt-block-btn').forEach((b) => b.remove());
+        return !(clone.textContent || '').trim() && !clone.querySelector('img');
+    };
+
+    const caretTo = (el) => {
+        const sel = window.getSelection();
+        const r = document.createRange();
+        r.setStart(el, 0);
+        r.collapse(true);
+        sel.removeAllRanges();
+        sel.addRange(r);
+    };
+
+    // 回车另起一段（不带上一段样式）；Shift+Enter 走浏览器默认的软换行。
+    // 列表和引用块有各自规矩：列表里回车是「再起一项」，空项再回车就退出列表；
+    // 引用块里光标后面没字了，回车就退出引用去写正文，不再多长出一条引用行。
     body.addEventListener('keydown', (e) => {
         if (e.key !== 'Enter' || e.shiftKey || e.isComposing) return;
         const sel = window.getSelection();
         if (!sel || !sel.rangeCount) return;
-        const anchor = sel.anchorNode;
-        const base = anchor && (anchor.nodeType === 1 ? anchor : anchor.parentElement);
-        const host = base ? base.closest('p, div, li, h1, h2, h3, h4, blockquote') : null;
-        if (!host || !body.contains(host)) return;
-        e.preventDefault();
         const range = sel.getRangeAt(0);
+        const anchor = range.startContainer;
+        const base = anchor && (anchor.nodeType === 1 ? anchor : anchor.parentElement);
+        if (!base || !body.contains(base)) return;
+        const li = base.closest('li');
+        const quote = base.closest('blockquote');
+        const host = base.closest('p, div, li, h1, h2, h3, h4, blockquote');
+        if (!host || !body.contains(host)) return;
+
+        e.preventDefault();
+
+        // 1) 列表项：回车 = 再起一项；空项回车 = 退出列表，变回普通段落
+        if (li && body.contains(li)) {
+            const list = li.parentElement;
+            if (isEmptyBlock(li)) {
+                const p = document.createElement('p');
+                p.innerHTML = '<br>';
+                li.remove();
+                if (list && !list.querySelector('li')) {
+                    list.replaceWith(p);
+                } else if (list) {
+                    list.after(p);
+                } else {
+                    host.after(p);
+                }
+                caretTo(p);
+            } else {
+                const next = li.cloneNode(false);
+                const tail = range.cloneRange();
+                tail.setEndAfter(li);
+                next.appendChild(tail.extractContents());
+                if (isEmptyBlock(next)) next.innerHTML = '<br>';
+                li.after(next);
+                caretTo(next);
+            }
+            schedule();
+            return;
+        }
+
+        // 2) 引用块：光标后面还有字就还在这条引用里拆段；没字了（在最后一行末尾）
+        //    就接一段正文出去，否则永远顶着「> 」写不出普通段落
+        if (quote && body.contains(quote)) {
+            const rest = range.cloneRange();
+            rest.selectNodeContents(quote);
+            rest.setStart(range.endContainer, range.endOffset);
+            const probe = document.createElement('div');
+            probe.appendChild(rest.cloneContents());
+            if (!(probe.textContent || '').replace(/\s+/g, '')) {
+                const p = document.createElement('p');
+                p.innerHTML = '<br>';
+                quote.after(p);
+                // 引用里最后一段如果是空的，顺手删掉，别留一条空引用
+                const last = quote.lastElementChild;
+                if (last && last.tagName === 'P' && isEmptyBlock(last)) last.remove();
+                caretTo(p);
+            } else {
+                const tail = range.cloneRange();
+                tail.setEndAfter(host);
+                const p = document.createElement('p');
+                p.appendChild(tail.extractContents());
+                if (isEmptyBlock(p)) p.innerHTML = '<br>';
+                host.after(p);
+                caretTo(p);
+            }
+            schedule();
+            return;
+        }
+
+        // 3) 普通段落 / 标题：光标后面的内容拆成下一段
         const tail = range.cloneRange();
         tail.setEndAfter(host);
-        const rest = tail.extractContents();
         const p = document.createElement('p');
-        p.appendChild(rest);
-        if (!p.textContent.trim() && !p.querySelector('img')) p.innerHTML = '<br>';
+        p.appendChild(tail.extractContents());
+        if (isEmptyBlock(p)) p.innerHTML = '<br>';
         host.after(p);
         const r = document.createRange();
         r.setStart(p, 0);
@@ -425,6 +520,31 @@
         r.collapse(true);
         sel.removeAllRanges();
         sel.addRange(r);
+        schedule();
+    });
+
+    // 光标停在引用块某一行的最开头按退格：把这一行搬出引用，变回普通段落
+    body.addEventListener('keydown', (e) => {
+        if (e.key !== 'Backspace' || e.shiftKey || e.altKey || e.ctrlKey || e.metaKey) return;
+        const sel = window.getSelection();
+        if (!sel || !sel.rangeCount || !sel.isCollapsed) return;
+        const range = sel.getRangeAt(0);
+        const from = range.startContainer;
+        const el = from && (from.nodeType === 1 ? from : from.parentElement);
+        if (!el || el.closest('li')) return;
+        const quote = el.closest('blockquote');
+        const p = el.closest('p');
+        if (!quote || !p || !body.contains(quote) || !quote.contains(p)) return;
+        if (!atBlockStart(range, p)) return;
+        e.preventDefault();
+        const np = document.createElement('p');
+        while (p.firstChild) np.appendChild(p.firstChild);
+        const first = quote.firstElementChild === p;
+        if (first) quote.before(np);
+        else quote.after(np);
+        p.remove();
+        if (!quote.textContent.trim() && !quote.querySelector('img')) quote.remove();
+        caretTo(np);
         schedule();
     });
 
