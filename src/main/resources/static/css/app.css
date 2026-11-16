@@ -6224,3 +6224,82 @@ html[data-theme='dark'] .cl-latest {
     color: var(--fg-2);
     font-variant-numeric: tabular-nums;
 }
+/* 「⋯」功能菜单：正文页和编辑页共用一个样式 */
+.act-menu-wrap {
+    position: relative;
+    display: inline-flex;
+}
+
+.act-menu-btn {
+    font: inherit;
+    font-size: 1.05rem;
+    line-height: 1;
+    padding: 0.28rem 0.55rem;
+    color: var(--fg-3);
+    background: none;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    cursor: pointer;
+    transition: color 0.12s ease, border-color 0.12s ease, background 0.12s ease;
+}
+
+.act-menu-btn:hover,
+.act-menu-btn[aria-expanded='true'] {
+    color: var(--fg);
+    border-color: var(--fg-3);
+    background: var(--bg-2);
+}
+
+.act-menu {
+    position: absolute;
+    top: calc(100% + 0.4rem);
+    right: 0;
+    z-index: 45;
+    min-width: 11rem;
+    padding: 0.3rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+    background: var(--doc-bg);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.28);
+}
+
+.act-menu[hidden] {
+    display: none;
+}
+
+.act-menu form {
+    margin: 0;
+    display: block;
+}
+
+.act-menu .act-item,
+.act-menu form > button {
+    width: 100%;
+    display: block;
+    text-align: left;
+    font: inherit;
+    font-size: 0.86rem;
+    line-height: 1.5;
+    padding: 0.42rem 0.6rem;
+    color: var(--fg-2);
+    background: none;
+    border: 0;
+    border-radius: 6px;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.act-menu .act-item:hover,
+.act-menu form > button:hover {
+    color: var(--fg);
+    background: var(--bg-2);
+}
+
+.act-menu .act-item.on {
+    color: var(--accent);
+    font-weight: 600;
+}
+

@@ -44,7 +44,7 @@
             } catch (e) {}
         })();
     </script>
-    <link rel="stylesheet" th:href="@{/css/app.css(v=179)}">
+    <link rel="stylesheet" th:href="@{/css/app.css(v=180)}">
     <!-- 通用小工具（CSRF / POST / 转义）：页面自己的脚本都要用它，所以放 head 里先加载 -->
     <script th:src="@{/js/base.js(v=2)}"></script>
 </head>
@@ -102,6 +102,7 @@
 <th:block th:fragment="foot">
 <script th:src="@{/js/csrf.js(v=1)}"></script>
 <script th:src="@{/js/confirm.js(v=1)}"></script>
+    <script th:src="@{/js/act-menu.js(v=1)}"></script>
 
 <script>
     // 自制下拉：原生 select 的弹层是系统画的，改不动样式，所以自己实现一个

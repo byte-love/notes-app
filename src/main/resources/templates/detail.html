@@ -37,22 +37,24 @@
                 <div class="doc-meta">
                     <th:block th:replace="~{fragments/rate :: stars(${item.slug}, ${item.rating}, ${canRate == true})}"></th:block>
                     <time th:text="${#temporals.format(item.updatedAt, 'yyyy-MM-dd')}">2026-01-01</time>
-                    <form sec:authorize="isAuthenticated()" th:action="@{/star/{s}(s=${item.slug})}"
-                          method="post" class="inline">
-                        <button type="submit" class="star-btn" th:classappend="${starred} ? 'on'"
-                                th:text="${starred} ? '★ 已收藏' : '☆ 收藏'">☆ 收藏</button>
-                    </form>
-                    <form sec:authorize="isAuthenticated()" th:action="@{/bookmark/{s}(s=${item.slug})}"
-                          method="post" class="inline">
-                        <button type="submit" class="star-btn"
-                                th:classappend="${bookmarked} ? 'on'"
-                                th:text="${bookmarked} ? '已加书签' : '加书签'">加书签</button>
-                    </form>
-                    <!-- 自己的内容：正文直接可改（点进去打字，停手自动存）；
-                         超大文档降级成「编辑」按钮 + 源码框；可见性 / 上级目录走左树「⋯」里的「编辑」 -->
-                    <button th:if="${canRate == true and item.body != null and #strings.length(item.body) > 65536}"
-                            type="button" class="star-btn" id="body-edit">编辑</button>
-                    <button th:if="${canRate == true}" type="button" class="star-btn" data-act="supplement">插入笔记卡片</button>
+                    <!-- 收藏 / 加书签 / 插入笔记卡片 / 编辑 这些零散动作收进一个「⋯」菜单，别在标题下面排一长排 -->
+                    <div class="act-menu-wrap" sec:authorize="isAuthenticated()">
+                        <button type="button" class="act-menu-btn" data-act-menu="doc-acts"
+                                aria-haspopup="true" aria-expanded="false" aria-label="更多操作">⋯</button>
+                        <div class="act-menu" id="doc-acts" hidden>
+                            <form th:action="@{/star/{s}(s=${item.slug})}" method="post">
+                                <button type="submit" th:classappend="${starred} ? 'act-item on' : 'act-item'"
+                                        th:text="${starred} ? '★ 已收藏（再点取消）' : '☆ 收藏'">☆ 收藏</button>
+                            </form>
+                            <form th:action="@{/bookmark/{s}(s=${item.slug})}" method="post">
+                                <button type="submit" th:classappend="${bookmarked} ? 'act-item on' : 'act-item'"
+                                        th:text="${bookmarked} ? '已加书签（再点取消）' : '加书签'">加书签</button>
+                            </form>
+                            <button th:if="${canRate == true and item.body != null and #strings.length(item.body) > 65536}"
+                                    type="button" class="act-item" id="body-edit">编辑</button>
+                            <button th:if="${canRate == true}" type="button" class="act-item" data-act="supplement">插入笔记卡片</button>
+                        </div>
+                    </div>
                 </div>
             </header>
 
