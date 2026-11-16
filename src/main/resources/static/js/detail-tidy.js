@@ -14,8 +14,8 @@
     btn.addEventListener('click', async () => {
         const raw = tpl.content.textContent || '';
         const next = window.MdTidy.tidy(raw);
+        // 和编辑页那个按钮一致：点了就执行，不弹确认框（浏览器原生弹窗和站内不搭）
         if (next === raw) return;
-        if (!window.confirm('整理排版只改格式、不改文字，确定吗？')) return;
         if (!saveHost) return;
         btn.disabled = true;
         try {
