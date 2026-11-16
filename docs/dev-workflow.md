@@ -408,6 +408,7 @@ sudo /opt/deploy/sync-db.sh    # 正式库整库覆盖到测试库
     虚线保留，悬停照旧能看解释
   - 词表在 `EN_STOPWORDS`：the / and / of 这类虚词和单字母不上色，否则满屏花
 
+- **设置页（2026-11-16）**：`/settings`（`SettingsController` + `settings.html`）只管「页面怎么显示」：外观 / 背景 / 正文。账号页 `/me` 只剩账号信息、AI 接入、退出登录。顶栏右侧的「设置」入口在 `layout.html` 的 `header-tools` 里；所有偏好还是存 localStorage（`theme` / `bg` / `bg-strength` / `terms` / `indent` / `read-size`），`layout.html` 的 head 脚本负责首屏前贴上属性
 - **长段落轨道（2026-11-16）**：`MarkdownRenderer` 的 AttributeProvider 给**顶层** `Paragraph` 打 `md-long`（`textOf(node).length() >= 180`），CSS 用 `border-left: 2px` + 负外边距把轨道放进留白、正文位置不变。只认顶层段落：引用块、列表项、表格本来就有框，不重复加；180 字以下不受影响（`LONG_PARAGRAPH_CHARS`）
 
 - **正文对齐与缩进（2026-11-16）**：`.markdown p` 用 `text-align: justify` + `text-justify: inter-ideograph`（中文按字对齐，右边缘不参差）；`.markdown > p` 首行缩进 2em，只给顶层段落，列表/表格/引用里不加。开关是 `html[data-indent='off']`，对应阅读设置里的「首行缩进」（localStorage `indent`，默认开）
