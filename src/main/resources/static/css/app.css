@@ -3119,6 +3119,13 @@ html.tree-no-count .tree-count {
     margin: 0.4rem 0 1.6rem;
 }
 
+/* 设置页的区块标题别跟账号页一样淡：这里三块是并列的一级信息 */
+.settings-page .me-section h2 {
+    font-size: 1.02rem;
+    color: var(--fg);
+    margin: 0 0 0.5rem;
+}
+
 .me-row {
     display: flex;
     align-items: center;
