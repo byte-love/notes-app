@@ -477,11 +477,11 @@ html[data-bg='aurora'] body {
     /* 渐变色只取当前主题的强调色，不跨色相：雾青主题是冷青晕、暖霞主题是暖橙晕 */
     --bg-tex:
         radial-gradient(55% 42% at 10% 6%,
-            color-mix(in srgb, var(--accent) calc(var(--tex, 55) * 0.40% * var(--tex-k, 1)), transparent), transparent 70%),
+            color-mix(in srgb, var(--accent) calc(var(--tex, 55) * 0.55% * var(--tex-k, 1)), transparent), transparent 70%),
         radial-gradient(50% 38% at 92% 10%,
-            color-mix(in srgb, var(--accent-2) calc(var(--tex, 55) * 0.30% * var(--tex-k, 1)), transparent), transparent 72%),
+            color-mix(in srgb, var(--accent-2) calc(var(--tex, 55) * 0.42% * var(--tex-k, 1)), transparent), transparent 72%),
         radial-gradient(60% 45% at 82% 94%,
-            color-mix(in srgb, var(--accent) calc(var(--tex, 55) * 0.24% * var(--tex-k, 1)), transparent), transparent 74%);
+            color-mix(in srgb, var(--accent) calc(var(--tex, 55) * 0.34% * var(--tex-k, 1)), transparent), transparent 74%);
 }
 
 a {
