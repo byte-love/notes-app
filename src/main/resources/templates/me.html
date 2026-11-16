@@ -105,6 +105,34 @@
                 <button type="button" data-value="light">浅色</button>
                 <button type="button" data-value="dark">深色</button>
                 <button type="button" data-value="sepia">护眼</button>
+                <button type="button" data-value="mist">雾青</button>
+                <button type="button" data-value="dusk">暖霞</button>
+            </div>
+        </div>
+
+        <div class="me-row">
+            <span class="me-label">背景</span>
+            <div class="seg" data-setting="bg">
+                <button type="button" data-value="plain">素色</button>
+                <button type="button" data-value="paper">纸纹</button>
+                <button type="button" data-value="grid">网格</button>
+                <button type="button" data-value="aurora">渐变</button>
+            </div>
+        </div>
+
+        <div class="me-row">
+            <span class="me-label">背景浓度</span>
+            <span class="me-range">
+                <input type="range" id="bgStrength" min="0" max="100" step="5" value="55">
+                <b id="bgStrengthVal">55</b>
+            </span>
+        </div>
+
+        <div class="me-row">
+            <span class="me-label">名词着色</span>
+            <div class="seg" data-setting="terms">
+                <button type="button" data-value="on">开</button>
+                <button type="button" data-value="off">关</button>
             </div>
         </div>
 
@@ -170,6 +198,24 @@
             root.dataset.readSize = value;
         };
 
+        const applyBg = (value) => {
+            if (value === 'paper' || value === 'grid' || value === 'aurora') {
+                root.dataset.bg = value;
+            } else {
+                delete root.dataset.bg;
+            }
+        };
+
+        const applyTerms = (value) => {
+            if (value === 'off') {
+                root.dataset.terms = 'off';
+            } else {
+                delete root.dataset.terms;
+            }
+        };
+
+        const DEFAULTS = { theme: 'system', 'read-size': 'md', bg: 'plain', terms: 'on' };
+
         const mark = (group, value) => {
             group.querySelectorAll('button').forEach((b) => {
                 b.classList.toggle('on', b.dataset.value === value);
@@ -178,27 +224,42 @@
 
         document.querySelectorAll('.seg[data-setting]').forEach((group) => {
             const key = group.dataset.setting;
-            if (key === 'theme') {
-                mark(group, read('theme') || 'system');
-            } else {
-                mark(group, read('read-size') || 'md');
-            }
+            mark(group, read(key) || DEFAULTS[key]);
 
             group.addEventListener('click', (e) => {
                 const btn = e.target.closest('button[data-value]');
                 if (!btn) return;
                 const value = btn.dataset.value;
-
+                write(key, value);
                 if (key === 'theme') {
-                    write('theme', value);
                     applyTheme(value);
-                } else {
-                    write('read-size', value);
+                } else if (key === 'read-size') {
                     applySize(value);
+                } else if (key === 'bg') {
+                    applyBg(value);
+                } else if (key === 'terms') {
+                    applyTerms(value);
                 }
                 mark(group, value);
             });
         });
+
+        // 背景浓度：直接改 html 上的 --tex，CSS 里各种纹理都按它算透明度
+        const strength = document.getElementById('bgStrength');
+        const strengthVal = document.getElementById('bgStrengthVal');
+        if (strength) {
+            const saved = read('bg-strength');
+            if (saved) {
+                strength.value = saved;
+            }
+            strengthVal.textContent = strength.value;
+            root.style.setProperty('--tex', strength.value);
+            strength.addEventListener('input', () => {
+                strengthVal.textContent = strength.value;
+                root.style.setProperty('--tex', strength.value);
+                write('bg-strength', strength.value);
+            });
+        }
 
         // 选「跟随系统」时，系统主题变了要立刻反映
         mq.addEventListener('change', () => {
