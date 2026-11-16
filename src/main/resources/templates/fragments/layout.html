@@ -17,14 +17,19 @@
                 if (theme === 'light' || theme === 'dark' || theme === 'sepia'
                         || theme === 'mist' || theme === 'dusk') {
                     document.documentElement.dataset.theme = theme;
+                } else if (theme !== 'system') {
+                    // 没选过就用默认：深色（选了「跟随系统」就交给系统）
+                    document.documentElement.dataset.theme = 'dark';
                 }
                 const size = localStorage.getItem('read-size');
                 if (size === 'sm' || size === 'md' || size === 'lg') {
                     document.documentElement.dataset.readSize = size;
                 }
                 const bg = localStorage.getItem('bg');
-                if (bg === 'paper' || bg === 'grid' || bg === 'aurora') {
+                if (bg === 'plain' || bg === 'paper' || bg === 'grid' || bg === 'aurora') {
                     document.documentElement.dataset.bg = bg;
+                } else {
+                    document.documentElement.dataset.bg = 'aurora';
                 }
                 const tex = localStorage.getItem('bg-strength');
                 if (tex) {
@@ -36,7 +41,7 @@
             } catch (e) {}
         })();
     </script>
-    <link rel="stylesheet" th:href="@{/css/app.css(v=171)}">
+    <link rel="stylesheet" th:href="@{/css/app.css(v=172)}">
     <!-- 通用小工具（CSRF / POST / 转义）：页面自己的脚本都要用它，所以放 head 里先加载 -->
     <script th:src="@{/js/base.js(v=2)}"></script>
 </head>

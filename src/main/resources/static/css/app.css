@@ -1957,12 +1957,13 @@ html[data-theme='sepia'] .item-tag {
 }
 
 .markdown p {
-    margin: 0 0 1.15rem;
+    /* 长段落之间要有明确的呼吸：比行距再大一档，否则整屏看下来像一大块 */
+    margin: 0 0 1.7rem;
 }
 
 .markdown ul,
 .markdown ol {
-    margin: 0 0 1rem;
+    margin: 0 0 1.25rem;
     padding-left: 1.6rem;
 }
 
@@ -2048,6 +2049,11 @@ html[data-theme='sepia'] .item-tag {
     background: color-mix(in srgb, currentColor 9%, transparent);
     border-radius: 4px;
     padding: 0 2px;
+}
+
+/* 英文术语加一点字重，扫读时先看到词 */
+.markdown .en {
+    font-weight: 600;
 }
 
 .en.t0 { color: hsl(var(--t-h-0) var(--tone-s) var(--tone-l-fg)); }

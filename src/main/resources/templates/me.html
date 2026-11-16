@@ -205,7 +205,6 @@
                 delete root.dataset.bg;
             }
         };
-
         const applyTerms = (value) => {
             if (value === 'off') {
                 root.dataset.terms = 'off';
@@ -214,7 +213,7 @@
             }
         };
 
-        const DEFAULTS = { theme: 'system', 'read-size': 'md', bg: 'plain', terms: 'on' };
+        const DEFAULTS = { theme: 'dark', 'read-size': 'md', bg: 'aurora', terms: 'on' };
 
         const mark = (group, value) => {
             group.querySelectorAll('button').forEach((b) => {
