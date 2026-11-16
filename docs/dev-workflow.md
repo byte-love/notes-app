@@ -275,7 +275,7 @@ sudo /opt/deploy/sync-db.sh    # 正式库整库覆盖到测试库
   只看开头是为了别把正文里顺带提一句「回答」的整段染绿
 - **标签气泡的配色按词固定**：`GlobalModelAdvice.TagTone.of(词)` 把词哈希到 `t0~t7` 八个色调，模板写成
   `data-tone="${tagTone.of(t)}"`（`detail.html` 的 `.doc-tag`、`fragments/list.html` 的 `.item-tag`），
-  色值在 `app.css` 里按 `--tc` 色相算（浅色纸感、深色压暗，三套主题各一份）。同一个词在哪个页面都是同一个颜色
+  色值在 `app.css` 里按 `--tc` 色相算（浅色纸感、深色压暗，五套主题各一份：浅色 / 深色 / 护眼 / 雾青 / 暖霞）。同一个词在哪个页面都是同一个颜色
 - **正文末尾的「下一篇」**：按 `(sortOrder, id)` 在**同一个父级分类**里往后取一条（`PublicController.nextNoteOf`）；
   补充笔记不参与、锁着的条目不指过去；没有了就在页面上显示「已经是这个分类的最后一篇」。
   项目页（`project.html`）没有这个导航
@@ -576,16 +576,24 @@ sudo /opt/deploy/sync-db.sh    # 正式库整库覆盖到测试库
       图加载完会重新摆一次位置，`img.complete` 那句别删（缓存命中时 `load` 不会再来）
   - **左树样式**（2026-11-02 改）：不再画整列竖线 + 每行短横线（`.tree ul` 的 border-left 和
     `li::before` 都删了），层级靠缩进 + 字重；行是圆角 8 的块，hover 浅底、当前项浅底 + 强调色 +
-    左侧 2px 强调色；二级条目长标题用悬挂缩进（`padding-left` + 负 `text-indent`）对齐；
-    顶层分组之间用 `border-top` 出一条极淡分隔线
+    左侧 2px 强调色；二级条目长标题用悬挂缩进（`padding-left` + 负 `text-indent`）对齐
+  - **左树 2026-11-16 又改了一次**（现役状态）：组与组之间的 `margin-top`（0.85rem）和 `border-top` 分隔线全去掉
+    （用户原话「每个分类之间间隔大、单调」），每组占高 55px → 31px；改成「顶层分类前面一个 6.4px 色点
+    + 条数默认隐身、hover 或当前项才显示」。色点只在 `.tree-pane > .tree > li > .tree-row` 这一层画
+    （递归片段里每一层 `<ul>` 都带 `.tree`，不限定就会给子项也点上），颜色来自
+    `NoteTreeService.Node.hue()`（slug 哈希 → 0–359，同一个分类永远同色），模板里写成 `th:style="|--h:${n.hue()}|"`
+    **历史矛盾**：2026-11-02 用户曾要求保留逐行分隔线（当时说「这是要的效果，别当 bug 修」），11-16 改口要去掉；
+    两个说法冲突，**以 11-16 为准**
   - **左树每行带行号 + 分组带条数**：行号来自 `NoteTreeService.Node.ordinal()`（同一个父节点下
     只给叶子连续编号，分组不占号），模板里 `#numbers.formatInteger(n.ordinal(), 2)` 补成 01；
     分组标题右侧 `#lists.size(n.children)`（lazy 的那种节点子列表还没渲染，不显示）。
     叶子行的 padding-left 是 2rem、text-indent -1.4rem，正好让号在 0.6rem 起、标题和折行对齐到 2rem
-  - **逐行分隔线是「要的效果」，别当 bug 修**（2026-11-02 来回折腾了两次）：`fragments/tree :: nodes`
-    是递归片段，**每一层的 `<ul>` 都带 `.tree` 类**，所以 `.tree > li + li` 的 `border-top` 会套到每层，
-    叶子之间也是一条线 —— 用户要的就是这个观感（他拿正式版截图对照过）。我把子层改成裸 `<ul>`（`sub`）
-    去掉线之后被否了，已还原。要动这块先问
+  - **逐行分隔线（历史）**：2026-11-02 用户要求保留 `border-top` 的逐行线（`fragments/tree :: nodes`
+    是递归片段，每层 `<ul>` 都带 `.tree`，所以子层也会有线）；**2026-11-16 要求全部去掉**，
+    `border-top` 和组间 `margin-top` 都已删除 —— 这块前后被来回改过三次，要动先问
+  - **确认弹窗一律用站内的 `uiConfirm`**（`static/js/confirm.js`，全站已加载；表单/按钮上写
+    `data-confirm="提示语"` 也行，JS 里 `await uiConfirm('提示语')`）：`window.confirm()` 是浏览器原生弹窗，
+    配色字号都不受控，用户明确否过（2026-11-16，正文页「整理排版」弹了一个原生框，被要求去掉）
   - **左树字号/行距固定值**：叶子 0.83rem、行高 28px、上下内边距 0.22rem、悬挂缩进 `padding-left:2rem`
     + `text-indent:-1.4rem`；行号 0.66rem（宽 1.1rem）；一级分组 0.9rem、二级分组 0.85rem。
     2026-11-02 试过整体 ×1.15，被否（太挤、换行多），已还原
