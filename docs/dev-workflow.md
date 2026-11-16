@@ -408,6 +408,10 @@ sudo /opt/deploy/sync-db.sh    # 正式库整库覆盖到测试库
     虚线保留，悬停照旧能看解释
   - 词表在 `EN_STOPWORDS`：the / and / of 这类虚词和单字母不上色，否则满屏花
 
+- **「⋯」功能菜单（2026-11-16）**：`static/js/act-menu.js` + `app.css` 里的 `.act-menu-wrap / .act-menu / .act-item`。
+  正文页把收藏 / 加书签 / 插入笔记卡片收进 `#doc-acts`，编辑页把插入图片 / 整理排版 / 还原收进 `#md-acts`。
+  用法：`<button data-act-menu="菜单id">⋯</button>` + `<div class="act-menu" id="菜单id" hidden>`。
+  表单类动作（收藏 / 书签）可以放在菜单里，提交后整页跳转；普通按钮点完自动收起
 - **编辑器粘贴与整理排版（2026-11-16）**：`static/js/editor-paste.js`（挂在 `admin/form.html` 的 `#md-source` 上）
   1. **粘贴富文本**：剪贴板里有 `text/html` 时用 `DOMParser` 转 Markdown（h1–h6、ul/ol 嵌套、pre 代码块、strong/em/code/a/img、br 转硬换行），
      没有 HTML 的纯文本保持原来的行为。**不要只取 `text/plain`**：网页复制过来的换行会变空格、列表符号和编号全丢，
