@@ -3,7 +3,8 @@
       xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
 <body>
 <ul th:fragment="nodes(nodes)" class="tree">
-    <li th:each="n : ${nodes}" th:classappend="${n.hasChildren()} ? 'has-kids' : ''">
+    <li th:each="n : ${nodes}" th:classappend="${n.hasChildren()} ? 'has-kids' : ''"
+        th:style="|--h:${n.hue()}|">
         <!-- 一行 = 标题（分组按钮 / 条目链接）+ 行末的「+」「⋯」；「+」是在这一行下面新建 -->
         <div class="tree-row"
              th:attr="data-id=${n.item.id},data-title=${n.item.title},data-slug=${n.item.slug},

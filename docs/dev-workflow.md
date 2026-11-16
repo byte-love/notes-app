@@ -408,6 +408,18 @@ sudo /opt/deploy/sync-db.sh    # 正式库整库覆盖到测试库
     虚线保留，悬停照旧能看解释
   - 词表在 `EN_STOPWORDS`：the / and / of 这类虚词和单字母不上色，否则满屏花
 
+- **「⋯」功能菜单（2026-11-16）**：`static/js/act-menu.js` + `app.css` 里的 `.act-menu-wrap / .act-menu / .act-item`。
+  正文页把收藏 / 加书签 / 插入笔记卡片收进 `#doc-acts`，编辑页把插入图片 / 整理排版 / 还原收进 `#md-acts`。
+  用法：`<button data-act-menu="菜单id">⋯</button>` + `<div class="act-menu" id="菜单id" hidden>`。
+  表单类动作（收藏 / 书签）可以放在菜单里，提交后整页跳转；普通按钮点完自动收起
+- **编辑器粘贴与整理排版（2026-11-16）**：`static/js/editor-paste.js`（挂在 `admin/form.html` 的 `#md-source` 上）
+  1. **粘贴富文本**：剪贴板里有 `text/html` 时用 `DOMParser` 转 Markdown（h1–h6、ul/ol 嵌套、pre 代码块、strong/em/code/a/img、br 转硬换行），
+     没有 HTML 的纯文本保持原来的行为。**不要只取 `text/plain`**：网页复制过来的换行会变空格、列表符号和编号全丢，
+     2026-11-16 在八股 `bagu-mysql-025-detail` 上踩过（三条 `1.` 粘连成一大段）
+  2. **整理排版**：只做结构还原——补列表符号、把「编号标题 + 第一句」粘成一行的拆开、编号重排（1 1 1 → 1 2 3）、
+     短标题行升成 `## n. 标题`、`总结/小结` 转 `## 总结` + 列表。**不改文字**，且按钮旁有「还原」能退回
+  3. 测试方式：`node --check` 查语法；tidy 用 node 直接跑（把绑定段落切掉再 eval）；粘贴转换用无头 Chrome 打
+     `print-to-pdf` 再用 `pymupdf` 提取文本核对（`--dump-dom` 在这个环境里出不了内容）
 - **设置页（2026-11-16）**：`/settings`（`SettingsController` + `settings.html`）只管「页面怎么显示」：外观 / 背景 / 正文。账号页 `/me` 只剩账号信息、AI 接入、退出登录。顶栏右侧的「设置」入口在 `layout.html` 的 `header-tools` 里；所有偏好还是存 localStorage（`theme` / `bg` / `bg-strength` / `terms` / `indent` / `read-size`），`layout.html` 的 head 脚本负责首屏前贴上属性
 - **长段落轨道（2026-11-16）**：`MarkdownRenderer` 的 AttributeProvider 给**顶层** `Paragraph` 打 `md-long`（`textOf(node).length() >= 180`），CSS 用 `border-left: 2px` + 负外边距把轨道放进留白、正文位置不变。只认顶层段落：引用块、列表项、表格本来就有框，不重复加；180 字以下不受影响（`LONG_PARAGRAPH_CHARS`）
 

@@ -145,7 +145,15 @@
                       data-help="支持 Markdown：# 一级标题、- 列表、**粗体**、[链接](url)、| 表格 |、``` 代码块 ```。右边是实时预览，写多少看多少。">?</span>
             </div>
             <div class="md-bar">
-                <button type="button" class="btn-quiet" id="md-image">插入图片</button>
+                <div class="act-menu-wrap">
+                    <button type="button" class="act-menu-btn" data-act-menu="md-acts"
+                            aria-haspopup="true" aria-expanded="false" aria-label="更多编辑操作">⋯</button>
+                    <div class="act-menu" id="md-acts" hidden>
+                        <button type="button" class="act-item" id="md-image">插入图片</button>
+                        <button type="button" class="act-item" id="md-tidy">整理排版</button>
+                        <button type="button" class="act-item" id="md-undo" hidden>还原</button>
+                    </div>
+                </div>
             </div>
             <div class="md-editor">
                 <textarea th:field="*{body}" rows="26" spellcheck="false" id="md-source"
@@ -178,5 +186,7 @@
 
 <footer th:replace="~{fragments/layout :: foot}"></footer>
 <script th:src="@{/js/admin-editor.js(v=5)}"></script>
+<script th:src="@{/js/md-tidy.js(v=1)}"></script>
+<script th:src="@{/js/editor-paste.js(v=2)}"></script>
 </body>
 </html>

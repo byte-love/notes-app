@@ -29,6 +29,19 @@ public class NoteTreeService {
         public boolean hasChildren() {
             return !children.isEmpty();
         }
+
+        /**
+         * 目录里给这个节点一个稳定的色相（0–359）。同一个分类永远是同一个颜色，
+         * 只用来给左树顶层分类上色点，没有业务含义。
+         */
+        public int hue() {
+            String key = item.getSlug() == null ? "" : item.getSlug();
+            int h = 7;
+            for (int i = 0; i < key.length(); i++) {
+                h = h * 31 + key.charAt(i);
+            }
+            return Math.floorMod(h, 360);
+        }
     }
 
     private static final Comparator<ContentCard> ORDER =

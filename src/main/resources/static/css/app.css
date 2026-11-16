@@ -2732,13 +2732,14 @@ html.tree-no-count .tree-count {
 }
 
 .tree > li {
-    margin-top: 0.85rem;
+    margin-top: 0;
 }
 
-/* 组和组之间加一条极淡的分隔线：条目多的页面（笔记有 5 组）才不会糊成一片 */
+/* 组与组之间不再画分隔线、也不再空一大块：14 个分类就是 14 条线，看着像表格。
+   现在靠行高、色点和当前项的竖条区分（2026-11-16 用户反馈「间隔大、单调」） */
 .tree > li + li {
-    padding-top: 0.6rem;
-    border-top: 1px solid var(--line);
+    padding-top: 0;
+    border-top: 0;
 }
 
 .tree > li:first-child {
@@ -2763,7 +2764,40 @@ html.tree-no-count .tree-count {
 }
 
 .tree > li > .tree-group {
-    padding-left: 1.15rem;
+    padding-left: 1.6rem;
+}
+
+/* 顶层分类前面一个色点：颜色来自 --h（后端按 slug 哈希给，同一个分类永远同色） */
+.tree-pane > .tree > li > .tree-row {
+    position: relative;
+}
+
+.tree-pane > .tree > li > .tree-row .tree-group::after {
+    content: "";
+    position: absolute;
+    left: 0.6rem;
+    top: 50%;
+    width: 0.4rem;
+    height: 0.4rem;
+    border-radius: 50%;
+    background: hsl(var(--h, 205) 55% 55% / 0.9);
+    transform: translateY(-50%);
+}
+
+/* 箭头让出色点的位置 */
+.tree-pane > .tree > li > .tree-row .tree-group::before {
+    left: 1.02rem;
+}
+
+/* 条数默认不显示，鼠标移到这一行（或这一组就是当前项）才露出来 */
+.tree-count {
+    opacity: 0;
+    transition: opacity 0.12s ease;
+}
+
+.tree-row:hover .tree-count,
+.tree .tree-group.on .tree-count {
+    opacity: 1;
 }
 
 /* 二级分组（如笔记的「面试问答」）也要比叶子重，否则整棵树看起来是平的 */
@@ -6190,3 +6224,82 @@ html[data-theme='dark'] .cl-latest {
     color: var(--fg-2);
     font-variant-numeric: tabular-nums;
 }
+/* 「⋯」功能菜单：正文页和编辑页共用一个样式 */
+.act-menu-wrap {
+    position: relative;
+    display: inline-flex;
+}
+
+.act-menu-btn {
+    font: inherit;
+    font-size: 1.05rem;
+    line-height: 1;
+    padding: 0.28rem 0.55rem;
+    color: var(--fg-3);
+    background: none;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    cursor: pointer;
+    transition: color 0.12s ease, border-color 0.12s ease, background 0.12s ease;
+}
+
+.act-menu-btn:hover,
+.act-menu-btn[aria-expanded='true'] {
+    color: var(--fg);
+    border-color: var(--fg-3);
+    background: var(--bg-2);
+}
+
+.act-menu {
+    position: absolute;
+    top: calc(100% + 0.4rem);
+    right: 0;
+    z-index: 45;
+    min-width: 11rem;
+    padding: 0.3rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+    background: var(--doc-bg);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.28);
+}
+
+.act-menu[hidden] {
+    display: none;
+}
+
+.act-menu form {
+    margin: 0;
+    display: block;
+}
+
+.act-menu .act-item,
+.act-menu form > button {
+    width: 100%;
+    display: block;
+    text-align: left;
+    font: inherit;
+    font-size: 0.86rem;
+    line-height: 1.5;
+    padding: 0.42rem 0.6rem;
+    color: var(--fg-2);
+    background: none;
+    border: 0;
+    border-radius: 6px;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.act-menu .act-item:hover,
+.act-menu form > button:hover {
+    color: var(--fg);
+    background: var(--bg-2);
+}
+
+.act-menu .act-item.on {
+    color: var(--accent);
+    font-weight: 600;
+}
+
