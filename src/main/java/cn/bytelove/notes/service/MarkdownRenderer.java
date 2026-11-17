@@ -231,6 +231,7 @@ public class MarkdownRenderer {
         Split hidden = splitHidden(markdown);
         Split split = splitIndented(hidden.markdown(), hidden.secrets());
         Node document = parser.parse(fenceBareCode(stripFrontMatter(split.markdown())));        wrapTerms(document);
+        normalizeHeadingLevels(document);
 
         Map<Heading, String> ids = assignHeadingIds(document);
         BlockQuote firstQuote = firstBlockQuote(document);
@@ -780,6 +781,26 @@ public class MarkdownRenderer {
                 sink.accept(heading);
             }
             walkHeadings(child, sink);
+        }
+    }
+
+    /**
+     * 一篇笔记里一个二级标题（##）都没有时，把三级及以下整体提一级。
+     * 这类笔记写的「### 小节」其实就是文章的顶层分区，按三级渲染没有分隔线，
+     * 和用 ## 写的笔记并排看会显得平（2026-11-17 用户反馈）。
+     * 同时有 ## 和 ### 的笔记不动：那时两级本来就有层级，拉平反而分不清谁是分区。
+     */
+    private void normalizeHeadingLevels(Node document) {
+        List<Heading> headings = new ArrayList<>();
+        walkHeadings(document, headings::add);
+        boolean hasH2 = headings.stream().anyMatch(h -> h.getLevel() == 2);
+        if (hasH2) {
+            return;
+        }
+        for (Heading heading : headings) {
+            if (heading.getLevel() >= 3) {
+                heading.setLevel(heading.getLevel() - 1);
+            }
         }
     }
 
