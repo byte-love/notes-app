@@ -284,8 +284,10 @@
             if (!li || btn.dataset.bound === '1') return;
             btn.dataset.bound = '1';
             const key = 'tree-fold:' + btn.dataset.key;
+            // 当前这条所在的分组不折叠：否则一进页面，目录里根本看不到自己在哪
+            const holdsActive = !!li.querySelector('a.on');
             try {
-                if (localStorage.getItem(key) === '1') li.classList.add('folded');
+                if (!holdsActive && localStorage.getItem(key) === '1') li.classList.add('folded');
             } catch (e) {}
             btn.addEventListener('click', async () => {
                 const lazy = btn.dataset.lazy;
