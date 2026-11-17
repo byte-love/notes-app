@@ -1265,28 +1265,62 @@ body.cmt-off .cmt-pane {
     cursor: pointer;
 }
 
-/* 注释弹窗：这一处的全部注释 + 写新注释的框 */
+/* 注释浮窗：标题条（「注释」+ 引文 + ×）+ 这一处的注释 + 写新注释的框 */
 .ann-pop {
     position: fixed;
     z-index: 90;
     width: min(430px, 92vw);
     max-height: 64vh;
     overflow: auto;
-    padding: 0.7rem 0.9rem 0.8rem;
-    background: var(--bg);
+    padding: 0 0.9rem 0.8rem;
+    background: var(--bg-2);
     border: 1px solid var(--line);
     border-radius: 10px;
-    box-shadow: 0 14px 36px rgba(0, 0, 0, 0.22);
+    box-shadow: 0 14px 36px rgba(0, 0, 0, 0.28);
+}
+
+.ann-pop-head {
+    position: sticky;
+    top: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0 -0.9rem 0.55rem;
+    padding: 0.55rem 0.9rem 0.5rem;
+    background: var(--bg-2);
+    border-bottom: 1px solid var(--line);
+    border-radius: 10px 10px 0 0;
+}
+
+.ann-pop-title {
+    flex: none;
+    font-size: 0.84rem;
+    font-weight: 600;
+    color: var(--fg);
+}
+
+.ann-pop-quote {
+    flex: 1 1 auto;
+    min-width: 0;
+    margin: 0;
+    font-size: 0.8rem;
+    color: var(--fg-3);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.ann-pop-quote[hidden] {
+    display: none;
 }
 
 .ann-pop-close {
-    position: absolute;
-    top: 0.3rem;
-    right: 0.35rem;
+    flex: none;
+    margin-left: auto;
     font: inherit;
     font-size: 1rem;
     line-height: 1;
-    padding: 0.15rem 0.3rem;
+    padding: 0.1rem 0.25rem;
     color: var(--fg-3);
     background: none;
     border: 0;
@@ -1295,6 +1329,17 @@ body.cmt-off .cmt-pane {
 
 .ann-pop-close:hover {
     color: var(--danger);
+}
+
+.ann-pop .ann-form {
+    margin-top: 0.55rem;
+    padding-top: 0.55rem;
+    border-top: 1px solid var(--line);
+}
+
+.ann-pop .ann-form textarea {
+    width: 100%;
+    box-sizing: border-box;
 }
 
 /* 数据容器不占版面 */

@@ -47,6 +47,17 @@
     const pop = document.createElement('div');
     pop.className = 'ann-pop';
     pop.hidden = true;
+    // 浮窗的标题条：左边「注释」，中间是被注释的那句话，右边关闭
+    const popHead = document.createElement('div');
+    popHead.className = 'ann-pop-head';
+    const popTitle = document.createElement('span');
+    popTitle.className = 'ann-pop-title';
+    popTitle.textContent = '注释';
+    const popQuote = document.createElement('p');
+    popQuote.className = 'ann-pop-quote';
+    popHead.appendChild(popTitle);
+    popHead.appendChild(popQuote);
+    pop.appendChild(popHead);
     if (annData) {
         pop.appendChild(annList);
         if (annForm) {
@@ -59,7 +70,7 @@
         closeBtn.setAttribute('aria-label', '关闭');
         closeBtn.textContent = '×';
         closeBtn.addEventListener('click', () => closePop());
-        pop.appendChild(closeBtn);
+        popHead.appendChild(closeBtn);
         document.body.appendChild(pop);
     }
 
@@ -90,6 +101,8 @@
         if (!pop) return;
         pop.hidden = true;
         popOpenWith = '';
+        popQuote.textContent = '';
+        popQuote.hidden = true;
         ['quote', 'anchorKind', 'blockIndex', 'prefix', 'suffix'].forEach((n) => setAnn(n, ''));
         if (annTextarea) annTextarea.value = '';
         unpaintAnchor();
@@ -109,6 +122,9 @@
         setAnn('blockIndex', anchor.block);
         setAnn('prefix', anchor.prefix);
         setAnn('suffix', anchor.suffix);
+        // 浮窗标题条上带出被注释的那句话，省得用户忘了自己选的是哪段
+        popQuote.textContent = anchor.quote ? '“' + anchor.quote + '”' : '';
+        popQuote.hidden = !anchor.quote;
         if (annTextarea) annTextarea.value = '';
         popOpenWith = anchor.quote || '';
         placePop(rect);
