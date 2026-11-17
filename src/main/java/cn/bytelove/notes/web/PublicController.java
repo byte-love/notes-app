@@ -333,8 +333,8 @@ public class PublicController {
                 for (ContentCard c : allNotes) {
                     bySlug.put(c.getSlug(), c);
                 }
-                for (String slug : docSlugs) {
-                    ContentCard c = bySlug.get(slug);
+                for (String docSlug : docSlugs) {
+                    ContentCard c = bySlug.get(docSlug);
                     if (c != null) {
                         projectNotes.add(c);
                     }
