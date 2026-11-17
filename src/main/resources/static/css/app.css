@@ -6327,3 +6327,53 @@ html[data-theme='dark'] .cl-latest {
     font-weight: 600;
 }
 
+
+/* 选中术语后的解释卡片（手机上没有悬停，全靠它）；右上角「×」关掉 */
+.sel-tip {
+    position: fixed;
+    z-index: 105;
+    max-width: min(320px, calc(100vw - 24px));
+    background: var(--bg-2);
+    color: var(--fg);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 0.5rem 0.7rem 0.55rem;
+    font-size: 0.82rem;
+    line-height: 1.68;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+}
+
+.sel-tip[hidden] {
+    display: none;
+}
+
+.sel-tip-head {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.sel-tip-term {
+    font-weight: 600;
+    font-size: 0.86rem;
+}
+
+.sel-tip-close {
+    margin-left: auto;
+    border: 0;
+    background: none;
+    padding: 0 0.1rem;
+    font-size: 1rem;
+    line-height: 1;
+    color: var(--fg-3);
+    cursor: pointer;
+}
+
+.sel-tip-close:hover {
+    color: var(--fg);
+}
+
+.sel-tip-body {
+    margin: 0.15rem 0 0;
+    color: var(--fg-2);
+}
