@@ -323,6 +323,16 @@ public class PublicController {
             model.addAttribute("tabActive", "project");
             model.addAttribute("item", item);
             model.addAttribute("project", meta.view(item.getId()).orElse(null));
+            // 挂在项目下面的子条目（一个分类一篇）在项目页底部排成卡片，点开就是那篇说明
+            List<ContentCard> projectNotes = new ArrayList<>();
+            for (ContentCard child : items.findCardsByOwnerAndKind(item.getOwnerId(), ContentKind.NOTE)) {
+                if (item.getId().equals(child.getParentId())) {
+                    projectNotes.add(child);
+                }
+            }
+            projectNotes.sort(Comparator.comparingInt(ContentCard::getSortOrder)
+                    .thenComparing(ContentCard::getId));
+            model.addAttribute("projectNotes", filtered(projectNotes, viewer, new LinkedHashSet<>()));
             model.addAttribute("html", markdown.toHtml(markdown.dropTitleEcho(item.getBody(), item.getTitle())));
             model.addAttribute("starred", viewer.userId() != null && stars.isStarred(viewer.userId(), item.getId()));
             return "project";

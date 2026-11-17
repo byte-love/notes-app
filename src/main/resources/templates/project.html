@@ -90,6 +90,19 @@
             </ul>
         </section>
 
+        <!-- 说明：挂在项目下面的子条目，一张卡片一个分类（流程、功能、规则……） -->
+        <section class="project-block" th:if="${projectNotes != null and !#lists.isEmpty(projectNotes)}">
+            <h2>说明</h2>
+            <div class="project-notes">
+                <a class="project-note-card" th:each="n : ${projectNotes}"
+                   th:href="@{/notes/{s}(s=${n.slug})}">
+                    <span class="project-note-title" th:text="${n.title}">标题</span>
+                    <span class="project-note-sum" th:if="${n.summary != null and !#strings.isEmpty(n.summary)}"
+                          th:text="${n.summary}">摘要</span>
+                </a>
+            </div>
+        </section>
+
         <section class="project-block" th:if="${project != null and !#lists.isEmpty(project.shots)}">
             <h2>界面截图</h2>
             <div class="project-gallery">

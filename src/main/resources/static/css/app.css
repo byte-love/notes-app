@@ -3694,6 +3694,44 @@ html[data-read-size='lg'] .markdown {
     color: hsl(var(--kh) var(--k-sat) var(--k-l-fg));
 }
 
+/* 说明：挂在项目下面的子条目，一卡一类（整体流程 / 功能拆解 / 规则……），点开是那一篇 */
+.project-notes {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(17rem, 100%), 1fr));
+    gap: 0.55rem;
+    margin: 0 0 0.9rem;
+}
+
+.project-note-card {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    padding: 0.8rem 0.95rem;
+    background: var(--bg-2);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    text-decoration: none;
+    transition: border-color 0.15s ease, transform 0.15s ease;
+}
+
+.project-note-card:hover {
+    border-color: hsl(var(--kh) var(--k-sat) 62%);
+    transform: translateY(-1px);
+}
+
+.project-note-title {
+    font-weight: 600;
+    font-size: 0.95rem;
+    line-height: 1.5;
+    color: var(--fg);
+}
+
+.project-note-sum {
+    font-size: 0.86rem;
+    line-height: 1.62;
+    color: var(--fg-2);
+}
+
 .project-list,
 .project-results {
     margin: 0 0 0.9rem;
