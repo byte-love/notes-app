@@ -323,15 +323,31 @@ public class PublicController {
             model.addAttribute("tabActive", "project");
             model.addAttribute("item", item);
             model.addAttribute("project", meta.view(item.getId()).orElse(null));
-            // 挂在项目下面的子条目（一个分类一篇）在项目页底部排成卡片，点开就是那篇说明
+            // 说明区：优先按 project_meta.doc.docs 里的 slug 取（这些条目挂在别的目录下），
+            // 没配 docs 的老项目再退回「parent_id 是本项目」的老办法
             List<ContentCard> projectNotes = new ArrayList<>();
-            for (ContentCard child : items.findCardsByOwnerAndKind(item.getOwnerId(), ContentKind.NOTE)) {
-                if (item.getId().equals(child.getParentId())) {
-                    projectNotes.add(child);
+            List<ContentCard> allNotes = items.findCardsByOwnerAndKind(item.getOwnerId(), ContentKind.NOTE);
+            List<String> docSlugs = meta.docsOf(item.getId());
+            if (!docSlugs.isEmpty()) {
+                Map<String, ContentCard> bySlug = new HashMap<>();
+                for (ContentCard c : allNotes) {
+                    bySlug.put(c.getSlug(), c);
                 }
+                for (String slug : docSlugs) {
+                    ContentCard c = bySlug.get(slug);
+                    if (c != null) {
+                        projectNotes.add(c);
+                    }
+                }
+            } else {
+                for (ContentCard child : allNotes) {
+                    if (item.getId().equals(child.getParentId())) {
+                        projectNotes.add(child);
+                    }
+                }
+                projectNotes.sort(Comparator.comparingInt(ContentCard::getSortOrder)
+                        .thenComparing(ContentCard::getId));
             }
-            projectNotes.sort(Comparator.comparingInt(ContentCard::getSortOrder)
-                    .thenComparing(ContentCard::getId));
             model.addAttribute("projectNotes", filtered(projectNotes, viewer, new LinkedHashSet<>()));
             model.addAttribute("html", markdown.toHtml(markdown.dropTitleEcho(item.getBody(), item.getTitle())));
             model.addAttribute("starred", viewer.userId() != null && stars.isStarred(viewer.userId(), item.getId()));

@@ -1,10 +1,12 @@
 package cn.bytelove.notes.service;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
@@ -31,6 +33,30 @@ public class ProjectMetaService {
         var list = jdbc.queryForList(
                 "select doc::text from project_meta where item_id = ?", String.class, itemId);
         return list.isEmpty() ? Optional.empty() : Optional.of(list.get(0));
+    }
+
+    /**
+     * 项目页「说明」区引用的子条目：存在 doc.docs 里的 slug 列表（按页面顺序）。
+     * 这些条目本身挂在别处的目录下（比如「上海经禾经验笔记」），不靠 parent_id 找。
+     */
+    public List<String> docsOf(Long itemId) {
+        return findDoc(itemId).map(json -> {
+            try {
+                JsonNode docs = mapper.readTree(json).path("docs");
+                List<String> out = new ArrayList<>();
+                if (docs.isArray()) {
+                    for (JsonNode n : docs) {
+                        String slug = n.asText("").trim();
+                        if (!slug.isEmpty()) {
+                            out.add(slug);
+                        }
+                    }
+                }
+                return out;
+            } catch (Exception e) {
+                return List.<String>of();
+            }
+        }).orElse(List.of());
     }
 
     public Optional<ProjectView> view(Long itemId) {
