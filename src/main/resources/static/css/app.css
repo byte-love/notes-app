@@ -6372,3 +6372,24 @@ html[data-theme='dark'] .cl-latest {
     font-weight: 600;
 }
 
+
+/* 注释浮窗：鼠标停在带注释的字上先看内容，样式跟术语解释同一套；点一下才进编辑面板 */
+.ann-tip {
+    max-width: min(340px, calc(100vw - 24px));
+}
+
+.ann-tip-item + .ann-tip-item {
+    margin-top: 0.45rem;
+    padding-top: 0.45rem;
+    border-top: 1px solid var(--line);
+}
+
+.ann-tip-meta {
+    margin: 0 0 0.15rem;
+    font-size: 0.72rem;
+    color: var(--fg-3);
+}
+
+.ann-tip-text {
+    margin: 0;
+}

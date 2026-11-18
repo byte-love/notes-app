@@ -710,6 +710,75 @@
             markText(thread, 'ann-mark', '有注释', hit, true);
         }
     });
+
+    // ---------- 注释的浮窗 ----------
+    // 鼠标停在带注释的字上，先像术语解释那样浮出内容；点一下才进编辑面板。
+    // 手机上没有悬停，照旧点一下开面板。
+    const annTip = document.createElement('div');
+    annTip.className = 'gl-tip ann-tip';
+    document.body.appendChild(annTip);
+
+    const normText = (s) => String(s || '').replace(/\s+/g, '');
+    const threadByQuote = (q) => {
+        const key = normText(q);
+        if (!key) return null;
+        return annThreads.find((t) => normText(t.dataset.quote) === key) || null;
+    };
+
+    const placeAnnTip = (el) => {
+        const r = el.getBoundingClientRect();
+        const w = annTip.offsetWidth;
+        const h = annTip.offsetHeight;
+        let left = r.left + r.width / 2 - w / 2;
+        left = Math.max(12, Math.min(left, window.innerWidth - w - 12));
+        let top = r.bottom + 8;
+        if (top + h > window.innerHeight - 12) top = Math.max(12, r.top - h - 8);
+        annTip.style.left = Math.round(left) + 'px';
+        annTip.style.top = Math.round(top) + 'px';
+    };
+
+    const showAnnTip = (mark) => {
+        const thread = threadByQuote(mark.textContent);
+        if (!thread) return;
+        const cards = [...thread.querySelectorAll('.cmt-card')];
+        if (!cards.length) return;
+        annTip.textContent = '';
+        cards.slice(0, 3).forEach((card) => {
+            const item = document.createElement('div');
+            item.className = 'ann-tip-item';
+            const meta = card.querySelector('.cmt-meta');
+            const text = card.querySelector('.cmt-text');
+            if (meta) {
+                const head = document.createElement('p');
+                head.className = 'ann-tip-meta';
+                head.textContent = (meta.textContent || '').replace(/\s+/g, ' ').trim();
+                item.appendChild(head);
+            }
+            const body = document.createElement('p');
+            body.className = 'ann-tip-text';
+            body.textContent = text ? text.textContent : '';
+            item.appendChild(body);
+            annTip.appendChild(item);
+        });
+        annTip.classList.add('on');
+        placeAnnTip(mark);
+    };
+
+    const hideAnnTip = () => annTip.classList.remove('on');
+
+    article.addEventListener('mouseover', (e) => {
+        const mark = e.target.closest && e.target.closest('.ann-mark');
+        if (mark) showAnnTip(mark);
+        else if (e.target.closest && !e.target.closest('.ann-tip')) hideAnnTip();
+    });
+
+    article.addEventListener('mouseout', (e) => {
+        const mark = e.target.closest && e.target.closest('.ann-mark');
+        if (!mark) return;
+        if (e.relatedTarget && mark.contains(e.relatedTarget)) return;
+        hideAnnTip();
+    });
+    window.addEventListener('scroll', hideAnnTip, { passive: true });
     // ---------- 重点高亮：选中文字 → 挑颜色 → 正文里留一层底纹 ----------
     // 只给自己看（服务端按 user_id 过滤）。底纹用 Custom Highlight API 画，正文 DOM 不动，
     // 所以不会和评论 / 注释那些 span 打架；点已标过的文字时浮出换色 / 删除的小面板。
