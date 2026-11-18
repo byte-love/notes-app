@@ -132,9 +132,15 @@ sudo /opt/deploy/site.sh prod
    ```
 
    字段（都可以中英双语，写成 `{"zh":…,"en":…}` 或直接写字符串）：
-   `title / subtitle / role / period / stack[] / problem / action[] / notes.zh{"0":…} / result[] / repo / diagram / shots[]`。
+    `title / subtitle / role / period / stack[] / problem / action[] / notes.zh{"0":…} / result[] / repo / diagram / shots[] / docs[]`。
    `notes.zh` 的键是 `action` 的下标，页面上就是每条后面的那个「i」；
    正文里的反引号代码由 `ProjectView.inline()` 安全转成 `<code>`，`result` 里的 `→` 会单独上色。
+
+   **「说明」区（2026-11-17）**：项目页在「结果」和「截图」之间按 `docs` 里的 slug 列成卡片
+   （`PublicController.detail()` 的项目分支走 `ProjectMetaService.docsOf`，再过 `filtered` 过滤可见性）。
+   这些说明条目**不挂在项目下面**，而是收在笔记的目录里（例：「上海经禾经验笔记 → 学科智能体 …」），所以：
+   - 给项目加说明 = 建 NOTE 条目 + 把 slug 写进 `doc.docs`；没配 `docs` 的老项目仍回退到「parent_id 是项目」；
+   - **挪动或删除说明条目之前先搜一下 `project_meta.doc` 里有没有它的 slug**，否则项目页会静默少一张卡。
 
    **改 `doc` 之前先从库里取当前值**（`select doc::text from project_meta where item_id=…`），
    别拿上一次导出的 JSON 当底 —— 下标和步骤数会跟库里对不上，写回去就是回退（真发生过，见「踩过的坑」）。
@@ -345,8 +351,13 @@ sudo /opt/deploy/sync-db.sh    # 正式库整库覆盖到测试库
   往上找根节点，所有人看同一串评论（否则每份副本各聊各的）
 - **评论和注释是同一张表的两条线，靠 `entry_kind` 区分**（V22 加的列）：
   - `COMMENT`：右栏评论区，整篇评 / 选中文字评 / 楼中楼，进 `#comments`
-  - `ANNOTATION`：正文里**短虚下划线**（`.ann-mark`，`1px dotted`），点开是 `.ann-pop` 弹窗——列这一处全部注释，
-    也能接着写。数据渲染在 `#annotations`（hidden）里当数据源，表单 `.ann-form` 带 `entryKind=ANNOTATION`
+  - `ANNOTATION`：正文里**短虚下划线**（`.ann-mark`，`1px dotted`）。**2026-11-18 起一处的文字只留一条注释**：
+    鼠标停在下划线上先浮出内容（`.ann-tip`，和术语解释同一套 `.gl-tip` 样式，**不显示作者和时间**，只给正文）；
+    点一下打开 `.ann-pop` 改这一条——输入框预填原内容，按钮是「删除 / 取消 / 保存修改」，没有「发表」；
+    只有新选中一段没注释过的文字、点工具条「注释」时才是空输入框 +「发表」
+    - 改内容走 `POST /comment/{slug}/{id}/edit`（`CommentService.update`，作者本人或管理员，带 `item_id` 校验，
+      防止拿别人的 id 改到别的文章里去）；上限同 `MAX_ANNOTATION`
+    - 数据渲染在 `#annotations`（hidden）里当数据源，表单 `.ann-form` 带 `entryKind=ANNOTATION`
   - 选中文字后工具条给三个按钮「评论」「注释」「高亮」，走 `comments.js` 里各自的 handler；评论 / 注释两种标记互不嵌套
     （`markText` 的 walker 同时跳过 `.cmt-mark` 和 `.ann-mark`）
   - 服务端 `addComment` 收 `entryKind`：注释必须带 `quote`（没有落点画不出下划线，直接忽略）
@@ -399,8 +410,9 @@ sudo /opt/deploy/sync-db.sh    # 正式库整库覆盖到测试库
     模型段落里才是 label，以前一套解释套全站，在 Redis 的 Hash 结构里弹出来的是模型的 label（2026-11-02 用户指出）
   - 改/删/新增完页面会 `location.reload()` 一次（术语可能改名、新增的词要重新包标记）
   - **用 psql 直写 `glossary_term` 不生效**：`reload()` 只在 `GlossaryService` 的 add / update / delete 里调
-    （页面上的编辑走的就是这条），没有定时刷新；直写 SQL 之后要 `systemctl restart notes-app`
-    （测试环境是 `notes-app-dev`），否则一直跑启动时那份表 —— 2026-11-11 加「意图定义」时踩过
+    （页面上的编辑走的就是这条），没有定时刷新；直写 SQL 之后要么 `systemctl restart notes-app`
+    （测试环境是 `notes-app-dev`），要么**以管理员身份在术语接口上保存任意一条**（`POST /app/glossary`，
+    add 会 upsert 并整表 `reload()`，不用重启）—— 2026-11-11 加「意图定义」、2026-11-17 批量补术语时都踩过
 
 - **名词着色（2026-11-16）**：正文里的词按词上色，不落库、不改数据，全在渲染 + CSS 里做：
   - `MarkdownRenderer` 里两类节点：`TermNode`（配了解释的词，输出 `<span class="gl tN" data-tip …>`）、
@@ -887,3 +899,20 @@ Maven 编译会产出损坏的 jar，服务起不来（`Error: Invalid or corrup
 `A`/`create`；③ 路径存在与否别靠字符串拼出来的猜测。
 
 
+
+**目录树会把「当前这条」也收起来（2026-11-18 修）**：`layout.html` 里那段「按 localStorage 恢复分组折叠」的内联脚本
+在 footer，比 `detail.js` 里「展开当前条目所在分组」跑得晚，结果先展开、后折叠，
+一进页面左侧只看到三个大类。修法是折叠时不折「包含 `a.on` 的那一组」：
+`if (!holdsActive && localStorage.getItem(key) === '1') li.classList.add('folded')`。
+以后再往树里加「自动展开 / 自动定位」的逻辑，注意**执行顺序**，别只在展开侧使劲。
+
+**注释从「一处多条」改成「一处一条 + 可修改」（2026-11-18）**：业务上一段文字只该有一条注释，
+现在打开已有注释时输入框预填原文、按钮是「删除 / 取消 / 保存修改」，不再给「发表」；
+新建才走发表。后端加了 `POST /comment/{slug}/{id}/edit`（`CommentService.update`，按 `item_id` 限域）。
+改这块时记住：**前端判断「有没有注释」靠 `thread.querySelector('.cmt-card')` 的 id（`a<id>`）**，
+不要按引文再查一次。
+
+**浮窗里的长串会撑破卡片（2026-11-18 修）**：`max-width` 只限盒子，`333…`、URL 这种没有空格的串默认不断行，
+直接溢出到浮窗外面。给 `.gl-tip` / `.ann-tip-text` / `.cmt-text` / `.ann-form textarea` 都加了
+`overflow-wrap: anywhere; word-break: break-word`。验证办法：塞 120 个 `3` 进去，
+量 `scrollWidth === clientWidth` 才算过。
