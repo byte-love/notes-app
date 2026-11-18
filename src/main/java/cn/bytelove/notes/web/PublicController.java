@@ -653,6 +653,25 @@ public class PublicController {
         return "redirect:" + basePath(item.getKind()) + "/" + item.getSlug() + "#comments";
     }
 
+    /** 改一条注释 / 评论的内容：自己的，管理员都能改。改完回到那条锚点。 */
+    @PostMapping("/comment/{slug}/{id}/edit")
+    public String editComment(@PathVariable String slug, @PathVariable Long id,
+                              @RequestParam String body, Authentication auth) {
+        Viewer viewer = viewers.current(auth);
+        if (viewer.userId() == null) {
+            return "redirect:" + contextPath() + "/login";
+        }
+        ContentItem item = resolveAnyKind(slug, viewer);
+        String text = body == null ? "" : body.trim();
+        if (!text.isEmpty()) {
+            if (text.length() > MAX_ANNOTATION) {
+                text = text.substring(0, MAX_ANNOTATION);
+            }
+            comments.update(item.getId(), id, viewer.userId(), viewer.admin(), commentFilter.mask(text));
+        }
+        return "redirect:" + basePath(item.getKind()) + "/" + item.getSlug() + "#c" + id;
+    }
+
     /**
      * 标一处重点高亮：选中文字 → 挑个颜色 → 存下来。
      * 返回新记录的 id，前端当场画上，不刷新页面。

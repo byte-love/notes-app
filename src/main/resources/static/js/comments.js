@@ -58,11 +58,43 @@
     popHead.appendChild(popTitle);
     popHead.appendChild(popQuote);
     pop.appendChild(popHead);
+    let annEdit = null;
+    let annSubmit = null;
+    let annOps = null;
+    let annDelete = null;
     if (annData) {
         pop.appendChild(annList);
         if (annForm) {
             annForm.hidden = false;
             pop.appendChild(annForm);
+            // 已有注释时不再给「发表」，改成「保存修改」：一段文字只留一条注释
+            annSubmit = annForm.querySelector('.cmt-submit');
+            annOps = annForm.querySelector('.cmt-form-ops') || annForm;
+            annEdit = document.createElement('button');
+            annEdit.type = 'button';
+            annEdit.className = 'cmt-submit';
+            annEdit.textContent = '保存修改';
+            annEdit.hidden = true;
+            annDelete = document.createElement('span');
+            annDelete.className = 'ann-del-slot';
+            annOps.insertBefore(annDelete, annOps.firstChild);
+            annOps.insertBefore(annEdit, annSubmit);
+            annEdit.addEventListener('click', async () => {
+                const id = annEdit.dataset.id;
+                const text = (annTextarea.value || '').trim();
+                if (!id || !text) return;
+                const csrf = (document.querySelector('meta[name="_csrf"]') || {}).content || '';
+                const data = new URLSearchParams({ body: text, _csrf: csrf });
+                annEdit.disabled = true;
+                try {
+                    await fetch(annForm.action + '/' + id + '/edit', {
+                        method: 'POST', body: data, credentials: 'same-origin',
+                    });
+                    location.reload();
+                } finally {
+                    annEdit.disabled = false;
+                }
+            });
         }
         const closeBtn = document.createElement('button');
         closeBtn.type = 'button';
@@ -126,6 +158,27 @@
         popQuote.textContent = anchor.quote ? '“' + anchor.quote + '”' : '';
         popQuote.hidden = !anchor.quote;
         if (annTextarea) annTextarea.value = '';
+        // 这一处已经有注释了：输入框里放它原来的内容，按钮换成「保存修改」；没有才是新建
+        const first = thread ? thread.querySelector('.cmt-card') : null;
+        if (annEdit && annSubmit) {
+            if (annDelete) annDelete.textContent = '';
+            if (first && /^a\d+$/.test(first.id)) {
+                const textEl = first.querySelector('.cmt-text');
+                if (annTextarea) annTextarea.value = textEl ? textEl.textContent : '';
+                annEdit.dataset.id = first.id.slice(1);
+                annEdit.hidden = false;
+                annSubmit.hidden = true;
+                // 已经有了：正文只留输入框（内容已经填进去），删除按钮挪到操作行
+                annList.hidden = true;
+                const delForm = annList.querySelector('.cmt-ops form');
+                if (delForm && annDelete) annDelete.appendChild(delForm.cloneNode(true));
+            } else {
+                annEdit.dataset.id = '';
+                annEdit.hidden = true;
+                annSubmit.hidden = false;
+                annList.hidden = false;
+            }
+        }
         popOpenWith = anchor.quote || '';
         placePop(rect);
         if (anchor.range) {
@@ -688,7 +741,8 @@
         };
         const hit = (e) => {
             e.stopPropagation();
-            // 同一处再点：把这一处的全部注释列出来，也能接着写
+            hideAnnTip();
+            // 同一处再点：打开浮窗改这一条注释（一段文字只留一条）
             const rect = e.currentTarget.getBoundingClientRect();
             if (form && !form.hidden) closeForm();
             openPop(anchor, rect, thread);
@@ -746,14 +800,7 @@
         cards.slice(0, 3).forEach((card) => {
             const item = document.createElement('div');
             item.className = 'ann-tip-item';
-            const meta = card.querySelector('.cmt-meta');
             const text = card.querySelector('.cmt-text');
-            if (meta) {
-                const head = document.createElement('p');
-                head.className = 'ann-tip-meta';
-                head.textContent = (meta.textContent || '').replace(/\s+/g, ' ').trim();
-                item.appendChild(head);
-            }
             const body = document.createElement('p');
             body.className = 'ann-tip-text';
             body.textContent = text ? text.textContent : '';

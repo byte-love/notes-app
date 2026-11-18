@@ -129,6 +129,14 @@ public class CommentService {
         return n > 0;
     }
 
+    /** 改自己那条的内容；管理员能改所有人的。itemId 一起带上，防止拿别人的 id 改到别的文章里去。 */
+    public boolean update(long itemId, long id, long userId, boolean admin, String body) {
+        int n = jdbc.update("update content_comment set body = ? "
+                        + "where id = ? and item_id = ? and deleted_at is null and (user_id = ? or ?)",
+                body, id, itemId, userId, admin);
+        return n > 0;
+    }
+
     public int count(long itemId, String entryKind) {
         Integer n = jdbc.queryForObject(
                 "select count(*) from content_comment where item_id = ? and entry_kind = ? and deleted_at is null",

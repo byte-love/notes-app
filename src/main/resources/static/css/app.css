@@ -6400,3 +6400,21 @@ html[data-theme='dark'] .cl-latest {
     overflow-wrap: anywhere;
     word-break: break-word;
 }
+/* 注释输入框：长英文/数字也别整词跳到下一行，能断就断 */
+.ann-form textarea {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+}
+/* 注释浮窗里不显示作者和时间：一段文字就一条注释，看内容就够了 */
+.ann-pop .cmt-meta {
+    display: none;
+}
+/* 注释浮窗的操作行：删除在左，取消 / 保存修改在右 */
+.ann-del-slot {
+    margin-right: auto;
+    display: inline-flex;
+}
+
+.ann-del-slot .inline {
+    display: inline-flex;
+}
