@@ -6393,3 +6393,10 @@ html[data-theme='dark'] .cl-latest {
 .ann-tip-text {
     margin: 0;
 }
+/* 注释/术语浮窗里的长串（一串数字、URL、没有空格的英文）要能断行，否则会把浮窗撑破 */
+.gl-tip,
+.ann-tip-text,
+.cmt-text {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+}
