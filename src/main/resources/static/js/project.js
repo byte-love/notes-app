@@ -1,4 +1,4 @@
-// 项目页的「i」按钮：点开看那一条的细节。注解不占版面，看的时候才浮出来。
+// 项目页的「i」按钮和步骤正文：点开看那一条的细节。注解不占版面，看的时候才浮出来。
 // 内容在按钮的 data-note 上（服务端已经转义好），这里只负责塞进 <dialog>。
 (() => {
     const dlg = document.getElementById('project-note');
@@ -12,7 +12,12 @@
     };
 
     document.addEventListener('click', (e) => {
-        const btn = e.target.closest('.note-btn');
+        // 正在拖选文字时不弹：选完会派发一次 click，弹出来很烦
+        const sel = window.getSelection();
+        if (sel && sel.toString().trim()) return;
+        // 词条浮窗自己会处理，别再叠一层弹窗
+        if (e.target.closest('.gl')) return;
+        const btn = e.target.closest('.note-btn, .project-step-text[data-note]');
         if (btn) {
             e.preventDefault();
             open(btn);
@@ -31,5 +36,14 @@
                 dlg.close();
             }
         }
+    });
+
+    // 键盘可达：正文获得焦点后回车/空格同样打开
+    document.addEventListener('keydown', (e) => {
+        if (e.key !== 'Enter' && e.key !== ' ') return;
+        const el = e.target.closest && e.target.closest('.project-step-text[data-note]');
+        if (!el) return;
+        e.preventDefault();
+        open(el);
     });
 })();

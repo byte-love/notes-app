@@ -3826,6 +3826,31 @@ html[data-read-size='lg'] .markdown {
     background: var(--bg-2);
 }
 
+/* 步骤正文：有细节时整行可点，点开的是同一个弹窗 */
+.project-step-text.step-open {
+    cursor: pointer;
+}
+
+.project-step-text.step-open:hover {
+    text-decoration: underline dotted;
+    text-underline-offset: 3px;
+}
+
+.project-step-text.step-open:focus-visible {
+    outline: 2px solid currentColor;
+    outline-offset: 2px;
+    border-radius: 3px;
+}
+
+/* 弹窗里的示意图：撑满宽度，别让它撑破对话框 */
+.note-body img {
+    display: block;
+    width: 100%;
+    height: auto;
+    margin: 0 0 12px;
+    border-radius: 10px;
+}
+
 /* 不依赖浏览器对 dialog 的默认隐藏：WebView 里没 open 时会露出里面的空 img */
 dialog.note-dialog {
     display: none;

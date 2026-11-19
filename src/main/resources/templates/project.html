@@ -74,7 +74,10 @@
             <h2>我做了什么</h2>
             <ol class="project-steps">
                 <li th:each="a : ${project.actions}">
-                    <span class="project-step-text" th:utext="${a.textHtml()}">做了什么</span>
+                    <span class="project-step-text" th:classappend="${a.hasNote()} ? ' step-open'"
+                          th:attr="data-note=${a.hasNote()} ? ${a.noteHtml()} : null,
+                                   tabindex=${a.hasNote()} ? 0 : null"
+                          th:utext="${a.textHtml()}">做了什么</span>
                     <button th:if="${a.hasNote()}" type="button" class="note-btn"
                             th:attr="data-note=${a.noteHtml()}"
                             aria-label="这一步的细节">i</button>
@@ -135,7 +138,7 @@
 
 <footer th:replace="~{fragments/layout :: foot}"></footer>
 <script th:src="@{/js/doc-edit.js(v=10)}"></script>
-<script th:src="@{/js/project.js(v=1)}" defer></script>
+<script th:src="@{/js/project.js(v=2)}" defer></script>
 <script th:src="@{/js/gl-tip.js(v=1)}" defer></script>
 </body>
 </html>
