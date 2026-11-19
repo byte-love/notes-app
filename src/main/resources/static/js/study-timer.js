@@ -120,15 +120,19 @@
     const breakTime = breakCard.querySelector('.pomo-break-time');
 
     /* ---------- 右下角常驻计时器 ---------- */
-    const RING = 144.5;
+    const RING = 150.8;
     const fab = document.createElement('button');
     fab.type = 'button';
     fab.className = 'study-fab';
     fab.setAttribute('aria-label', '学习计时');
     fab.innerHTML = `
-        <svg viewBox="0 0 52 52" class="study-ring" aria-hidden="true">
-            <circle cx="26" cy="26" r="23" class="ring-bg"></circle>
-            <circle cx="26" cy="26" r="23" class="ring-fg"></circle>
+        <svg viewBox="0 0 64 64" class="study-clock" aria-hidden="true">
+            <path d="M14 15a9 9 0 0 1 9-7" class="clock-bell"></path>
+            <path d="M50 15a9 9 0 0 0-9-7" class="clock-bell"></path>
+            <path d="M24 55 21 60" class="clock-bell"></path>
+            <path d="M40 55 43 60" class="clock-bell"></path>
+            <circle cx="32" cy="34" r="24" class="ring-bg" transform="rotate(-90 32 34)"></circle>
+            <circle cx="32" cy="34" r="24" class="ring-fg" transform="rotate(-90 32 34)"></circle>
         </svg>
         <span class="study-time">20:00</span>`;
     document.body.appendChild(fab);

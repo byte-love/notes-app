@@ -4081,7 +4081,7 @@ html[data-read-size='lg'] .markdown {
     font-variant-numeric: tabular-nums;
 }
 
-/* 右下角常驻计时器：环形进度 + 剩余时间，点开是今日时长和统计入口 */
+/* 右下角常驻计时器：闹钟造型（铃铛 + 钟脚），环形进度沿表盘走 */
 .study-fab {
     position: fixed;
     right: 1.1rem;
@@ -4090,15 +4090,17 @@ html[data-read-size='lg'] .markdown {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 52px;
-    height: 52px;
+    width: 64px;
+    height: 64px;
     padding: 0;
     border: 1px solid var(--line);
     border-radius: 50%;
-    background: var(--bg-2);
+    background: color-mix(in srgb, var(--bg-2) 78%, transparent);
+    backdrop-filter: blur(8px);
     color: var(--fg-2);
     cursor: pointer;
-    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.28);
+    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.26);
+    transition: transform 0.15s ease, border-color 0.15s ease, color 0.15s ease;
 }
 
 .study-fab[hidden] {
@@ -4107,36 +4109,45 @@ html[data-read-size='lg'] .markdown {
 
 .study-fab:hover {
     color: var(--fg);
-    border-color: var(--fg-2);
+    border-color: color-mix(in srgb, #58a6ff 45%, var(--line));
+    transform: translateY(-1px);
 }
 
-.study-ring {
+.study-clock {
     position: absolute;
     inset: 0;
     width: 100%;
     height: 100%;
-    transform: rotate(-90deg);
+}
+
+.clock-bell {
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2.2;
+    stroke-linecap: round;
+    opacity: 0.55;
 }
 
 .ring-bg {
     fill: none;
     stroke: var(--line);
-    stroke-width: 2;
+    stroke-width: 2.4;
 }
 
 .ring-fg {
     fill: none;
     stroke: #58a6ff;
-    stroke-width: 2;
+    stroke-width: 2.4;
     stroke-linecap: round;
-    stroke-dasharray: 144.5;
-    stroke-dashoffset: 144.5;
+    stroke-dasharray: 150.8;
+    stroke-dashoffset: 150.8;
     transition: stroke-dashoffset 0.4s linear;
 }
 
 .study-time {
     position: relative;
-    font-size: 0.62rem;
+    margin-top: 2px;
+    font-size: 0.64rem;
     letter-spacing: 0.02em;
     font-variant-numeric: tabular-nums;
 }
