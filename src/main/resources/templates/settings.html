@@ -85,6 +85,18 @@
             </div>
         </div>
     </section>
+
+    <section class="me-section">
+        <h2>番茄钟</h2>
+
+        <div class="me-row">
+            <span class="me-label">提醒</span>
+            <div class="seg" data-setting="pomodoro">
+                <button type="button" data-value="on">开</button>
+                <button type="button" data-value="off">关</button>
+            </div>
+        </div>
+    </section>
 </main>
 
 <script>
@@ -143,7 +155,8 @@
             }
         };
 
-        const DEFAULTS = { theme: 'dark', 'read-size': 'md', bg: 'aurora', terms: 'on', indent: 'on', 'tree-num': 'on' };
+        const DEFAULTS = { theme: 'dark', 'read-size': 'md', bg: 'aurora', terms: 'on', indent: 'on', 'tree-num': 'on', pomodoro: 'on' };
+        const userName = (document.querySelector('meta[name="user-name"]') || {}).content || '';
 
         const mark = (group, value) => {
             group.querySelectorAll('button').forEach((b) => {
@@ -153,13 +166,14 @@
 
         document.querySelectorAll('.seg[data-setting]').forEach((group) => {
             const key = group.dataset.setting;
-            mark(group, read(key) || DEFAULTS[key]);
+            const storeKey = key === 'pomodoro' ? 'pomodoro:' + userName : key;
+            mark(group, read(storeKey) || DEFAULTS[key]);
 
             group.addEventListener('click', (e) => {
                 const btn = e.target.closest('button[data-value]');
                 if (!btn) return;
                 const value = btn.dataset.value;
-                write(key, value);
+                write(storeKey, value);
                 if (key === 'theme') {
                     applyTheme(value);
                 } else if (key === 'read-size') {

@@ -3851,6 +3851,236 @@ html[data-read-size='lg'] .markdown {
     border-radius: 10px;
 }
 
+/* ---------- 学习统计 ---------- */
+.stats-totals {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.75rem;
+    margin: 0 0 1rem;
+}
+
+.stats-total {
+    background: var(--bg-2);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 0.75rem 1rem;
+}
+
+.stats-total span {
+    display: block;
+    color: var(--fg-2);
+    font-size: 0.78rem;
+}
+
+.stats-total strong {
+    display: block;
+    margin-top: 0.25rem;
+    font-size: 1.35rem;
+    font-variant-numeric: tabular-nums;
+}
+
+.stats-empty {
+    color: var(--fg-2);
+    padding: 1.5rem 0;
+}
+
+.stats-day {
+    margin-left: 0.5rem;
+    font-size: 0.75rem;
+    color: var(--fg-3);
+    font-weight: 400;
+}
+
+.chart-svg {
+    display: block;
+    width: 100%;
+    height: auto;
+}
+
+.chart-grid {
+    stroke: var(--line);
+    stroke-opacity: 0.55;
+}
+
+.chart-axis {
+    fill: var(--fg-3);
+    font-size: 10px;
+}
+
+.chart-value {
+    fill: var(--fg-2);
+    font-size: 10px;
+}
+
+.chart-bar {
+    fill: #2ea043;
+    fill-opacity: 0.85;
+}
+
+.chart-bar.today {
+    fill: #58a6ff;
+    fill-opacity: 1;
+}
+
+.chart-area {
+    fill: #58a6ff;
+    opacity: 0.12;
+}
+
+.chart-line {
+    fill: none;
+    stroke: #58a6ff;
+    stroke-width: 2;
+    stroke-linejoin: round;
+}
+
+.chart-dot {
+    fill: var(--bg);
+    stroke: #58a6ff;
+    stroke-width: 2;
+}
+
+.chart-donut-bg {
+    fill: none;
+    stroke: var(--bg-2);
+}
+
+.chart-arc {
+    fill: none;
+    stroke: currentColor;
+}
+
+.chart-total {
+    fill: var(--fg);
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.c-algo { color: #58a6ff; }
+.c-bagu { color: #3fb950; }
+.c-project { color: #bc8cff; }
+.c-notes { color: #d29922; }
+
+.stats-split {
+    display: grid;
+    grid-template-columns: 240px 1fr;
+    gap: 1.5rem;
+    align-items: center;
+}
+
+.stats-legend {
+    display: grid;
+    gap: 0.6rem;
+}
+
+.stats-legend-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.75rem;
+    color: var(--fg-2);
+    font-size: 0.85rem;
+    border-bottom: 1px solid var(--line);
+    padding-bottom: 0.5rem;
+}
+
+.stats-legend-row span:first-child {
+    color: var(--fg);
+    white-space: nowrap;
+}
+
+.stats-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: currentColor;
+    margin-right: 0.4rem;
+}
+
+/* ---------- 番茄钟 ---------- */
+.pomo-mask {
+    position: fixed;
+    inset: 0;
+    z-index: 80;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1.25rem;
+    background: rgba(0, 0, 0, 0.55);
+}
+
+.pomo-mask[hidden] {
+    display: none;
+}
+
+.pomo-card {
+    width: min(420px, 100%);
+    padding: 1.25rem 1.4rem;
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    box-shadow: 0 18px 40px rgba(0, 0, 0, 0.35);
+}
+
+.pomo-card h2 {
+    margin: 0 0 0.5rem;
+    font-size: 1.05rem;
+}
+
+.pomo-card p {
+    margin: 0 0 0.9rem;
+    color: var(--fg-2);
+    font-size: 0.9rem;
+    line-height: 1.7;
+}
+
+.pomo-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+}
+
+.pomo-hint {
+    margin: 0.75rem 0 0 !important;
+    font-size: 0.75rem !important;
+    color: var(--fg-3) !important;
+}
+
+.pomo-break {
+    position: fixed;
+    right: 1.1rem;
+    bottom: 1.1rem;
+    z-index: 80;
+    display: flex;
+    align-items: center;
+    gap: 0.9rem;
+    padding: 0.65rem 0.9rem;
+    background: var(--bg-2);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    box-shadow: 0 10px 26px rgba(0, 0, 0, 0.35);
+}
+
+.pomo-break[hidden] {
+    display: none;
+}
+
+.pomo-break-main {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.25;
+}
+
+.pomo-break-title {
+    font-size: 0.75rem;
+    color: var(--fg-2);
+}
+
+.pomo-break-time {
+    font-size: 1.1rem;
+    font-variant-numeric: tabular-nums;
+}
+
 /* 不依赖浏览器对 dialog 的默认隐藏：WebView 里没 open 时会露出里面的空 img */
 dialog.note-dialog {
     display: none;

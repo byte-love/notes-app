@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="zh-CN">
+<head th:replace="~{fragments/layout :: head('学习统计 · byte-love')}"></head>
+<body>
+<header th:replace="~{fragments/layout :: nav}"></header>
+
+<main class="wrap wide">
+    <h1 class="settings-title">学习统计</h1>
+
+    <div class="stats-totals">
+        <div class="stats-total"><span>今日</span><strong id="totalToday">0 分</strong></div>
+        <div class="stats-total"><span>本周</span><strong id="totalWeek">0 分</strong></div>
+        <div class="stats-total"><span>本月</span><strong id="totalMonth">0 分</strong></div>
+    </div>
+
+    <p id="statsEmpty" class="stats-empty" hidden>还没有学习记录</p>
+
+    <section class="me-section" id="barSection">
+        <h2>最近 14 天</h2>
+        <div id="barChart" class="chart"></div>
+    </section>
+
+    <section class="me-section" id="pieSection">
+        <h2>按分类<span class="stats-day">今天</span></h2>
+        <div class="stats-split">
+            <div id="pieChart" class="chart chart-pie"></div>
+            <div id="pieLegend" class="stats-legend"></div>
+        </div>
+    </section>
+
+    <section class="me-section" id="lineSection">
+        <h2>近 30 天趋势</h2>
+        <div id="lineChart" class="chart"></div>
+    </section>
+</main>
+
+<footer th:replace="~{fragments/layout :: foot}"></footer>
+<script th:src="@{/js/stats.js(v=1)}"></script>
+</body>
+</html>
