@@ -21,19 +21,32 @@
     };
     const chart = (w, h) => svgEl('svg', { viewBox: `0 0 ${w} ${h}`, class: 'chart-svg', role: 'img' });
 
+    const niceStep = (raw) => {
+        const pow = Math.pow(10, Math.floor(Math.log10(Math.max(raw, 1))));
+        const n = raw / pow;
+        const m = n <= 1 ? 1 : n <= 2 ? 2 : n <= 5 ? 5 : 10;
+        return m * pow;
+    };
+
+    const axis = (s, max, y, W, L, R) => {
+        const step = niceStep(max / 4);
+        for (let v = 0; v <= max; v += step) {
+            s.appendChild(svgEl('line', { x1: L, x2: W - R, y1: y(v), y2: y(v), class: 'chart-grid' }));
+            s.appendChild(svgEl('text', { x: L - 10, y: y(v) + 4, 'text-anchor': 'end', class: 'chart-axis' }, Math.round(v)));
+        }
+    };
+
     const renderBar = (days) => {
         const data = days.slice(-14);
         const W = 920, H = 240, L = 44, R = 12, T = 22, B = 28;
         const plotW = W - L - R, plotH = H - T - B;
-        const peak = Math.max(60, ...data.map((d) => d.total / 60));
-        const max = Math.ceil(peak / 30) * 30;
+        const peak = Math.max(30, ...data.map((d) => d.total / 60));
+        const tick = niceStep(peak / 4);
+        const max = Math.ceil(peak / tick) * tick;
         const s = chart(W, H);
         const y = (v) => T + plotH - (v / max) * plotH;
 
-        for (let v = 0; v <= max; v += 30) {
-            s.appendChild(svgEl('line', { x1: L, x2: W - R, y1: y(v), y2: y(v), class: 'chart-grid' }));
-            s.appendChild(svgEl('text', { x: L - 10, y: y(v) + 4, 'text-anchor': 'end', class: 'chart-axis' }, v));
-        }
+        axis(s, max, y, W, L, R);
         const step = plotW / data.length;
         const bw = Math.min(30, step * 0.52);
         data.forEach((d, i) => {
@@ -90,14 +103,12 @@
     const renderLine = (days) => {
         const W = 920, H = 220, L = 44, R = 12, T = 16, B = 28;
         const plotW = W - L - R, plotH = H - T - B;
-        const peak = Math.max(60, ...days.map((d) => d.total / 60));
-        const max = Math.ceil(peak / 30) * 30;
+        const peak = Math.max(30, ...days.map((d) => d.total / 60));
+        const tick = niceStep(peak / 4);
+        const max = Math.ceil(peak / tick) * tick;
         const s = chart(W, H);
         const y = (v) => T + plotH - (v / max) * plotH;
-        for (let v = 0; v <= max; v += 30) {
-            s.appendChild(svgEl('line', { x1: L, x2: W - R, y1: y(v), y2: y(v), class: 'chart-grid' }));
-            s.appendChild(svgEl('text', { x: L - 10, y: y(v) + 4, 'text-anchor': 'end', class: 'chart-axis' }, v));
-        }
+        axis(s, max, y, W, L, R);
         const x = (i) => L + (i / Math.max(1, days.length - 1)) * plotW;
         const pts = days.map((d, i) => `${x(i)},${y(d.total / 60)}`).join(' ');
         const area = `M ${x(0)},${y(0)} L ${days.map((d, i) => `${x(i)},${y(d.total / 60)}`).join(' L ')} L ${x(days.length - 1)},${y(0)} Z`;
@@ -137,7 +148,11 @@
 
         const today = data.days[data.days.length - 1].by || {};
         renderBar(data.days);
-        renderPie(today);
+        if (data.totals.today > 0) {
+            renderPie(today);
+        } else {
+            document.getElementById('pieSection').hidden = true;
+        }
         renderLine(data.days);
     };
 
