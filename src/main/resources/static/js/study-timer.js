@@ -7,6 +7,22 @@
 
     const PREF_KEY = 'pomodoro:' + user;
     const LEADER_KEY = 'study-leader:' + user;
+    const STATE_KEY = 'pomo-state:' + user;
+    const todayKey = () => {
+        const d = new Date();
+        return d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate();
+    };
+    const loadSeconds = () => {
+        try {
+            const raw = sessionStorage.getItem(STATE_KEY);
+            if (!raw) return 0;
+            const s = JSON.parse(raw);
+            if (!s || s.day !== todayKey()) return 0;
+            return Math.max(0, Math.min(1199, Number(s.seconds) || 0));
+        } catch (e) {
+            return 0;
+        }
+    };
 
     const path = location.pathname.replace(/\/+$/, '');
     const ROUTES = [
@@ -29,10 +45,17 @@
 
     const buffer = Object.create(null);
     const tabId = Math.random().toString(36).slice(2);
-    let visibleSeconds = 0;
+    let visibleSeconds = pomodoroOn() ? loadSeconds() : 0;
     let leader = false;
     let onBreak = false;
     let breakEnd = 0;
+    let reminding = false;
+
+    const saveSeconds = () => {
+        try {
+            sessionStorage.setItem(STATE_KEY, JSON.stringify({ seconds: visibleSeconds, day: todayKey() }));
+        } catch (e) {}
+    };
 
     const isLeader = () => {
         try {
@@ -81,13 +104,17 @@
     document.addEventListener('visibilitychange', () => {
         if (document.visibilityState === 'hidden') {
             flush(true);
+            saveSeconds();
             releaseLeader();
             leader = false;
         } else {
             leader = isLeader();
         }
     });
-    window.addEventListener('pagehide', () => flush(true));
+    window.addEventListener('pagehide', () => {
+        flush(true);
+        saveSeconds();
+    });
 
     /* ---------- 提醒卡片 ---------- */
     const mask = document.createElement('div');
@@ -190,6 +217,8 @@
     }, 1000);
 
     const showReminder = () => {
+        if (reminding) return;
+        reminding = true;
         mask.hidden = false;
     };
 
@@ -197,7 +226,9 @@
         mask.hidden = true;
         panel.hidden = true;
         fab.hidden = true;
+        reminding = false;
         visibleSeconds = 0;
+        saveSeconds();
         onBreak = true;
         breakEnd = Date.now() + 60000;
         breakTitle.textContent = '眺望远方';
@@ -222,7 +253,9 @@
             startBreak();
         } else {
             mask.hidden = true;
+            reminding = false;
             visibleSeconds = 1200 - 600;
+            saveSeconds();
         }
     });
 
@@ -246,11 +279,13 @@
         if (!leader) return;
         buffer[category] = (buffer[category] || 0) + 1;
         visibleSeconds++;
+        if (visibleSeconds % 5 === 0) saveSeconds();
         if (visibleSeconds < 1200) return;
         if (pomodoroOn()) {
             showReminder();
         } else {
             visibleSeconds = 0;
+            saveSeconds();
         }
     }, 1000);
 })();
