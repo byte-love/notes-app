@@ -7,7 +7,9 @@
     const closeBtn = dlg.querySelector('.note-close');
 
     const open = (btn) => {
-        body.innerHTML = btn.getAttribute('data-note') || '';
+        // 说明里可以用 [[img:/app/img/xxx.svg]] 插一张图；其余内容按原样当 HTML 文本渲染
+        const raw = btn.getAttribute('data-note') || '';
+        body.innerHTML = raw.replace(/\[\[img:([^\]\s]+)\]\]/g, '<img src="$1" alt="">');
         if (!dlg.open) dlg.showModal();
     };
 
