@@ -119,12 +119,80 @@
     const breakTitle = breakCard.querySelector('.pomo-break-title');
     const breakTime = breakCard.querySelector('.pomo-break-time');
 
+    /* ---------- 右下角常驻计时器 ---------- */
+    const RING = 144.5;
+    const fab = document.createElement('button');
+    fab.type = 'button';
+    fab.className = 'study-fab';
+    fab.setAttribute('aria-label', '学习计时');
+    fab.innerHTML = `
+        <svg viewBox="0 0 52 52" class="study-ring" aria-hidden="true">
+            <circle cx="26" cy="26" r="23" class="ring-bg"></circle>
+            <circle cx="26" cy="26" r="23" class="ring-fg"></circle>
+        </svg>
+        <span class="study-time">20:00</span>`;
+    document.body.appendChild(fab);
+
+    const panel = document.createElement('div');
+    panel.className = 'study-panel';
+    panel.hidden = true;
+    panel.innerHTML = `
+        <div class="study-panel-row"><span>今日学习</span><b>--</b></div>
+        <a href="/app/stats">学习统计</a>`;
+    document.body.appendChild(panel);
+
+    const fabTime = fab.querySelector('.study-time');
+    const ringFg = fab.querySelector('.ring-fg');
+    let todayText = '';
+
+    const fmtDuration = (sec) => {
+        const m = Math.round(sec / 60);
+        const h = Math.floor(m / 60);
+        return h ? `${h} 小时 ${m % 60} 分` : `${m} 分`;
+    };
+
+    const loadToday = async () => {
+        if (todayText) return;
+        try {
+            const res = await fetch('/app/api/study/stats?days=1', { credentials: 'same-origin', cache: 'no-store' });
+            const data = await res.json();
+            todayText = fmtDuration(data.totals.today);
+        } catch (e) {
+            todayText = '--';
+        }
+        panel.querySelector('b').textContent = todayText;
+    };
+
+    fab.addEventListener('click', (e) => {
+        e.stopPropagation();
+        panel.hidden = !panel.hidden;
+        if (!panel.hidden) loadToday();
+    });
+
+    document.addEventListener('click', (e) => {
+        if (panel.hidden) return;
+        if (panel.contains(e.target) || fab.contains(e.target)) return;
+        panel.hidden = true;
+    });
+
+    if (!pomodoroOn()) {
+        fab.hidden = true;
+    }
+
+    setInterval(() => {
+        const left = Math.max(0, 1200 - visibleSeconds);
+        fabTime.textContent = String(Math.floor(left / 60)).padStart(2, '0') + ':' + String(left % 60).padStart(2, '0');
+        ringFg.style.strokeDashoffset = String(RING * (1 - Math.min(1, visibleSeconds / 1200)));
+    }, 1000);
+
     const showReminder = () => {
         mask.hidden = false;
     };
 
     const startBreak = () => {
         mask.hidden = true;
+        panel.hidden = true;
+        fab.hidden = true;
         visibleSeconds = 0;
         onBreak = true;
         breakEnd = Date.now() + 60000;
@@ -137,6 +205,7 @@
         onBreak = false;
         breakTitle.textContent = '休息结束，继续吧';
         breakTime.textContent = '00:00';
+        if (pomodoroOn()) fab.hidden = false;
         setTimeout(() => {
             if (!onBreak) breakCard.hidden = true;
         }, 1500);

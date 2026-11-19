@@ -4081,6 +4081,107 @@ html[data-read-size='lg'] .markdown {
     font-variant-numeric: tabular-nums;
 }
 
+/* 右下角常驻计时器：环形进度 + 剩余时间，点开是今日时长和统计入口 */
+.study-fab {
+    position: fixed;
+    right: 1.1rem;
+    bottom: 1.1rem;
+    z-index: 70;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 52px;
+    height: 52px;
+    padding: 0;
+    border: 1px solid var(--line);
+    border-radius: 50%;
+    background: var(--bg-2);
+    color: var(--fg-2);
+    cursor: pointer;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.28);
+}
+
+.study-fab[hidden] {
+    display: none;
+}
+
+.study-fab:hover {
+    color: var(--fg);
+    border-color: var(--fg-2);
+}
+
+.study-ring {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    transform: rotate(-90deg);
+}
+
+.ring-bg {
+    fill: none;
+    stroke: var(--line);
+    stroke-width: 2;
+}
+
+.ring-fg {
+    fill: none;
+    stroke: #58a6ff;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-dasharray: 144.5;
+    stroke-dashoffset: 144.5;
+    transition: stroke-dashoffset 0.4s linear;
+}
+
+.study-time {
+    position: relative;
+    font-size: 0.62rem;
+    letter-spacing: 0.02em;
+    font-variant-numeric: tabular-nums;
+}
+
+.study-panel {
+    position: fixed;
+    right: 1.1rem;
+    bottom: 4.6rem;
+    z-index: 70;
+    min-width: 180px;
+    padding: 0.65rem 0.8rem;
+    background: var(--bg-2);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    box-shadow: 0 10px 26px rgba(0, 0, 0, 0.32);
+}
+
+.study-panel[hidden] {
+    display: none;
+}
+
+.study-panel-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-bottom: 0.5rem;
+    font-size: 0.8rem;
+    color: var(--fg-2);
+}
+
+.study-panel-row b {
+    color: var(--fg);
+    font-weight: 600;
+}
+
+.study-panel a {
+    font-size: 0.8rem;
+    color: #58a6ff;
+    text-decoration: none;
+}
+
+.study-panel a:hover {
+    text-decoration: underline;
+}
+
 /* 不依赖浏览器对 dialog 的默认隐藏：WebView 里没 open 时会露出里面的空 img */
 dialog.note-dialog {
     display: none;
