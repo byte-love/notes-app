@@ -737,17 +737,22 @@ Java / SQL / JS / Python / Shell，其余默认 Java，猜出来写成 `language
 - 2026-10-26 ~ 11-19 是拿 nginx 日志估算回填的（两次请求间隔，2 小时以上算离开）；11-05 日志已轮转，保留原估算；
 - 已知边界：后台补记上限 40 分钟；同一用户多标签只记主标签。
 
-## 站内助手（`/app/agent`）
+## 站内助手（右下角浮球）
 
-- 页面 `agent.html` + `static/js/agent.js`；用浏览器自己的 DeepSeek key（sessionStorage `agent-key`），
-  每次请求放 `X-Agent-Key` 头，服务端只在 `AgentController` 里拼到上游 `Authorization`，**不落库、不写日志**；
-- `POST /app/api/agent/chat`：服务端跑工具循环（最多 6 轮，DeepSeek `deepseek-chat`），
-  工具 `search_notes / read_note / create_note / update_note`，全部按 `owner_id` 过滤，别人的条目当不存在；
-- 写入不直接发生：`create_note` / `update_note` 只返回 proposal（内存 30 分钟），
-  前端点「写入」调 `POST /app/api/agent/apply` 才落库；update 前把旧版本写进 `content_revision(source='AGENT')`；
-- 新建默认 `kind=NOTE`、`visibility=PRIVATE`，slug 形如 `ai-YYYYMMDD-8位hex`；
-- 上游地址可覆盖：`notes.agent.upstream`（环境变量 `NOTES_AGENT_UPSTREAM`），自测时可指向本地假服务；
-- 页面入口在「我的」页；key 不填时接口回 400，上游报错回 502 且 key 打码（只留首尾）。
+- `static/js/float.js`：两个浮球共用行为——桌面右键隐藏；手机第一次点先出「打开 / 隐藏」菜单，
+  勾过「不再显示此提示」后直接打开，长按可以再叫出菜单；隐藏状态存 `float:assistant` / `float:timer`；
+- `static/js/assistant.js`：机器人球 + 面板。正文页从模板的 `data-note-slug / data-note-kind / data-note-title`
+  读当前笔记并默认锁定（chip 可点 × 取消），列表页不锁；
+- key 存 `localStorage` 的 `agent-key:<username>`（按账号分开，只在这台设备/浏览器里，换设备要重填）；
+  每次请求放 `X-Agent-Key`，服务端只在 `AgentController` 里拼到上游 `Authorization`，**不落库、不写日志**；
+- `POST /app/api/agent/chat` 带 `mode`（ask / create / edit / search）、`kind`、`contextSlug`；
+  服务端把当前笔记正文（截断 8000 字）和功能说明拼进 system prompt，工具 `search_notes / read_note /
+  create_note / update_note` 仍按 `owner_id` 过滤；
+- 写入不直接发生：`create_note` / `update_note` 只返回 proposal（内存 30 分钟），点「写入」才落库；
+  update 前把旧版本写进 `content_revision(source='AGENT')`；`记一条` 选的模块由服务端强制写进 proposal；
+- 新建默认 `visibility=PRIVATE`，slug 形如 `ai-YYYYMMDD-8位hex`；
+- 隐藏后可在「设置 → 浮动按钮」重新打开；旧的整页 `/app/agent` 已删除，入口只在浮球上；
+- 上游地址可覆盖：`notes.agent.upstream`（环境变量 `NOTES_AGENT_UPSTREAM`），自测时可指向本地假服务。
 
 ## 约定
 
