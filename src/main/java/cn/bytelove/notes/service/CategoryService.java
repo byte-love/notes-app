@@ -4,7 +4,6 @@ import cn.bytelove.notes.domain.ContentItem;
 import cn.bytelove.notes.domain.ContentKind;
 import cn.bytelove.notes.domain.NoteCategory;
 import cn.bytelove.notes.repo.NoteCategoryRepository;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -30,22 +29,14 @@ import java.util.Optional;
 @Service
 public class CategoryService {
 
-    /** 默认分类：slug / 名字 / 对应 kind / 顺序。名字可以被用户改，slug 不改（老链接照旧）。 */
-    private static final List<Default> DEFAULTS = List.of(
-            new Default("note", "闪念", ContentKind.NOTE, 0),
-            new Default("project", "项目", ContentKind.PROJECT, 1),
-            new Default("bagu", "八股", ContentKind.BAGU, 2),
-            new Default("algo", "算法", ContentKind.ALGO, 3),
-            new Default("interview", "面试", ContentKind.INTERVIEW, 4));
-
-    /** 删掉分类以后没有归属的条目，统一挂到这个伪 slug 下。 */
+    /**
+     * 默认分类只是「迁移时给老账号补的那五个」，用来记住 kind 和页签的对应关系
+     * （新建内容落到哪个分类、老地址 /notes 指向哪里）。新账号一个都不建，由用户自己决定要几个页签。
+     */
     public static final String UNCATEGORIZED = "uncategorized";
 
     private static final int MAX_NAME = 40;
     private static final SecureRandom RANDOM = new SecureRandom();
-
-    private record Default(String slug, String name, ContentKind kind, int sort) {
-    }
 
     private final NoteCategoryRepository categories;
     private final JdbcTemplate jdbc;
@@ -55,29 +46,8 @@ public class CategoryService {
         this.jdbc = jdbc;
     }
 
-    /**
-     * 每个用户至少有一组分类。注册、导入和迁移之外的入口都从这里过一遍，
-     * 老账号（迁移之前建的）和新账号都能补齐。
-     */
-    @Transactional
-    public void ensure(Long ownerId) {
-        if (ownerId == null || categories.countByOwnerId(ownerId) > 0) {
-            return;
-        }
-        try {
-            List<NoteCategory> seeds = new ArrayList<>();
-            for (Default d : DEFAULTS) {
-                seeds.add(new NoteCategory(ownerId, d.slug(), d.name(), d.kind(), d.sort(), true));
-            }
-            categories.saveAll(seeds);
-        } catch (DataIntegrityViolationException e) {
-            // 并发下另一个请求已经建好了，用它的就行
-        }
-    }
-
     public List<NoteCategory> of(Long ownerId) {
-        ensure(ownerId);
-        return categories.findByOwnerIdOrderBySortOrderAscIdAsc(ownerId);
+        return ownerId == null ? List.of() : categories.findByOwnerIdOrderBySortOrderAscIdAsc(ownerId);
     }
 
     public Optional<NoteCategory> find(Long ownerId, String slug) {
@@ -87,10 +57,22 @@ public class CategoryService {
         return categories.findByOwnerIdAndSlug(ownerId, slug.trim());
     }
 
-    /** 某个 kind 的默认分类：新建条目没指定分类时落在这里。 */
+    /** 某个 kind 的默认分类：新建条目没指定分类时落在这里；没有就留空（进「未分类」）。 */
     public Optional<NoteCategory> defaultOf(Long ownerId, ContentKind kind) {
-        ensure(ownerId);
+        if (ownerId == null || kind == null) {
+            return Optional.empty();
+        }
         return categories.findFirstByOwnerIdAndKindAndBuiltinTrue(ownerId, kind);
+    }
+
+    /** 「我的笔记」该往哪走：第一个页签；一个分类都没有时退回老列表页。 */
+    public String homePath(Long ownerId) {
+        if (ownerId == null) {
+            return "/notes";
+        }
+        return categories.findFirstByOwnerIdOrderBySortOrderAscIdAsc(ownerId)
+                .map(c -> "/c/" + c.getSlug())
+                .orElse("/notes");
     }
 
     /** 每个分类里有多少条（未分类记在 key = null 上）。 */
@@ -133,7 +115,6 @@ public class CategoryService {
 
     @Transactional
     public NoteCategory create(Long ownerId, String rawName) {
-        ensure(ownerId);
         String name = cleanName(rawName);
         List<NoteCategory> all = categories.findByOwnerIdOrderBySortOrderAscIdAsc(ownerId);
         int sort = 0;
@@ -188,15 +169,12 @@ public class CategoryService {
     }
 
     /**
-     * 删分类：默认分类不允许删（站点结构和老链接都靠它）；自己的分类删掉后，
+     * 删分类：什么分类都能删（包括迁移时补的那五个），删完不再自动补回来；
      * 里面的条目落到「未分类」，不跟着一起没。
      */
     @Transactional
     public int delete(Long ownerId, Long id) {
         NoteCategory c = owned(ownerId, id);
-        if (c.isBuiltin()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "默认分类不能删除，可以改名或排序");
-        }
         int moved = jdbc.update("update content_item set category_id = null where owner_id = ? and category_id = ?",
                 ownerId, id);
         categories.delete(c);
@@ -204,12 +182,17 @@ public class CategoryService {
         return moved;
     }
 
-    /** 新建条目时把默认分类挂上，别让新内容一出生就掉进「未分类」。 */
+    /**
+     * 新建条目时把分类挂上，别让新内容一出生就掉进「未分类」。
+     * 优先落这个 kind 的默认分类；用户把默认分类删了（新账号本来就没有），
+     * 就落到他这一类的第一个页签；一个同类分类都没有才留空。
+     */
     public void attachDefault(ContentItem item) {
         if (item == null || item.getCategoryId() != null || item.getOwnerId() == null) {
             return;
         }
         defaultOf(item.getOwnerId(), item.getKind())
+                .or(() -> categories.findFirstByOwnerIdAndKindOrderBySortOrderAscIdAsc(item.getOwnerId(), item.getKind()))
                 .ifPresent(c -> item.setCategoryId(c.getId()));
     }
 

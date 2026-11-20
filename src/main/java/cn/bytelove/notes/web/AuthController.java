@@ -4,7 +4,6 @@ import cn.bytelove.notes.config.AppProperties;
 import cn.bytelove.notes.domain.AppUser;
 import cn.bytelove.notes.domain.Role;
 import cn.bytelove.notes.repo.AppUserRepository;
-import cn.bytelove.notes.service.CategoryService;
 import cn.bytelove.notes.service.RegisterRateLimiter;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
@@ -34,15 +33,13 @@ public class AuthController {
     private final AppUserRepository users;
     private final PasswordEncoder encoder;
     private final RegisterRateLimiter limiter;
-    private final CategoryService categories;
 
     public AuthController(AppProperties props, AppUserRepository users, PasswordEncoder encoder,
-                          RegisterRateLimiter limiter, CategoryService categories) {
+                          RegisterRateLimiter limiter) {
         this.props = props;
         this.users = users;
         this.encoder = encoder;
         this.limiter = limiter;
-        this.categories = categories;
     }
 
     @GetMapping("/login")
@@ -82,9 +79,7 @@ public class AuthController {
             return fail(model, "注册太频繁，请稍后再试", name);
         }
 
-        AppUser created = users.save(new AppUser(name, encoder.encode(password), name, Role.USER));
-        // 新账号自带五个默认分类，进「我的笔记」就能看到自己的页签
-        categories.ensure(created.getId());
+        users.save(new AppUser(name, encoder.encode(password), name, Role.USER));
 
         // 注册完直接登录，省掉一次多余的登录动作
         var token = UsernamePasswordAuthenticationToken.authenticated(

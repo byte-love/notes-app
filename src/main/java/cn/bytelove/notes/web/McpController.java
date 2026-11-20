@@ -40,6 +40,7 @@ public class McpController {
             用户一般不想逐项做选择题，所以每一件都先给出你的判断和默认值，问一句「这样行不行」；\
             他说「可以 / 没问题 / 就这样」就直接按默认值写，别再问第二遍：
             1. 存到哪：先调 notes_categories 看用户自己的分类（页面上的页签），能对上就传 category；\
+            他一个分类都没有就先问他要不要建一个（新账号默认是空的）。\
             再看 notes_folders 挑目录（比如讲 JVM 就放「JVM 与反射」），确实没有合适的，\
             再问他新目录叫什么，建好拿返回的 slug 当 parent。分类不够用时才提新建分类，别默认替他建。
             2. 内容类型：你自己判断 —— note 闪念（一段想法、零散记录）/ bagu 八股（面试问答）/ \
@@ -245,7 +246,7 @@ public class McpController {
         tools.add(tool("category_rename", "给分类改名（slug 不变，老链接照旧）。",
                 props(Map.of("slug", str("分类的 slug"),
                         "name", str("新名字")), "slug", "name")));
-        tools.add(tool("category_delete", "删除一个分类；里面的笔记会移到「未分类」，不会跟着删掉。默认五个分类删不掉。"
+        tools.add(tool("category_delete", "删除一个分类；里面的笔记会移到「未分类」，不会跟着删掉。"
                         + "**必须先把这个分类的名字和里面有几条告诉用户并得到同意**，再传 confirm=true。",
                 props(Map.of("slug", str("分类的 slug"),
                         "confirm", Map.of("type", "boolean", "description", "用户同意删除后传 true")),

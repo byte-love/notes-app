@@ -11,9 +11,13 @@ public interface NoteCategoryRepository extends JpaRepository<NoteCategory, Long
 
     List<NoteCategory> findByOwnerIdOrderBySortOrderAscIdAsc(Long ownerId);
 
+    Optional<NoteCategory> findFirstByOwnerIdOrderBySortOrderAscIdAsc(Long ownerId);
+
     Optional<NoteCategory> findByOwnerIdAndSlug(Long ownerId, String slug);
 
     Optional<NoteCategory> findFirstByOwnerIdAndKindAndBuiltinTrue(Long ownerId, ContentKind kind);
+
+    Optional<NoteCategory> findFirstByOwnerIdAndKindOrderBySortOrderAscIdAsc(Long ownerId, ContentKind kind);
 
     long countByOwnerId(Long ownerId);
 

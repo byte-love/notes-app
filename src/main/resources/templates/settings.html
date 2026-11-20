@@ -136,7 +136,7 @@
                 <input type="hidden" name="dir" value="down">
                 <button type="submit" class="cat-btn" th:disabled="${st.last}" aria-label="下移">↓</button>
             </form>
-            <form class="cat-del" method="post" th:if="${!c.builtin}"
+            <form class="cat-del" method="post"
                   th:action="@{/settings/categories/{id}/delete(id=${c.id})}"
                   th:attr="data-name=${c.name},data-count=${catCounts.get(c.id) == null ? 0 : catCounts.get(c.id)}">
                 <input type="hidden" name="_csrf" th:value="${_csrf.token}">

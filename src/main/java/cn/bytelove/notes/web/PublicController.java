@@ -359,6 +359,7 @@ public class PublicController {
         model.addAttribute("tabActive", categorySlug == null ? kind.name().toLowerCase(java.util.Locale.ROOT)
                 : "c:" + categorySlug);
         model.addAttribute("mineTabs", categories.tabs(viewer.userId(), categorySlug));
+        model.addAttribute("mineTabsOwned", viewer.userId() != null);
         // 分片请求只回内容那一段，不套整页
         return fragment ? "fragments/list :: groupSections" : "list";
     }

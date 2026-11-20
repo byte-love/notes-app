@@ -655,7 +655,7 @@ public class AgentController {
         defs.add(fn("rename_category", "给分类改名，会直接生效",
                 Map.of("slug", Map.of("type", "string"),
                         "name", Map.of("type", "string")), List.of("slug", "name")));
-        defs.add(fn("delete_category", "删除分类，里面的笔记会移到「未分类」。必须先告诉用户分类名和里面有几条并得到同意，再传 confirm=true",
+        defs.add(fn("delete_category", "删除分类，里面的笔记会移到「未分类」，不会跟着删掉。必须先告诉用户分类名和里面有几条并得到同意，再传 confirm=true",
                 Map.of("slug", Map.of("type", "string"),
                         "confirm", Map.of("type", "boolean")), List.of("slug", "confirm")));
         defs.add(fn("move_note", "把一篇笔记挪到另一个分类",

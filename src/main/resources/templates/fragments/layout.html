@@ -61,8 +61,9 @@
 <header th:fragment="nav" class="site-header">
     <div class="header-inner">
         <nav class="tabs" aria-label="站点分区">
-            <a class="tab" th:href="@{/notes}"
-               th:classappend="${tabActive == 'note' or tabActive == 'project' or tabActive == 'bagu' or tabActive == 'interview' or tabActive == 'algo'} ? 'is-active'">我的笔记</a>
+            <a class="tab" th:href="@{${mineHome}}"
+               th:classappend="${tabActive == 'note' or tabActive == 'project' or tabActive == 'bagu' or tabActive == 'interview' or tabActive == 'algo'
+                   or (tabActive != null and #strings.startsWith(tabActive, 'c:'))} ? 'is-active'">我的笔记</a>
             <a class="tab" th:href="@{/explore}"
                th:classappend="${tabActive == 'explore'} ? 'is-active'">技术广场</a>
             <a sec:authorize="isAuthenticated()" class="tab" th:href="@{/quest}"
@@ -92,12 +93,12 @@
      游客看站点固定的五个分区。路由不变，这里只是同一个列表页的几种内容。
      用 div 不用 nav：顶栏那个片段的选取器就是 nav，同名会被 Thymeleaf 按标签名一并选中 -->
 <div th:fragment="mineTabs" class="mine-tabs" role="navigation" aria-label="我的笔记分区">
-    <th:block th:if="${mineTabs != null and !#lists.isEmpty(mineTabs)}">
+    <th:block th:if="${mineTabsOwned}">
         <a class="mine-tab" th:each="t : ${mineTabs}" th:href="@{${t.href()}}"
            th:classappend="${t.active()} ? 'on'" th:text="${t.name()}">闪念</a>
         <button type="button" class="mine-tab-add" aria-label="新建分类">+</button>
     </th:block>
-    <th:block th:unless="${mineTabs != null and !#lists.isEmpty(mineTabs)}">
+    <th:block th:unless="${mineTabsOwned}">
         <a class="mine-tab" th:href="@{/notes}"
            th:classappend="${tabActive == 'note'} ? 'on'">闪念</a>
         <a class="mine-tab" th:href="@{/projects}"

@@ -23,14 +23,11 @@ public class AccountSeeder implements ApplicationRunner {
     private final AppUserRepository users;
     private final PasswordEncoder encoder;
     private final AppProperties props;
-    private final CategoryService categories;
 
-    public AccountSeeder(AppUserRepository users, PasswordEncoder encoder, AppProperties props,
-                         CategoryService categories) {
+    public AccountSeeder(AppUserRepository users, PasswordEncoder encoder, AppProperties props) {
         this.users = users;
         this.encoder = encoder;
         this.props = props;
-        this.categories = categories;
     }
 
     @Override
@@ -51,8 +48,7 @@ public class AccountSeeder implements ApplicationRunner {
         if (users.existsByUsername(username)) {
             return;
         }
-        AppUser created = users.save(new AppUser(username, encoder.encode(rawPassword), displayName, role));
-        categories.ensure(created.getId());
+        users.save(new AppUser(username, encoder.encode(rawPassword), displayName, role));
         log.info("已创建账号 {}（角色 {}）", username, role);
     }
 }

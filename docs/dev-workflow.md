@@ -685,16 +685,16 @@ sudo /opt/deploy/sync-db.sh    # 正式库整库覆盖到测试库
   `content_item.category_id`。迁移按 `kind` 把老内容回填到各自的默认分类。
 - **kind 还在**：分类决定「放在哪个页签」，条目自己的 `kind` 决定模板、详情路由、配色。
   所以分类只是上面一层组织，改分类不动内容语义。
-- **默认五个**：`CategoryService.ensure()` 在注册、账号种子和每次取分类时兜底补齐，
-  slug 固定 `note / project / bagu / algo / interview`，老链接靠它继续能用。
+- **新账号从空开始**：注册不再建任何分类（`CategoryService` 里没有补种逻辑），用户自己决定要几个页签；
+  老账号保留迁移时补的五个，改名 / 排序 / 删除都随意，删了不会自动长回来。
 - **路由**：列表 `/c/<分类 slug>`；详情 `/c/<分类 slug>/<条目 slug>`。
   老的 `/notes`、`/bagu` 这些对登录用户映射到自己的默认分类（游客仍然按 kind 看推荐内容），
-  这样 AI 把某篇挪到别的分类后，不会同时挂在两个页签下。
+  默认分类被删掉时退回「按 kind 全量」的老行为；顶栏「我的笔记」指向第一个页签，没有分类才回 `/notes`。
 - **管理入口**：设置页「笔记分类」（改名 / 上下移 / 删除），列表页签末尾的「+」就地新建。
-  默认分类能改名、能排序，删不掉；删自己的分类时，里面的条目 `category_id` 置空，落到「未分类」页签。
+  删任何分类都会把里面的条目落到「未分类」页签（`category_id` 置空），内容不跟着删。
 - **新建条目**：`AdminController`、`AiController`、`AgentController`、`RecommendService` 建完都调
-  `categories.attachDefault(item)`，没指定分类就落到该 kind 的默认分类；左树「+」会把当前页签的
-  `data-category` 一起提交（`tree-admin.js`）。
+  `categories.attachDefault(item)`，没指定分类就落到该 kind 的默认分类，没有默认分类就留空（进「未分类」）；
+  左树「+」会把当前页签的 `data-category` 一起提交（`tree-admin.js`）。
 - **AI 工具**：MCP 有 `notes_categories / category_create / category_rename / category_delete / note_move /
   notes_explore`（远端 `McpController` 与本地 `mcp/notes-mcp.mjs` 两处要一起改）；站内助手有同名工具，
   分类操作直接生效、删除要 `confirm`。`notes_explore` 只读，搜的是公开且进了推荐栏的内容。
