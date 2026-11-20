@@ -1,10 +1,26 @@
-// 站内助手：右下角机器人球 + 面板。key 存在本机（按账号分开），请求只带当前这次对话。
+// 站内助手：右下角机器人球 + 可拖动、可缩放的悬浮窗。key 和聊天记录都存在本机（按账号分开）。
 (() => {
     const meta = (name) => (document.querySelector('meta[name="' + name + '"]') || {}).content || '';
     const user = meta('user-name');
     if (!user) return;
 
     const KEY = 'agent-key:' + user;
+    const HIST = 'agent-chat:' + user;
+    const PEND = 'agent-pending:' + user;
+    const GEO = 'agent-geo:' + user;
+
+    const loadJson = (key) => {
+        try {
+            return JSON.parse(localStorage.getItem(key) || 'null');
+        } catch (e) {
+            return null;
+        }
+    };
+    const saveJson = (key, value) => {
+        try {
+            localStorage.setItem(key, JSON.stringify(value));
+        } catch (e) {}
+    };
     const readKey = () => {
         try {
             return localStorage.getItem(KEY) || '';
@@ -13,27 +29,38 @@
         }
     };
 
+    // 正文页模板带 data-note-*；项目页没这个属性时退回按 URL 认
     const holder = document.querySelector('[data-note-slug]');
+    const fromPath = () => {
+        const m = location.pathname.match(/^\/app\/(notes|bagu|algo|interview|projects)\/([a-z0-9-]+)$/);
+        if (!m) return null;
+        return {
+            slug: m[2],
+            kind: m[1],
+            title: document.title.replace(/\s*·\s*byte-love$/, ''),
+        };
+    };
     const context = holder ? {
         slug: holder.dataset.noteSlug,
         kind: holder.dataset.noteKind,
         title: holder.dataset.noteTitle || holder.dataset.noteSlug,
-    } : null;
+    } : fromPath();
 
     const fab = document.createElement('button');
     fab.type = 'button';
     fab.className = 'ai-fab';
     fab.setAttribute('aria-label', 'AI 助手');
     fab.innerHTML = `
-        <svg viewBox="0 0 48 48" aria-hidden="true">
-            <circle cx="24" cy="5.5" r="2.2" class="ai-antenna"></circle>
-            <path d="M24 8v4"></path>
-            <rect x="10" y="12" width="28" height="24" rx="9"></rect>
-            <path d="M6 21v7M42 21v7"></path>
-            <rect x="15" y="19" width="18" height="11" rx="5.5" class="ai-screen"></rect>
-            <circle cx="20" cy="24.5" r="1.9" class="ai-eye"></circle>
-            <circle cx="28" cy="24.5" r="1.9" class="ai-eye"></circle>
-            <path d="M21 34h6"></path>
+        <svg viewBox="0 0 64 64" aria-hidden="true">
+            <circle cx="32" cy="7" r="3.2" class="ai-antenna"></circle>
+            <path d="M32 10.5v4.5" class="ai-line"></path>
+            <rect x="10" y="15" width="44" height="34" rx="12" class="ai-head"></rect>
+            <rect x="17" y="23" width="30" height="18" rx="8" class="ai-face"></rect>
+            <circle cx="25" cy="31" r="2.7" class="ai-eye"></circle>
+            <circle cx="39" cy="31" r="2.7" class="ai-eye"></circle>
+            <path d="M28 39.5h8" class="ai-mouth"></path>
+            <rect x="5.5" y="26" width="3.5" height="11" rx="1.75" class="ai-ear"></rect>
+            <rect x="55" y="26" width="3.5" height="11" rx="1.75" class="ai-ear"></rect>
         </svg>`;
     document.body.appendChild(fab);
 
@@ -41,7 +68,14 @@
     panel.className = 'ai-panel';
     panel.hidden = true;
     panel.innerHTML = `
-        <div class="ai-resize" aria-hidden="true"></div>
+        <div class="ai-handle" data-dir="nw"></div>
+        <div class="ai-handle" data-dir="n"></div>
+        <div class="ai-handle" data-dir="ne"></div>
+        <div class="ai-handle" data-dir="e"></div>
+        <div class="ai-handle" data-dir="se"></div>
+        <div class="ai-handle" data-dir="s"></div>
+        <div class="ai-handle" data-dir="sw"></div>
+        <div class="ai-handle" data-dir="w"></div>
         <div class="ai-bar">
             <span class="ai-title">AI 助手</span>
             <span class="ai-ctx" hidden></span>
@@ -53,19 +87,6 @@
             <button type="button" class="btn-quiet ai-keysave">保存</button>
         </div>
         <div class="ai-msgs"></div>
-        <div class="ai-modes">
-            <button type="button" data-mode="ask">答疑</button>
-            <button type="button" data-mode="create">记一条</button>
-            <button type="button" data-mode="edit">改这篇</button>
-            <button type="button" data-mode="search">搜笔记</button>
-        </div>
-        <div class="ai-kinds" hidden>
-            <button type="button" data-kind="note">闪念</button>
-            <button type="button" data-kind="project">项目</button>
-            <button type="button" data-kind="bagu">八股</button>
-            <button type="button" data-kind="algo">算法</button>
-            <button type="button" data-kind="interview">面试</button>
-        </div>
         <div class="ai-compose">
             <textarea rows="3"></textarea>
             <button type="button" class="btn-quiet ai-send">发送</button>
@@ -76,31 +97,11 @@
     const keyInput = keyBox.querySelector('input');
     const ctxEl = panel.querySelector('.ai-ctx');
     const msgs = panel.querySelector('.ai-msgs');
-    const modes = panel.querySelector('.ai-modes');
-    const kinds = panel.querySelector('.ai-kinds');
     const input = panel.querySelector('textarea');
     const sendBtn = panel.querySelector('.ai-send');
     const closeBtn = panel.querySelector('.ai-x');
-    const grip = panel.querySelector('.ai-resize');
+    const bar = panel.querySelector('.ai-bar');
 
-    const HIST = 'agent-chat:' + user;
-    const PEND = 'agent-pending:' + user;
-    const SIZE = 'agent-size:' + user;
-    const loadJson = (k) => {
-        try {
-            return JSON.parse(localStorage.getItem(k) || 'null');
-        } catch (e) {
-            return null;
-        }
-    };
-    const saveJson = (k, v) => {
-        try {
-            localStorage.setItem(k, JSON.stringify(v));
-        } catch (e) {}
-    };
-
-    let mode = 'ask';
-    let kind = '';
     let locked = context;
     let sending = false;
     let history = loadJson(HIST) || [];
@@ -114,104 +115,170 @@
     };
 
     const narrow = window.matchMedia('(max-width: 560px)');
-    const applySize = () => {
+
+    const clampGeo = (g) => {
+        const w = Math.min(g.w, window.innerWidth - 16);
+        const h = Math.min(g.h, window.innerHeight - 16);
+        const x = Math.min(Math.max(8, g.x), Math.max(8, window.innerWidth - w - 8));
+        const y = Math.min(Math.max(8, g.y), Math.max(8, window.innerHeight - h - 8));
+        return { x, y, w, h };
+    };
+
+    const geo = () => {
+        const r = panel.getBoundingClientRect();
+        return { x: r.left, y: r.top, w: r.width, h: r.height };
+    };
+
+    const applyGeo = () => {
         if (narrow.matches) {
+            panel.style.left = '';
+            panel.style.top = '';
             panel.style.width = '';
             panel.style.height = '';
-            panel.style.maxHeight = '';
+            panel.style.right = '';
+            panel.style.bottom = '';
             return;
         }
-        const s = loadJson(SIZE);
-        if (s && s.w && s.h) {
-            panel.style.width = s.w + 'px';
-            panel.style.height = s.h + 'px';
-            panel.style.maxHeight = 'none';
+        const g = loadJson(GEO);
+        if (!g) {
+            panel.style.left = '';
+            panel.style.top = '';
+            panel.style.width = '';
+            panel.style.height = '';
+            panel.style.right = '';
+            panel.style.bottom = '';
+            return;
         }
+        const c = clampGeo(g);
+        panel.style.left = c.x + 'px';
+        panel.style.top = c.y + 'px';
+        panel.style.width = c.w + 'px';
+        panel.style.height = c.h + 'px';
+        panel.style.right = 'auto';
+        panel.style.bottom = 'auto';
     };
-    applySize();
-    narrow.addEventListener('change', applySize);
 
-    grip.addEventListener('pointerdown', (e) => {
-        if (narrow.matches) return;
-        e.preventDefault();
-        e.stopPropagation();
+    const detach = () => {
         const r = panel.getBoundingClientRect();
-        const start = { x: e.clientX, y: e.clientY, w: r.width, h: r.height };
-        try {
-            grip.setPointerCapture(e.pointerId);
-        } catch (err) {}
+        panel.style.left = r.left + 'px';
+        panel.style.top = r.top + 'px';
+        panel.style.width = r.width + 'px';
+        panel.style.height = r.height + 'px';
+        panel.style.right = 'auto';
+        panel.style.bottom = 'auto';
+        return r;
+    };
+
+    const startDrag = (e) => {
+        if (narrow.matches || e.button !== 0 || e.target.closest('button')) return;
+        e.preventDefault();
+        const r = detach();
+        const start = { x: e.clientX, y: e.clientY, left: r.left, top: r.top };
+        bar.setPointerCapture(e.pointerId);
         const move = (ev) => {
-            const w = Math.min(Math.max(340, start.w + (start.x - ev.clientX)),
-                Math.min(760, window.innerWidth - 24));
-            const h = Math.min(Math.max(320, start.h + (start.y - ev.clientY)),
-                window.innerHeight - 24);
-            panel.style.width = w + 'px';
-            panel.style.height = h + 'px';
-            panel.style.maxHeight = 'none';
+            const x = Math.min(Math.max(0, start.left + ev.clientX - start.x), window.innerWidth - 80);
+            const y = Math.min(Math.max(0, start.top + ev.clientY - start.y), window.innerHeight - 40);
+            panel.style.left = x + 'px';
+            panel.style.top = y + 'px';
         };
         const up = () => {
-            grip.removeEventListener('pointermove', move);
-            grip.removeEventListener('pointerup', up);
-            saveJson(SIZE, { w: panel.offsetWidth, h: panel.offsetHeight });
+            bar.removeEventListener('pointermove', move);
+            bar.removeEventListener('pointerup', up);
+            const g = geo();
+            saveJson(GEO, { x: g.x, y: g.y, w: g.w, h: g.h });
         };
-        grip.addEventListener('pointermove', move);
-        grip.addEventListener('pointerup', up);
+        bar.addEventListener('pointermove', move);
+        bar.addEventListener('pointerup', up);
+    };
+
+    const startResize = (e, dir) => {
+        if (narrow.matches || e.button !== 0) return;
+        e.preventDefault();
+        e.stopPropagation();
+        const r = detach();
+        const start = { x: e.clientX, y: e.clientY, left: r.left, top: r.top, w: r.width, h: r.height };
+        const minW = 340;
+        const minH = 300;
+        e.target.setPointerCapture(e.pointerId);
+        const move = (ev) => {
+            const dx = ev.clientX - start.x;
+            const dy = ev.clientY - start.y;
+            let left = start.left;
+            let top = start.top;
+            let w = start.w;
+            let h = start.h;
+            if (dir.includes('e')) w = Math.max(minW, start.w + dx);
+            if (dir.includes('s')) h = Math.max(minH, start.h + dy);
+            if (dir.includes('w')) {
+                w = Math.max(minW, start.w - dx);
+                left = start.left + (start.w - w);
+            }
+            if (dir.includes('n')) {
+                h = Math.max(minH, start.h - dy);
+                top = start.top + (start.h - h);
+            }
+            left = Math.max(0, left);
+            top = Math.max(0, top);
+            w = Math.min(w, window.innerWidth - left);
+            h = Math.min(h, window.innerHeight - top);
+            panel.style.left = left + 'px';
+            panel.style.top = top + 'px';
+            panel.style.width = w + 'px';
+            panel.style.height = h + 'px';
+        };
+        const up = () => {
+            e.target.removeEventListener('pointermove', move);
+            e.target.removeEventListener('pointerup', up);
+            const g = geo();
+            saveJson(GEO, { x: g.x, y: g.y, w: g.w, h: g.h });
+        };
+        e.target.addEventListener('pointermove', move);
+        e.target.addEventListener('pointerup', up);
+    };
+
+    bar.addEventListener('pointerdown', startDrag);
+    panel.querySelectorAll('.ai-handle').forEach((h) => {
+        h.addEventListener('pointerdown', (e) => startResize(e, h.dataset.dir));
     });
 
     const key = () => readKey();
     const hasKey = () => !!readKey();
 
     const updateSend = () => {
-        sendBtn.disabled = sending || (mode === 'create' && !kind);
-    };
-
-    const setMode = (next) => {
-        if (next === 'edit' && !locked) next = 'ask';
-        mode = next;
-        modes.querySelectorAll('button').forEach((b) => {
-            b.classList.toggle('on', b.dataset.mode === next);
-        });
-        kinds.hidden = next !== 'create';
-        if (next !== 'create') {
-            kind = '';
-            kinds.querySelectorAll('button').forEach((b) => b.classList.remove('on'));
-        }
-        renderCtx();
-        updateSend();
+        sendBtn.disabled = sending;
     };
 
     const renderKey = () => {
         const ok = hasKey();
         keyBox.hidden = ok;
         panel.classList.toggle('need-key', !ok);
-        if (ok) {
-            applySize();
+        if (!ok) {
+            panel.style.height = 'auto';
         } else {
             panel.style.height = '';
-            panel.style.maxHeight = '';
+            applyGeo();
         }
     };
 
     const renderCtx = () => {
-        if (locked) {
-            ctxEl.hidden = false;
-            ctxEl.textContent = locked.title;
-            const x = document.createElement('button');
-            x.type = 'button';
-            x.className = 'ai-ctx-x';
-            x.setAttribute('aria-label', '取消上下文');
-            x.textContent = '×';
-            x.addEventListener('click', () => {
-                locked = null;
-                renderCtx();
-                setMode('ask');
-            });
-            ctxEl.appendChild(x);
-        } else {
-            ctxEl.hidden = true;
+        ctxEl.hidden = !locked;
+        if (!locked) {
+            const g = msgs.querySelector('.ai-greeting');
+            if (g) g.textContent = greetingText();
+            return;
         }
-        const edit = modes.querySelector('[data-mode="edit"]');
-        edit.hidden = !locked;
+        ctxEl.textContent = locked.title;
+        const x = document.createElement('button');
+        x.type = 'button';
+        x.className = 'ai-ctx-x';
+        x.setAttribute('aria-label', '取消上下文');
+        x.textContent = '×';
+        x.addEventListener('click', (e) => {
+            e.stopPropagation();
+            locked = null;
+            renderCtx();
+        });
+        ctxEl.appendChild(x);
     };
 
     const append = (cls, text) => {
@@ -221,6 +288,19 @@
         msgs.appendChild(el);
         msgs.scrollTop = msgs.scrollHeight;
         return el;
+    };
+
+    const greetingText = () => (locked
+        ? '我是站内助手：可以解释这篇里的句子、把内容整理成新笔记、改这篇，或者搜以前的笔记。直接说就行。'
+        : '我是站内助手：可以解释笔记里的句子、整理成新笔记、搜以前的笔记。直接说就行。');
+
+    const greeting = () => {
+        if (history.length) return;
+        const el = document.createElement('div');
+        el.className = 'ai-msg ai-greeting';
+        el.textContent = greetingText();
+        msgs.appendChild(el);
+        msgs.scrollTop = msgs.scrollHeight;
     };
 
     const thinking = () => {
@@ -313,10 +393,10 @@
         }
         const text = input.value.trim();
         if (!text) return;
-        if (mode === 'create' && !kind) return;
         input.value = '';
-        const userMsg = { role: 'user', content: text };
-        history.push(userMsg);
+        const greet = msgs.querySelector('.ai-greeting');
+        if (greet) greet.remove();
+        history.push({ role: 'user', content: text });
         saveChat();
         append('user', text);
         sending = true;
@@ -325,8 +405,6 @@
         try {
             const res = await post('/app/api/agent/chat', {
                 messages: history.slice(-20),
-                mode,
-                kind,
                 contextSlug: locked ? locked.slug : null,
             }, { 'X-Agent-Key': key() });
             const data = await res.json().catch(() => null);
@@ -353,12 +431,14 @@
 
     const open = () => {
         panel.hidden = false;
+        applyGeo();
         renderKey();
         if (!hasKey()) {
             keyInput.focus();
         } else {
             input.focus();
         }
+        msgs.scrollTop = msgs.scrollHeight;
     };
 
     const close = () => {
@@ -376,20 +456,6 @@
         input.focus();
     });
 
-    modes.addEventListener('click', (e) => {
-        const btn = e.target.closest('button[data-mode]');
-        if (btn) setMode(btn.dataset.mode);
-    });
-
-    kinds.addEventListener('click', (e) => {
-        const btn = e.target.closest('button[data-kind]');
-        if (!btn) return;
-        kind = btn.dataset.kind;
-        kinds.querySelectorAll('button').forEach((b) => b.classList.toggle('on', b === btn));
-        updateSend();
-        input.focus();
-    });
-
     sendBtn.addEventListener('click', send);
     input.addEventListener('keydown', (e) => {
         if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
@@ -400,11 +466,20 @@
     closeBtn.addEventListener('click', close);
 
     renderCtx();
-    setMode('ask');
-
     history.forEach((m) => append(m.role === 'user' ? 'user' : 'assistant', m.content));
     pending.forEach(renderProposal);
-    msgs.scrollTop = msgs.scrollHeight;
+    greeting();
+    updateSend();
+    narrow.addEventListener('change', applyGeo);
+    window.addEventListener('resize', () => {
+        if (!panel.hidden && !narrow.matches) {
+            const c = clampGeo(geo());
+            panel.style.left = c.x + 'px';
+            panel.style.top = c.y + 'px';
+            panel.style.width = c.w + 'px';
+            panel.style.height = c.h + 'px';
+        }
+    });
 
     if (window.Float) {
         window.Float.attach(fab, 'assistant', open);

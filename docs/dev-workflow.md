@@ -742,17 +742,18 @@ Java / SQL / JS / Python / Shell，其余默认 Java，猜出来写成 `language
 - `static/js/float.js`：两个浮球共用行为——可以拖动换位置（`float-pos:<id>`）；桌面右键隐藏；
   手机第一次点先出「打开 / 隐藏」菜单，勾过「不再显示此提示」后直接打开，长按可以再叫出菜单；
   隐藏状态存 `float:assistant` / `float:timer`；
-- `static/js/assistant.js`：机器人球 + 面板。正文页从模板的 `data-note-slug / data-note-kind / data-note-title`
-  读当前笔记并默认锁定（chip 可点 × 取消），列表页不锁；球可以拖动，位置存 `float-pos:assistant`；
-  面板默认 420×520，拖左上角可改大小（`agent-size:<账号>`）；聊天记录和待写入建议存 `agent-chat:<账号>` /
-  `agent-pending:<账号>`，换页面不会丢（上限 40 条 / 12 条建议）；
+- `static/js/assistant.js`：机器人球 + 悬浮窗。正文页从模板的 `data-note-slug / data-note-kind / data-note-title`
+  读当前笔记并默认锁定（chip 可点 × 取消），项目页这类没写 data 属性的按 URL 兜底；列表页不锁；
+  球可以拖动（`float-pos:assistant`）；窗口可以拖标题栏移动、拖八条边/四角缩放，位置和尺寸存
+  `agent-geo:<账号>`，默认 440×560；聊天记录和待写入建议存 `agent-chat:<账号>` / `agent-pending:<账号>`，
+  换页面不会丢（上限 40 条 / 12 条建议）；
 - key 存 `localStorage` 的 `agent-key:<username>`（按账号分开，只在这台设备/浏览器里，换设备要重填）；
   每次请求放 `X-Agent-Key`，服务端只在 `AgentController` 里拼到上游 `Authorization`，**不落库、不写日志**；
-- `POST /app/api/agent/chat` 带 `mode`（ask / create / edit / search）、`kind`、`contextSlug`；
-  服务端把当前笔记正文（截断 8000 字）和功能说明拼进 system prompt，工具 `search_notes / read_note /
-  create_note / update_note` 仍按 `owner_id` 过滤；
+- `POST /app/api/agent/chat` 只带 `messages` 和 `contextSlug`；服务端把当前笔记正文（截断 8000 字）
+  拼进 system prompt，工具 `search_notes / read_note / create_note / update_note` 仍按 `owner_id` 过滤。
+  面板上没有「答疑 / 记一条」这些模式按钮，用户直接说需求；空会话时显示一条招呼语说明能做什么；
 - 写入不直接发生：`create_note` / `update_note` 只返回 proposal（内存 30 分钟），点「写入」才落库；
-  update 前把旧版本写进 `content_revision(source='AGENT')`；`记一条` 选的模块由服务端强制写进 proposal；
+  update 前把旧版本写进 `content_revision(source='AGENT')`；
 - 新建默认 `visibility=PRIVATE`，slug 形如 `ai-YYYYMMDD-8位hex`；
 - 隐藏后可在「设置 → 浮动按钮」重新打开；旧的整页 `/app/agent` 已删除，入口只在浮球上；
 - 上游地址可覆盖：`notes.agent.upstream`（环境变量 `NOTES_AGENT_UPSTREAM`），自测时可指向本地假服务。

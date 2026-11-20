@@ -94,7 +94,7 @@ public class AgentController {
     public record Msg(String role, String content) {
     }
 
-    public record ChatIn(List<Msg> messages, String mode, String kind, String contextSlug) {
+    public record ChatIn(List<Msg> messages, String contextSlug) {
     }
 
     public record ApplyIn(String id) {
@@ -174,8 +174,7 @@ public class AgentController {
                 String id = call.path("id").asText("");
                 String name = call.path("function").path("name").asText("");
                 JsonNode args = parseArgs(call.path("function").path("arguments").asText("{}"));
-                Map<String, Object> result = runTool(name, args, userId, made,
-                        "create".equals(in.mode()) ? in.kind() : null);
+                Map<String, Object> result = runTool(name, args, userId, made);
                 if (!toolsUsed.contains(name)) {
                     toolsUsed.add(name);
                 }
@@ -255,52 +254,36 @@ public class AgentController {
     }
 
     /**
-     * 把面板上选的功能和当前正文页锁定的笔记拼进系统提示词：
-     * 笔记正文只在这里带一次，后面的追问不用前端重复发。
+     * 把当前正文页锁定的笔记拼进系统提示词：正文只在这里带一次，后面的追问不用前端重复发。
      */
     private String instruction(long userId, ChatIn in) {
         StringBuilder sb = new StringBuilder();
-        String mode = in.mode() == null ? "ask" : in.mode();
-        String kind = in.kind() == null ? "" : in.kind().trim();
         String slug = in.contextSlug() == null ? "" : in.contextSlug().trim();
-        switch (mode) {
-            case "create" -> sb.append("用户点了「记一条」，要新建一条笔记，模块是")
-                    .append(kindOf(kind).getLabel()).append("（kind=")
-                    .append(kindOf(kind).name().toLowerCase(Locale.ROOT)).append("）。")
-                    .append("调用 create_note 生成建议，标题和正文写完整。\n");
-            case "edit" -> sb.append("用户点了「改这篇」，要修改当前笔记；只改用户提到的部分，调用 update_note。\n");
-            case "search" -> sb.append("用户点了「搜笔记」，先调用 search_notes 找到相关条目，再回答。\n");
-            default -> {
-                if (slug.isEmpty()) {
-                    sb.append("用户没有打开具体笔记，按普通提问回答，需要资料就调工具。\n");
-                } else {
-                    sb.append("用户点了「答疑」，优先基于下面这篇笔记回答；正文不够再调工具。\n");
-                }
+        if (slug.isEmpty()) {
+            return "用户没有打开具体笔记，按普通提问回答，需要资料就调工具。\n";
+        }
+        sb.append("用户正在看下面这篇笔记，优先基于它回答；正文不够再调工具。\n");
+        items.findByOwnerIdAndSlug(userId, slug).ifPresent(item -> {
+            String body = item.getBody() == null ? "" : item.getBody();
+            if (body.length() > 8000) {
+                body = body.substring(0, 8000) + "\n（正文已截断）";
             }
-        }
-        if (!slug.isEmpty()) {
-            items.findByOwnerIdAndSlug(userId, slug).ifPresent(item -> {
-                String body = item.getBody() == null ? "" : item.getBody();
-                if (body.length() > 8000) {
-                    body = body.substring(0, 8000) + "\n（正文已截断）";
-                }
-                sb.append("用户当前正在看《").append(item.getTitle()).append("》（slug=")
-                        .append(item.getSlug()).append("，kind=")
-                        .append(item.getKind().name().toLowerCase(Locale.ROOT)).append("）。正文：\n")
-                        .append(body).append('\n');
-            });
-        }
+            sb.append("《").append(item.getTitle()).append("》（slug=")
+                    .append(item.getSlug()).append("，kind=")
+                    .append(item.getKind().name().toLowerCase(Locale.ROOT)).append("）。正文：\n")
+                    .append(body).append('\n');
+        });
         return sb.toString();
     }
 
     // ---------- 工具 ----------
 
     private Map<String, Object> runTool(String name, JsonNode args, long userId,
-                                        List<Map<String, Object>> made, String forcedKind) {
+                                        List<Map<String, Object>> made) {
         return switch (name) {
             case "search_notes" -> search(args, userId);
             case "read_note" -> read(args, userId);
-            case "create_note" -> create(args, userId, made, forcedKind);
+            case "create_note" -> create(args, userId, made);
             case "update_note" -> update(args, userId, made);
             default -> Map.of("error", "未知工具：" + name);
         };
@@ -354,8 +337,7 @@ public class AgentController {
         }).orElse(Map.of("error", "没有这篇笔记"));
     }
 
-    private Map<String, Object> create(JsonNode args, long userId, List<Map<String, Object>> made,
-                                       String forcedKind) {
+    private Map<String, Object> create(JsonNode args, long userId, List<Map<String, Object>> made) {
         String title;
         String body;
         try {
@@ -364,9 +346,7 @@ public class AgentController {
         } catch (ResponseStatusException e) {
             return Map.of("error", e.getReason() == null ? "参数不合法" : e.getReason());
         }
-        String kind = forcedKind != null && !forcedKind.isBlank()
-                ? kindOf(forcedKind).name()
-                : kindOf(args.path("kind").asText("")).name();
+        String kind = kindOf(args.path("kind").asText("")).name();
         String visibility = visibilityOf(args.path("visibility").asText("")).name();
         String summary = args.path("summary").asText("");
         Proposal p = new Proposal(java.util.UUID.randomUUID().toString(), userId, "create",
