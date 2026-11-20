@@ -756,11 +756,14 @@ Java / SQL / JS / Python / Shell，其余默认 Java，猜出来写成 `language
   OpenAI 兼容的 `image_url` block；服务端 `cleanContent` 只放行文本和 `data:image/`、`http(s)` 图片；
 - 附件：`POST /app/api/agent/extract`（multipart，字段 `file`）读 md / txt / pdf（PDFBox，最多 60 页、
   截断 5 万字），结果拼进消息文本，不落库；
-- 模型在面板底部切换：`deepseek-flash`（支持看图，输入 $0.15–0.30 / 输出 $0.60–1.20 每百万 tokens）和
-  `deepseek-v4-pro`（不支持图片，输入 $0.66–1.32 / 输出 $1.98–3.96）；高峰价是非高峰的 2 倍；
-  服务端只接受这两个值，默认值 `notes.agent.model`；模型选择存 `agent-model:<账号>`；
-- 消息悬停有「复制 / 引用」（复制走 Clipboard API，非 HTTPS 用 execCommand 兜底）；
-  图片（粘贴的缩略图和已发送的）点击走 `ai-lightbox` 看大图，Esc 或点遮罩关闭；
+- 模型在面板底部切换：`deepseek-flash`（官方定位「更强、更快、更普惠」，支持图片，输入 $0.15–0.30 /
+  输出 $0.60–1.20 每百万 tokens）和 `deepseek-v4-pro`（V4 系列旧旗舰，不支持图片，输入 $0.66–1.32 /
+  输出 $1.98–3.96）；高峰价是非高峰的 2 倍；服务端只接受这两个值，默认值 `notes.agent.model`；
+  模型选择存 `agent-model:<账号>`；
+- 输入框随内容自动长高（最高 200px）；消息悬停有「复制 / 引用」：复制成功图标变勾 1.2 秒，
+  引用会在输入框上方出现一条引用条（截前 160 字），发送后消息里带 `quote` block，请求时转成 `> ` 引用；
+  复制走 Clipboard API，非 HTTPS 用 execCommand 兜底；
+- 图片（粘贴的缩略图和已发送的）点击走 `ai-lightbox` 看大图，Esc 或点遮罩关闭；
 - 每次响应把上游 `usage.prompt_tokens / completion_tokens` 写进当前会话，底部显示
   「上下文 8.2k / 1M · ≈$0.003」，超过 70% 变黄、90% 变红；价格按峰值价估算；
 - key 存 `localStorage` 的 `agent-key:<username>`（按账号分开，只在这台设备/浏览器里，换设备要重填）；

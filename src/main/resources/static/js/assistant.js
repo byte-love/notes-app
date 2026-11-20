@@ -12,12 +12,12 @@
 
     const MODELS = {
         'deepseek-flash': {
-            hint: '支持图片 · 输入 $0.15–0.30 / 输出 $0.60–1.20（每百万 tokens）；高峰价是非高峰的 2 倍',
+            hint: '官方：更强、更快、更普惠；支持图片 · 输入 $0.15–0.30 / 输出 $0.60–1.20（每百万 tokens）；高峰价是非高峰的 2 倍',
             inPrice: 0.30,
             outPrice: 1.20,
         },
         'deepseek-v4-pro': {
-            hint: '不支持图片 · 输入 $0.66–1.32 / 输出 $1.98–3.96（每百万 tokens）；高峰价是非高峰的 2 倍',
+            hint: 'V4 系列旧旗舰（不支持图片）· 输入 $0.66–1.32 / 输出 $1.98–3.96（每百万 tokens）；高峰价是非高峰的 2 倍',
             inPrice: 1.32,
             outPrice: 3.96,
         },
@@ -169,6 +169,8 @@
         content.forEach((b) => {
             if (b.type === 'text') {
                 blocks.push({ type: 'text', text: b.text });
+            } else if (b.type === 'quote') {
+                blocks.push({ type: 'text', text: b.text.split('\n').map((l) => '> ' + l).join('\n') });
             } else if (b.type === 'file') {
                 blocks.push({ type: 'text', text: `文件 ${b.name}：\n${b.text}` });
             } else if (b.type === 'image') {
@@ -209,6 +211,7 @@
     const iconKey = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="8.5" cy="12" r="3"/><path d="M11.5 12H20M17 12v3"/></svg>';
     const iconCopy = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5h10"/></svg>';
     const iconQuote = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17V7h10M7 7l4 4M7 7l4-4"/></svg>';
+    const iconCheck = svg('M5 12l4 4 10-10');
 
     const panel = document.createElement('section');
     panel.className = 'ai-panel';
@@ -254,6 +257,10 @@
                     </div>
                     <span class="ai-hint"></span>
                 </div>
+                <div class="ai-quotebar" hidden>
+                    <span class="ai-quote-text"></span>
+                    <button type="button" class="ai-quote-x" aria-label="取消引用">×</button>
+                </div>
                 <div class="ai-compose">
                     <textarea rows="3"></textarea>
                     <button type="button" class="btn-quiet ai-file" aria-label="上传文件">${svg('M21 12.5 12 21a5 5 0 0 1-7-7l8.5-8.5a3.5 3.5 0 0 1 5 5L10 19a2 2 0 0 1-3-3l8-8')}</button>
@@ -298,6 +305,8 @@
     const modelSel = panel.querySelector('.ai-model');
     const hintEl = panel.querySelector('.ai-hint');
     const attach = panel.querySelector('.ai-attach');
+    const quoteBar = panel.querySelector('.ai-quotebar');
+    const quoteTextEl = panel.querySelector('.ai-quote-text');
     const fileBtn = panel.querySelector('.ai-file');
     const fileInput = panel.querySelector('.ai-file-input');
     const downBtn = panel.querySelector('.ai-down');
@@ -312,6 +321,7 @@
     let lastPick = '';
     let lastPickAt = 0;
     let keyOpen = false;
+    let quote = null;
 
     // 点按钮会把选区清掉，所以先在 selectionchange 里记一份
     document.addEventListener('selectionchange', () => {
@@ -652,19 +662,26 @@
             } else {
                 fallback();
             }
+            copy.innerHTML = iconCheck;
+            copy.classList.add('done');
+            setTimeout(() => {
+                copy.innerHTML = iconCopy;
+                copy.classList.remove('done');
+            }, 1200);
         });
 
-        const quote = document.createElement('button');
-        quote.type = 'button';
-        quote.className = 'ai-act';
-        quote.setAttribute('aria-label', '引用');
-        quote.innerHTML = iconQuote;
-        quote.addEventListener('click', () => {
-            input.value = text.split('\n').map((l) => '> ' + l).join('\n') + '\n\n';
+        const quoteBtn = document.createElement('button');
+        quoteBtn.type = 'button';
+        quoteBtn.className = 'ai-act';
+        quoteBtn.setAttribute('aria-label', '引用');
+        quoteBtn.innerHTML = iconQuote;
+        quoteBtn.addEventListener('click', () => {
+            quote = { text: text.length > 800 ? text.slice(0, 800) : text };
+            renderQuote();
             input.focus();
         });
 
-        acts.append(copy, quote);
+        acts.append(copy, quoteBtn);
         line.append(el, acts);
         msgs.appendChild(line);
         msgs.scrollTop = msgs.scrollHeight;
@@ -680,6 +697,15 @@
     };
 
     const renderUserContent = (content) => {
+        if (Array.isArray(content)) {
+            const quotes = content.filter((b) => b.type === 'quote');
+            if (quotes.length) {
+                const q = document.createElement('div');
+                q.className = 'ai-quote-msg';
+                q.textContent = quotes.map((b) => b.text).join('\n');
+                msgs.appendChild(q);
+            }
+        }
         const text = textOf(content);
         if (text) append('user', text);
         if (!Array.isArray(content)) return;
@@ -779,6 +805,9 @@
 
     const renderAll = () => {
         msgs.replaceChildren();
+        quote = null;
+        renderQuote();
+        autoGrow();
         chat.messages.forEach((m) => {
             if (m.role === 'user') {
                 renderUserContent(m.content);
@@ -834,6 +863,28 @@
             attach.appendChild(box);
         });
     };
+
+    const renderQuote = () => {
+        if (!quote) {
+            quoteBar.hidden = true;
+            quoteTextEl.textContent = '';
+            return;
+        }
+        quoteBar.hidden = false;
+        quoteTextEl.textContent = quote.text.length > 160 ? quote.text.slice(0, 160) + '…' : quote.text;
+    };
+
+    quoteBar.querySelector('.ai-quote-x').addEventListener('click', () => {
+        quote = null;
+        renderQuote();
+    });
+
+    const autoGrow = () => {
+        input.style.height = 'auto';
+        input.style.height = Math.min(input.scrollHeight, 200) + 'px';
+    };
+
+    input.addEventListener('input', autoGrow);
 
     const shrinkImage = (file) => new Promise((resolve) => {
         const img = new Image();
@@ -1017,12 +1068,16 @@
         const text = input.value.trim();
         if (!text && !pendingImages.length && !files.length) return;
         const blocks = [];
+        if (quote) blocks.push({ type: 'quote', text: quote.text });
         files.forEach((f) => blocks.push({ type: 'file', name: f.name, text: f.text }));
         if (text) blocks.push({ type: 'text', text });
         pendingImages.forEach((b) => blocks.push(b));
         const content = blocks.length === 1 && blocks[0].type === 'text' ? blocks[0].text : blocks;
 
         input.value = '';
+        quote = null;
+        renderQuote();
+        autoGrow();
         files = [];
         pendingImages = [];
         renderAttach();

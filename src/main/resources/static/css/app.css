@@ -7204,8 +7204,8 @@ html[data-theme='dark'] .cl-latest {
 
 .ai-acts {
     display: flex;
-    gap: 0.1rem;
-    opacity: 0;
+    gap: 0.15rem;
+    opacity: 0.35;
     transition: opacity 0.12s ease;
 }
 
@@ -7215,11 +7215,11 @@ html[data-theme='dark'] .cl-latest {
 }
 
 .ai-act {
-    width: 20px;
-    height: 20px;
+    width: 26px;
+    height: 26px;
     padding: 0;
     border: 0;
-    border-radius: 5px;
+    border-radius: 6px;
     background: none;
     color: var(--fg-2);
     cursor: pointer;
@@ -7230,9 +7230,13 @@ html[data-theme='dark'] .cl-latest {
     color: var(--fg);
 }
 
+.ai-act.done {
+    color: #2ea043;
+}
+
 .ai-act svg {
-    width: 13px;
-    height: 13px;
+    width: 16px;
+    height: 16px;
     fill: none;
     stroke: currentColor;
     stroke-width: 2;
@@ -7550,8 +7554,59 @@ html[data-theme='dark'] .cl-latest {
     padding: 0.45rem 0.7rem 0.7rem;
 }
 
+.ai-quotebar {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.4rem;
+    margin: 0.35rem 0.7rem 0;
+    padding: 0.4rem 0.5rem;
+    border-left: 2px solid #58a6ff;
+    border-radius: 0 6px 6px 0;
+    background: var(--bg-2);
+}
+
+.ai-quotebar[hidden] {
+    display: none;
+}
+
+.ai-quote-text {
+    flex: 1;
+    min-width: 0;
+    max-height: 3.9em;
+    overflow: hidden;
+    color: var(--fg-2);
+    font-size: 0.75rem;
+    line-height: 1.5;
+    white-space: pre-wrap;
+}
+
+.ai-quote-x {
+    flex: none;
+    padding: 0 0.15rem;
+    border: 0;
+    background: none;
+    color: var(--fg-2);
+    font: inherit;
+    cursor: pointer;
+}
+
+.ai-quote-msg {
+    align-self: flex-end;
+    max-width: 88%;
+    padding: 0.4rem 0.55rem;
+    border-left: 2px solid #58a6ff;
+    border-radius: 0 6px 6px 0;
+    background: color-mix(in srgb, #58a6ff 7%, var(--bg-2));
+    color: var(--fg-2);
+    font-size: 0.75rem;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
 .ai-compose textarea {
     flex: 1;
+    max-height: 200px;
     padding: 0.5rem 0.6rem;
     border: 1px solid var(--line);
     border-radius: 10px;
@@ -7560,6 +7615,7 @@ html[data-theme='dark'] .cl-latest {
     font: inherit;
     font-size: 0.88rem;
     line-height: 1.6;
+    overflow-y: auto;
     resize: none;
 }
 
