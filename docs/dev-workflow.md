@@ -757,8 +757,10 @@ Java / SQL / JS / Python / Shell，其余默认 Java，猜出来写成 `language
 - 附件：`POST /app/api/agent/extract`（multipart，字段 `file`）读 md / txt / pdf（PDFBox，最多 60 页、
   截断 5 万字），结果拼进消息文本，不落库；
 - 模型在面板底部切换：`deepseek-flash`（支持看图，输入 $0.15–0.30 / 输出 $0.60–1.20 每百万 tokens）和
-  `deepseek-v4-pro`（不支持图片，输入 $0.66–1.32 / 输出 $1.98–3.96）；服务端只接受这两个值，
-  默认值 `notes.agent.model`；模型选择存 `agent-model:<账号>`；
+  `deepseek-v4-pro`（不支持图片，输入 $0.66–1.32 / 输出 $1.98–3.96）；高峰价是非高峰的 2 倍；
+  服务端只接受这两个值，默认值 `notes.agent.model`；模型选择存 `agent-model:<账号>`；
+- 消息悬停有「复制 / 引用」（复制走 Clipboard API，非 HTTPS 用 execCommand 兜底）；
+  图片（粘贴的缩略图和已发送的）点击走 `ai-lightbox` 看大图，Esc 或点遮罩关闭；
 - 每次响应把上游 `usage.prompt_tokens / completion_tokens` 写进当前会话，底部显示
   「上下文 8.2k / 1M · ≈$0.003」，超过 70% 变黄、90% 变红；价格按峰值价估算；
 - key 存 `localStorage` 的 `agent-key:<username>`（按账号分开，只在这台设备/浏览器里，换设备要重填）；

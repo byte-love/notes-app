@@ -12,12 +12,12 @@
 
     const MODELS = {
         'deepseek-flash': {
-            hint: '快、便宜，支持图片 · 输入 $0.15–0.30 / 输出 $0.60–1.20（每百万 tokens）',
+            hint: '支持图片 · 输入 $0.15–0.30 / 输出 $0.60–1.20（每百万 tokens）；高峰价是非高峰的 2 倍',
             inPrice: 0.30,
             outPrice: 1.20,
         },
         'deepseek-v4-pro': {
-            hint: '推理更强，不支持图片 · 输入 $0.66–1.32 / 输出 $1.98–3.96（每百万 tokens）',
+            hint: '不支持图片 · 输入 $0.66–1.32 / 输出 $1.98–3.96（每百万 tokens）；高峰价是非高峰的 2 倍',
             inPrice: 1.32,
             outPrice: 3.96,
         },
@@ -207,6 +207,8 @@
     const iconPlus = svg('M12 5v14M5 12h14');
     const iconPin = svg('M9 4h6l-1 6 4 4H6l4-4zM12 14v6');
     const iconKey = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="8.5" cy="12" r="3"/><path d="M11.5 12H20M17 12v3"/></svg>';
+    const iconCopy = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5h10"/></svg>';
+    const iconQuote = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17V7h10M7 7l4 4M7 7l4-4"/></svg>';
 
     const panel = document.createElement('section');
     panel.className = 'ai-panel';
@@ -261,6 +263,25 @@
             </div>
         </div>`;
     document.body.appendChild(panel);
+
+    const lightbox = document.createElement('div');
+    lightbox.className = 'ai-lightbox';
+    lightbox.hidden = true;
+    lightbox.innerHTML = '<img alt="">';
+    document.body.appendChild(lightbox);
+    const lightboxImg = lightbox.querySelector('img');
+    const preview = (src) => {
+        if (!src) return;
+        lightboxImg.src = src;
+        lightbox.hidden = false;
+    };
+    lightbox.addEventListener('click', () => {
+        lightbox.hidden = true;
+        lightboxImg.src = '';
+    });
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && !lightbox.hidden) lightbox.hidden = true;
+    });
 
     const side = panel.querySelector('.ai-side');
     const chatList = panel.querySelector('.ai-chatlist');
@@ -600,10 +621,52 @@
         : '我是站内助手：可以解释笔记里的句子、整理成新笔记、搜以前的笔记。直接说就行。');
 
     const append = (cls, text) => {
+        const line = document.createElement('div');
+        line.className = 'ai-row ' + cls;
         const el = document.createElement('div');
         el.className = 'ai-msg ' + cls;
         el.textContent = text;
-        msgs.appendChild(el);
+        const acts = document.createElement('div');
+        acts.className = 'ai-acts';
+
+        const copy = document.createElement('button');
+        copy.type = 'button';
+        copy.className = 'ai-act';
+        copy.setAttribute('aria-label', '复制');
+        copy.innerHTML = iconCopy;
+        copy.addEventListener('click', () => {
+            const fallback = () => {
+                const ta = document.createElement('textarea');
+                ta.value = text;
+                ta.style.position = 'fixed';
+                ta.style.opacity = '0';
+                document.body.appendChild(ta);
+                ta.select();
+                try {
+                    document.execCommand('copy');
+                } catch (e) {}
+                ta.remove();
+            };
+            if (window.isSecureContext && navigator.clipboard) {
+                navigator.clipboard.writeText(text).catch(fallback);
+            } else {
+                fallback();
+            }
+        });
+
+        const quote = document.createElement('button');
+        quote.type = 'button';
+        quote.className = 'ai-act';
+        quote.setAttribute('aria-label', '引用');
+        quote.innerHTML = iconQuote;
+        quote.addEventListener('click', () => {
+            input.value = text.split('\n').map((l) => '> ' + l).join('\n') + '\n\n';
+            input.focus();
+        });
+
+        acts.append(copy, quote);
+        line.append(el, acts);
+        msgs.appendChild(line);
         msgs.scrollTop = msgs.scrollHeight;
         return el;
     };
@@ -639,15 +702,11 @@
         const box = document.createElement('div');
         box.className = 'ai-msg user ai-pics';
         pics.forEach((b) => {
-            const a = document.createElement('a');
-            a.href = imageUrl(b);
-            a.target = '_blank';
-            a.rel = 'noopener';
             const img = document.createElement('img');
             img.src = imageUrl(b);
             img.alt = '';
-            a.appendChild(img);
-            box.appendChild(a);
+            img.addEventListener('click', () => preview(imageUrl(b)));
+            box.appendChild(img);
         });
         msgs.appendChild(box);
     };
@@ -751,6 +810,7 @@
                 const img = document.createElement('img');
                 img.src = imageUrl(item.block);
                 img.alt = '';
+                img.addEventListener('click', () => preview(imageUrl(item.block)));
                 box.appendChild(img);
             } else {
                 const name = document.createElement('span');

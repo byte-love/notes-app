@@ -7185,8 +7185,63 @@ html[data-theme='dark'] .cl-latest {
     overflow-y: auto;
 }
 
-.ai-msg {
+.ai-row {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
     max-width: 88%;
+}
+
+.ai-row.user {
+    align-self: flex-end;
+    align-items: flex-end;
+}
+
+.ai-row.assistant {
+    align-self: flex-start;
+    align-items: flex-start;
+}
+
+.ai-acts {
+    display: flex;
+    gap: 0.1rem;
+    opacity: 0;
+    transition: opacity 0.12s ease;
+}
+
+.ai-row:hover .ai-acts,
+.ai-row:focus-within .ai-acts {
+    opacity: 1;
+}
+
+.ai-act {
+    width: 20px;
+    height: 20px;
+    padding: 0;
+    border: 0;
+    border-radius: 5px;
+    background: none;
+    color: var(--fg-2);
+    cursor: pointer;
+}
+
+.ai-act:hover {
+    background: var(--bg-2);
+    color: var(--fg);
+}
+
+.ai-act svg {
+    width: 13px;
+    height: 13px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.ai-msg {
+    max-width: 100%;
     padding: 0.5rem 0.65rem;
     border-radius: 10px;
     background: var(--bg-2);
@@ -7197,7 +7252,6 @@ html[data-theme='dark'] .cl-latest {
 }
 
 .ai-msg.user {
-    align-self: flex-end;
     background: var(--accent-soft);
 }
 
@@ -7262,6 +7316,7 @@ html[data-theme='dark'] .cl-latest {
     max-width: 100%;
     max-height: 180px;
     border-radius: 8px;
+    cursor: zoom-in;
 }
 
 .ai-thinking {
@@ -7482,11 +7537,10 @@ html[data-theme='dark'] .cl-latest {
 }
 
 .ai-hint {
-    overflow: hidden;
     color: var(--fg-2);
     font-size: 0.68rem;
-    white-space: nowrap;
-    text-overflow: ellipsis;
+    line-height: 1.45;
+    white-space: normal;
 }
 
 .ai-compose {
@@ -7669,4 +7723,30 @@ html[data-theme='dark'] .cl-latest {
     .ai-chat-pin {
         opacity: 1;
     }
+
+    .ai-acts {
+        opacity: 1;
+    }
+}
+
+.ai-lightbox {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.82);
+    cursor: zoom-out;
+}
+
+.ai-lightbox[hidden] {
+    display: none;
+}
+
+.ai-lightbox img {
+    max-width: 92vw;
+    max-height: 92vh;
+    border-radius: 6px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
 }
