@@ -51,6 +51,17 @@
     let onBreak = false;
     let breakEnd = 0;
     let reminding = false;
+    let hiddenAt = 0;
+    let hiddenLeader = false;
+
+    const otherLeaderActive = () => {
+        try {
+            const cur = JSON.parse(localStorage.getItem(LEADER_KEY) || 'null');
+            return !!cur && cur.id !== tabId && Date.now() - cur.ts < 7000;
+        } catch (e) {
+            return false;
+        }
+    };
 
     const saveSeconds = () => {
         try {
@@ -106,9 +117,21 @@
         if (document.visibilityState === 'hidden') {
             flush(true);
             saveSeconds();
+            hiddenAt = Date.now();
+            hiddenLeader = leader;
             releaseLeader();
             leader = false;
         } else {
+            if (hiddenAt && hiddenLeader && !otherLeaderActive()) {
+                const gap = (Date.now() - hiddenAt) / 1000;
+                // 切走 5 秒到 40 分钟：算在离开时所在的分区；超过 40 分钟视为离开，不补
+                if (gap >= 5 && gap <= 2400) {
+                    buffer[category] = (buffer[category] || 0) + Math.round(gap);
+                    flush(false);
+                }
+            }
+            hiddenAt = 0;
+            hiddenLeader = false;
             leader = isLeader();
         }
     });
