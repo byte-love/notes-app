@@ -745,15 +745,22 @@ Java / SQL / JS / Python / Shell，其余默认 Java，猜出来写成 `language
 - `static/js/assistant.js`：机器人球 + 悬浮窗。正文页从模板的 `data-note-slug / data-note-kind / data-note-title`
   读当前笔记并默认锁定（chip 可点 × 取消），项目页这类没写 data 属性的按 URL 兜底；列表页不锁；
   球可以拖动（`float-pos:assistant`）；窗口可以拖标题栏移动、拖八条边/四角缩放，位置和尺寸存
-  `agent-geo:<账号>`，默认 440×560；
-- 会话：`agent-chats:<账号>` 存一组 `{id,title,messages,pending,usage,at}`，当前会话 id 存
-  `agent-active:<账号>`；标题取第一条用户消息前 24 字；面板里的列表可以切换 / 删除 / 新建；
-  聊天记录上限 40 条；`localStorage` 存满时自动丢掉旧消息里的图片，文字保留；
-- 输入框回车发送、Shift+回车换行；图片从剪贴板粘贴，前端先缩到最长边 1280 的 JPEG（质量 0.82），
-  一次最多 6 张；消息 `content` 是 OpenAI 兼容的 block 数组（`text` + `image_url`），服务端
-  `cleanContent` 只放行文本和 `data:image/`、`http(s)` 图片；
-- 模型是 `deepseek-flash`（`notes.agent.model` 可改），支持看图、上下文 1M；每次响应把上游
-  `usage.prompt_tokens` 写进当前会话，面板标题栏显示「已用 / 1M」，超过 70% 变黄、90% 变红；
+  `agent-geo:<账号>`，默认 720×560；打开面板时如果正文有选中文字，会自动以 `> ` 引用进输入框；
+- 会话在左侧栏：`agent-chats:<账号>` 存一组 `{id,title,messages,pending,usage,pinned,at}`，当前会话 id 存
+  `agent-active:<账号>`；标题取第一条用户消息前 24 字，可以搜索、双击重命名、置顶、删除、新建；
+  聊天记录上限 40 条；窄屏（<560）侧栏变抽屉，点标题栏的 ☰ 开合；
+- 输入框回车发送、Shift+回车换行；发送中按钮变「停止」（AbortController），停止后消息下方出现
+  「重新生成」；切换会话/新建会话会先取消进行中的请求，并用请求序号丢弃过期响应；
+- 图片从剪贴板粘贴，前端先缩到最长边 1280 的 JPEG（质量 0.82），一次最多 6 张；图片存 IndexedDB
+  （库 `agent-img`，消息里只留 `{type:'image', id}`），存不下才退回 data URL；发送时再拼成
+  OpenAI 兼容的 `image_url` block；服务端 `cleanContent` 只放行文本和 `data:image/`、`http(s)` 图片；
+- 附件：`POST /app/api/agent/extract`（multipart，字段 `file`）读 md / txt / pdf（PDFBox，最多 60 页、
+  截断 5 万字），结果拼进消息文本，不落库；
+- 模型在面板底部切换：`deepseek-flash`（支持看图，输入 $0.15–0.30 / 输出 $0.60–1.20 每百万 tokens）和
+  `deepseek-v4-pro`（不支持图片，输入 $0.66–1.32 / 输出 $1.98–3.96）；服务端只接受这两个值，
+  默认值 `notes.agent.model`；模型选择存 `agent-model:<账号>`；
+- 每次响应把上游 `usage.prompt_tokens / completion_tokens` 写进当前会话，底部显示
+  「上下文 8.2k / 1M · ≈$0.003」，超过 70% 变黄、90% 变红；价格按峰值价估算；
 - key 存 `localStorage` 的 `agent-key:<username>`（按账号分开，只在这台设备/浏览器里，换设备要重填）；
   每次请求放 `X-Agent-Key`，服务端只在 `AgentController` 里拼到上游 `Authorization`，**不落库、不写日志**；
 - `POST /app/api/agent/chat` 只带 `messages` 和 `contextSlug`；服务端把当前笔记正文（截断 8000 字）

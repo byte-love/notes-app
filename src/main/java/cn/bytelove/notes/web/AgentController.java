@@ -21,8 +21,12 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
+import org.apache.pdfbox.Loader;
+import org.apache.pdfbox.text.PDFTextStripper;
 
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -99,7 +103,7 @@ public class AgentController {
     public record Msg(String role, JsonNode content) {
     }
 
-    public record ChatIn(List<Msg> messages, String contextSlug) {
+    public record ChatIn(List<Msg> messages, String contextSlug, String model) {
     }
 
     public record ApplyIn(String id) {
@@ -146,13 +150,17 @@ public class AgentController {
         long now = System.currentTimeMillis();
         proposals.entrySet().removeIf(e -> e.getValue().expiresAt() < now);
 
+        String modelName = in.model() != null && Set.of("deepseek-flash", "deepseek-v4-pro").contains(in.model())
+                ? in.model()
+                : model;
+
         List<Map<String, Object>> made = new ArrayList<>();
         List<String> toolsUsed = new ArrayList<>();
         String reply = "";
         JsonNode lastUsage = null;
         for (int round = 0; round < MAX_ROUNDS; round++) {
             Map<String, Object> body = new LinkedHashMap<>();
-            body.put("model", model);
+            body.put("model", modelName);
             body.put("messages", apiMessages);
             body.put("tools", toolDefs());
             body.put("tool_choice", "auto");
@@ -196,6 +204,7 @@ public class AgentController {
         out.put("proposals", made);
         out.put("tools", toolsUsed);
         out.put("contextLimit", CONTEXT_LIMIT);
+        out.put("model", modelName);
         if (lastUsage != null) {
             out.put("usage", lastUsage);
         }
@@ -248,6 +257,38 @@ public class AgentController {
         out.put("ok", true);
         out.put("slug", saved.getSlug());
         out.put("url", urlOf(saved));
+        return out;
+    }
+
+    /** 附件解析：文本直接读，PDF 抽文字；结果交给前端拼进消息，不落库。 */
+    @PostMapping("/api/agent/extract")
+    @ResponseBody
+    public Map<String, Object> extract(@RequestParam("file") MultipartFile file) throws Exception {
+        if (file == null || file.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "文件为空");
+        }
+        if (file.getSize() > 8L * 1024 * 1024) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "文件超过 8MB");
+        }
+        String name = file.getOriginalFilename() == null ? "" : file.getOriginalFilename().toLowerCase(Locale.ROOT);
+        String text;
+        if (name.endsWith(".md") || name.endsWith(".txt")) {
+            text = new String(file.getBytes(), StandardCharsets.UTF_8);
+        } else if (name.endsWith(".pdf")) {
+            try (var doc = Loader.loadPDF(file.getBytes())) {
+                var stripper = new PDFTextStripper();
+                stripper.setEndPage(Math.min(60, doc.getNumberOfPages()));
+                text = stripper.getText(doc);
+            }
+        } else {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "只支持 md / txt / pdf");
+        }
+        if (text.length() > 50_000) {
+            text = text.substring(0, 50_000);
+        }
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("text", text);
+        out.put("chars", text.length());
         return out;
     }
 
