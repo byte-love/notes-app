@@ -3,8 +3,10 @@ package cn.bytelove.notes.web;
 import cn.bytelove.notes.domain.ContentCard;
 import cn.bytelove.notes.domain.ContentItem;
 import cn.bytelove.notes.domain.ContentKind;
+import cn.bytelove.notes.domain.NoteCategory;
 import cn.bytelove.notes.repo.ContentItemRepository;
 import cn.bytelove.notes.service.BookmarkService;
+import cn.bytelove.notes.service.CategoryService;
 import cn.bytelove.notes.service.CommentFilter;
 import cn.bytelove.notes.service.CommentRateLimiter;
 import cn.bytelove.notes.service.CommentService;
@@ -80,12 +82,14 @@ public class PublicController {
     private final CommentFilter commentFilter;
     private final CommentRateLimiter commentLimiter;
     private final HighlightService highlights;
+    private final CategoryService categories;
 
     public PublicController(ContentItemRepository items, VisibilityService visibility, ViewerService viewers,
                             ContentStarService stars, RatingService ratings, TagService tags, ProjectMetaService meta, ReadingPositionService positions, BookmarkService bookmarks,
                             MarkdownRenderer markdown, NoteTreeService tree, SubGroupService subGroups,
                             CommentService comments, CommentFilter commentFilter,
-                            CommentRateLimiter commentLimiter, HighlightService highlights) {
+                            CommentRateLimiter commentLimiter, HighlightService highlights,
+                            CategoryService categories) {
         this.items = items;
         this.visibility = visibility;
         this.viewers = viewers;
@@ -102,11 +106,12 @@ public class PublicController {
         this.commentFilter = commentFilter;
         this.commentLimiter = commentLimiter;
         this.highlights = highlights;
+        this.categories = categories;
     }
 
     @GetMapping("/")
     public String home(Model model, Authentication auth) {
-        return listing(ContentKind.NOTE, "闪念", model, auth, null, false, null, null);
+        return byKind(ContentKind.NOTE, "闪念", model, auth, null, false, null, null);
     }
 
     @GetMapping("/notes")
@@ -115,7 +120,7 @@ public class PublicController {
                         @RequestParam(name = "fragment", defaultValue = "false") boolean fragment,
                         @RequestParam(name = "rate", required = false) String rate,
                         @RequestParam(name = "tag", required = false) String tag) {
-        return listing(ContentKind.NOTE, "闪念", model, auth, from, fragment, rate, tag);
+        return byKind(ContentKind.NOTE, "闪念", model, auth, from, fragment, rate, tag);
     }
 
     @GetMapping("/bagu")
@@ -124,7 +129,7 @@ public class PublicController {
                        @RequestParam(name = "fragment", defaultValue = "false") boolean fragment,
                        @RequestParam(name = "rate", required = false) String rate,
                        @RequestParam(name = "tag", required = false) String tag) {
-        return listing(ContentKind.BAGU, "八股", model, auth, from, fragment, rate, tag);
+        return byKind(ContentKind.BAGU, "八股", model, auth, from, fragment, rate, tag);
     }
 
     @GetMapping("/interview")
@@ -133,7 +138,7 @@ public class PublicController {
                             @RequestParam(name = "fragment", defaultValue = "false") boolean fragment,
                             @RequestParam(name = "rate", required = false) String rate,
                             @RequestParam(name = "tag", required = false) String tag) {
-        return listing(ContentKind.INTERVIEW, "面试", model, auth, from, fragment, rate, tag);
+        return byKind(ContentKind.INTERVIEW, "面试", model, auth, from, fragment, rate, tag);
     }
 
     @GetMapping("/algo")
@@ -142,7 +147,7 @@ public class PublicController {
                        @RequestParam(name = "fragment", defaultValue = "false") boolean fragment,
                        @RequestParam(name = "rate", required = false) String rate,
                        @RequestParam(name = "tag", required = false) String tag) {
-        return listing(ContentKind.ALGO, "算法", model, auth, from, fragment, rate, tag);
+        return byKind(ContentKind.ALGO, "算法", model, auth, from, fragment, rate, tag);
     }
 
     @GetMapping("/projects")
@@ -151,7 +156,46 @@ public class PublicController {
                            @RequestParam(name = "fragment", defaultValue = "false") boolean fragment,
                            @RequestParam(name = "rate", required = false) String rate,
                            @RequestParam(name = "tag", required = false) String tag) {
-        return listing(ContentKind.PROJECT, "项目", model, auth, from, fragment, rate, tag);
+        return byKind(ContentKind.PROJECT, "项目", model, auth, from, fragment, rate, tag);
+    }
+
+    /**
+     * 分类页签。登录用户的分组是他自己建的，游客没有，所以直接 404。
+     * 路由和老的 /notes 这些并存：老链接还能用，新链接统一走 /c。
+     */
+    @GetMapping("/c/{category}")
+    public String categoryPage(@PathVariable String category, Model model, Authentication auth,
+                               @RequestParam(name = "from", required = false) Integer from,
+                               @RequestParam(name = "fragment", defaultValue = "false") boolean fragment,
+                               @RequestParam(name = "rate", required = false) String rate,
+                               @RequestParam(name = "tag", required = false) String tag) {
+        Viewer viewer = viewers.current(auth);
+        if (viewer.userId() == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND);
+        }
+        if (CategoryService.UNCATEGORIZED.equals(category)) {
+            return listing(ContentKind.NOTE, null, true, "未分类", model, auth, from, fragment, rate, tag);
+        }
+        NoteCategory cat = categories.find(viewer.userId(), category)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+        return listing(cat.getKind(), cat, false, cat.getName(), model, auth, from, fragment, rate, tag);
+    }
+
+    @GetMapping("/c/{category}/{slug}")
+    public String categoryItem(@PathVariable String category, @PathVariable String slug,
+                               Model model, Authentication auth) {
+        Viewer viewer = viewers.current(auth);
+        if (viewer.userId() == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND);
+        }
+        String base = "/c/" + category;
+        if (!CategoryService.UNCATEGORIZED.equals(category)) {
+            categories.find(viewer.userId(), category)
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+        }
+        ContentItem item = items.findByOwnerIdAndSlug(viewer.userId(), slug)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+        return detail(item.getKind(), slug, model, auth, base);
     }
 
     @GetMapping("/bagu/{slug}")
@@ -179,11 +223,24 @@ public class PublicController {
         return detail(ContentKind.PROJECT, slug, model, auth);
     }
 
-    private String listing(ContentKind kind, String pageTitle, Model model, Authentication auth,
+    /**
+     * 老分区链接（/notes 等）：登录用户按自己那个默认分类取，
+     * 这样 AI 把某篇挪到别的分类之后，不会同时挂在两个页签下。游客仍然按 kind 看推荐内容。
+     */
+    private String byKind(ContentKind kind, String pageTitle, Model model, Authentication auth,
+                          Integer from, boolean fragment, String rate, String tag) {
+        Viewer viewer = viewers.current(auth);
+        NoteCategory cat = viewer.userId() == null ? null
+                : categories.defaultOf(viewer.userId(), kind).orElse(null);
+        return listing(kind, cat, false, pageTitle, model, auth, from, fragment, rate, tag);
+    }
+
+    private String listing(ContentKind kind, NoteCategory category, boolean uncategorized, String pageTitle,
+                           Model model, Authentication auth,
                            Integer from, boolean fragment, String rate, String tag) {
         Viewer viewer = viewers.current(auth);
         Set<Long> lockedIds = new LinkedHashSet<>();
-        List<ContentCard> all = filtered(poolForListing(kind, viewer), viewer, lockedIds);
+        List<ContentCard> all = filtered(poolForListing(kind, category, uncategorized, viewer), viewer, lockedIds);
         Set<Long> starIds = stars.starredIds(viewer.userId());
 
         // 目录节点只出现在左侧树里，不混进右侧正文列表；标成「当目录用」的也一样
@@ -293,14 +350,28 @@ public class PublicController {
         model.addAttribute("activeId", null);
         model.addAttribute("blank", true);
         model.addAttribute("pageTitle", pageTitle);
-        model.addAttribute("basePath", contextPath() + basePath(kind));
-        model.addAttribute("treeBase", contextPath() + "/api/tree/" + kind.name().toLowerCase(java.util.Locale.ROOT));
-        model.addAttribute("tabActive", kind.name().toLowerCase(java.util.Locale.ROOT));
+        String categorySlug = uncategorized ? CategoryService.UNCATEGORIZED
+                : (category == null ? null : category.getSlug());
+        model.addAttribute("categorySlug", categorySlug);
+        model.addAttribute("basePath", contextPath() + (categorySlug == null ? basePath(kind) : "/c/" + categorySlug));
+        model.addAttribute("treeBase", contextPath() + "/api/tree/" + kind.name().toLowerCase(java.util.Locale.ROOT)
+                + (categorySlug == null ? "" : "?category=" + categorySlug));
+        model.addAttribute("tabActive", categorySlug == null ? kind.name().toLowerCase(java.util.Locale.ROOT)
+                : "c:" + categorySlug);
+        model.addAttribute("mineTabs", categories.tabs(viewer.userId(), categorySlug));
         // 分片请求只回内容那一段，不套整页
         return fragment ? "fragments/list :: groupSections" : "list";
     }
 
     private String detail(ContentKind kind, String slug, Model model, Authentication auth) {
+        return detail(kind, slug, model, auth, basePath(kind));
+    }
+
+    /**
+     * @param base 详情页所属页签的链接前缀：老分区是 /notes、/bagu 这些，
+     *             分类页签是 /c/<分类 slug>。
+     */
+    private String detail(ContentKind kind, String slug, Model model, Authentication auth, String base) {
         Viewer viewer = viewers.current(auth);
         ContentItem item = resolve(kind, slug, viewer);
 
@@ -319,7 +390,7 @@ public class PublicController {
 
         // 项目走单独的模板：它渲染的是作品集卡片那套结构化字段，没有目录树
         if (kind == ContentKind.PROJECT) {
-            model.addAttribute("basePath", contextPath() + basePath(kind));
+            model.addAttribute("basePath", contextPath() + base);
             model.addAttribute("tabActive", "project");
             model.addAttribute("item", item);
             model.addAttribute("project", meta.view(item.getId()).orElse(null));
@@ -357,8 +428,9 @@ public class PublicController {
         Set<Long> lockedIds = new LinkedHashSet<>();
         // 侧栏树跟着这条内容的作者走：看别人的推荐内容时，列的是他自己的目录
         // 这些只是「目录 + 上一条/下一条」用的，正文不用，所以查不含正文的卡片
-        List<ContentCard> siblings = filtered(
-                items.findCardsByOwnerAndKind(item.getOwnerId(), kind), viewer, lockedIds);
+        List<ContentCard> siblings = filtered(item.getCategoryId() != null
+                ? items.findCardsByOwnerAndCategory(item.getOwnerId(), item.getCategoryId())
+                : items.findCardsByOwnerAndKind(item.getOwnerId(), kind), viewer, lockedIds);
 
         if (kind != ContentKind.PROJECT) {
             model.addAttribute("crumbs", tree.breadcrumb(siblings, ContentCard.of(item)));
@@ -368,8 +440,9 @@ public class PublicController {
         model.addAttribute("starIds", stars.starredIds(viewer.userId()));
         model.addAttribute("lockedIds", lockedIds);
         model.addAttribute("lockedCount", lockedIds.size());
-        model.addAttribute("basePath", contextPath() + basePath(kind));
-        model.addAttribute("treeBase", contextPath() + "/api/tree/" + kind.name().toLowerCase(java.util.Locale.ROOT));
+        model.addAttribute("basePath", contextPath() + base);
+        model.addAttribute("treeBase", contextPath() + "/api/tree/" + kind.name().toLowerCase(java.util.Locale.ROOT)
+                + (base.startsWith("/c/") ? "?category=" + base.substring(3) : ""));
         model.addAttribute("tabActive", kind.name().toLowerCase(java.util.Locale.ROOT));
 
         model.addAttribute("item", item);
@@ -397,7 +470,7 @@ public class PublicController {
         // 只有自己的内容能标星级：星级是内容上的字段，不是「谁标的」，改别人的条目等于改别人的东西
         model.addAttribute("canRate", owner);
         // 编辑页「返回」要回到这一页；这里给的是不带 contextPath 的路径（redirect: 和 @{} 各管各的）
-        model.addAttribute("editBack", basePath(kind) + "/" + item.getSlug());
+        model.addAttribute("editBack", base + "/" + item.getSlug());
 
         // 右栏换成评论区：整篇评论 + 锚在某句话上的评论（楼中楼在 service 里组好）
         // 复制出来的副本要跟原版共用同一串评论，所以按「最初的来源条目」做 key
@@ -942,6 +1015,7 @@ public class PublicController {
     @GetMapping("/api/tree/{kind}")
     public String treeChildren(@PathVariable String kind,
                                @RequestParam(name = "parent") String parentSlug,
+                               @RequestParam(name = "category", required = false) String categorySlug,
                                Model model, Authentication auth) {
         ContentKind k;
         try {
@@ -951,7 +1025,10 @@ public class PublicController {
         }
         Viewer viewer = viewers.current(auth);
         Set<Long> lockedIds = new LinkedHashSet<>();
-        List<ContentCard> all = filtered(poolForListing(k, viewer), viewer, lockedIds);
+        NoteCategory cat = viewer.userId() == null || categorySlug == null || categorySlug.isBlank()
+                ? null : categories.find(viewer.userId(), categorySlug).orElse(null);
+        boolean uncategorized = viewer.userId() != null && CategoryService.UNCATEGORIZED.equals(categorySlug);
+        List<ContentCard> all = filtered(poolForListing(k, cat, uncategorized, viewer), viewer, lockedIds);
 
         Set<Long> parentIds = new LinkedHashSet<>();
         for (ContentCard i : all) {
@@ -985,8 +1062,10 @@ public class PublicController {
             model.addAttribute("nodes", tree.build(kids, lockedIds));
         }
         model.addAttribute("activeId", null);
-        model.addAttribute("basePath", contextPath() + basePath(k));
-        model.addAttribute("treeBase", contextPath() + "/api/tree/" + kind.toLowerCase(java.util.Locale.ROOT));
+        model.addAttribute("basePath", contextPath() + (categorySlug == null || categorySlug.isBlank()
+                ? basePath(k) : "/c/" + categorySlug));
+        model.addAttribute("treeBase", contextPath() + "/api/tree/" + kind.toLowerCase(java.util.Locale.ROOT)
+                + (categorySlug == null || categorySlug.isBlank() ? "" : "?category=" + categorySlug));
         model.addAttribute("starIds", stars.starredIds(viewer.userId()));
         model.addAttribute("bookmarkIds", bookmarks.ids(viewer.userId()));
         return "fragments/tree :: nodes";
@@ -1049,8 +1128,15 @@ public class PublicController {
      * 列表页的内容池：登录后是自己的空间，游客看的是推荐栏里公开的那部分。
      * 两者都只查卡片（不含正文）：一次要算整棵目录和全部卡片，正文在这个页面用不上。
      */
-    private List<ContentCard> poolForListing(ContentKind kind, Viewer viewer) {
+    private List<ContentCard> poolForListing(ContentKind kind, NoteCategory category, boolean uncategorized,
+                                             Viewer viewer) {
         if (viewer.userId() != null) {
+            if (uncategorized) {
+                return items.findCardsByOwnerUncategorized(viewer.userId());
+            }
+            if (category != null) {
+                return items.findCardsByOwnerAndCategory(viewer.userId(), category.getId());
+            }
             return items.findCardsByOwnerAndKind(viewer.userId(), kind);
         }
         return items.findRecommendedCards(kind);

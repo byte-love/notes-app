@@ -2,8 +2,11 @@ package cn.bytelove.notes.web;
 
 import cn.bytelove.notes.domain.ContentItem;
 import cn.bytelove.notes.domain.ContentKind;
+import cn.bytelove.notes.domain.NoteCategory;
 import cn.bytelove.notes.domain.Visibility;
 import cn.bytelove.notes.repo.ContentItemRepository;
+import cn.bytelove.notes.service.CategoryService;
+import cn.bytelove.notes.service.ExploreSearchService;
 import cn.bytelove.notes.service.TagService;
 import cn.bytelove.notes.service.ViewerService;
 import cn.bytelove.notes.service.VisibilityService.Viewer;
@@ -61,6 +64,8 @@ public class AgentController {
             需要找资料时调用 search_notes / read_note；要新建或修改笔记时调用 create_note / update_note。
             这两个工具只生成待用户确认的建议，不要声称已经写入，也不要在回复里重复整篇正文。
             用户可能发图片，直接看图回答。
+            「我的笔记」的分区（页签）用 list_categories 看；新建笔记时能对上现有分类就在 create_note 里传 category。
+            用户问技术广场里有没有某类内容，用 search_explore 搜，那边是别人的公开内容，只读、别当成他的笔记。
             回答用中文，简短直接。
             """;
     private static final int MAX_ROUNDS = 6;
@@ -86,18 +91,23 @@ public class AgentController {
     private final ObjectMapper mapper;
     private final ViewerService viewers;
     private final TagService tags;
+    private final CategoryService categories;
+    private final ExploreSearchService explore;
     private final HttpClient http = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(10))
             .build();
     private final Map<String, Proposal> proposals = new ConcurrentHashMap<>();
 
     public AgentController(ContentItemRepository items, JdbcTemplate jdbc, ObjectMapper mapper,
-                           ViewerService viewers, TagService tags) {
+                           ViewerService viewers, TagService tags, CategoryService categories,
+                           ExploreSearchService explore) {
         this.items = items;
         this.jdbc = jdbc;
         this.mapper = mapper;
         this.viewers = viewers;
         this.tags = tags;
+        this.categories = categories;
+        this.explore = explore;
     }
 
     public record Msg(String role, JsonNode content) {
@@ -111,7 +121,7 @@ public class AgentController {
 
     private record Proposal(String id, long ownerId, String action, String slug, String title,
                             String body, String kind, String visibility, String summary,
-                            String oldBody, long expiresAt) {
+                            String oldBody, String category, long expiresAt) {
     }
 
     @PostMapping("/api/agent/chat")
@@ -236,6 +246,13 @@ public class AgentController {
                     visibilityOf(p.visibility()));
             item.setSortOrder(nextSortOrder(userId, kind));
             item.setRecommended(item.getVisibility() == Visibility.PUBLIC);
+            if (p.category() != null) {
+                NoteCategory category = categories.find(userId, p.category()).orElse(null);
+                if (category != null) {
+                    item.setCategoryId(category.getId());
+                }
+            }
+            categories.attachDefault(item);
             saved = items.save(item);
         } else {
             ContentItem item = mine(userId, p.slug());
@@ -380,6 +397,12 @@ public class AgentController {
             case "read_note" -> read(args, userId);
             case "create_note" -> create(args, userId, made);
             case "update_note" -> update(args, userId, made);
+            case "list_categories" -> Map.of("categories", categories.view(userId));
+            case "create_category" -> createCategory(args, userId);
+            case "rename_category" -> renameCategory(args, userId);
+            case "delete_category" -> deleteCategory(args, userId);
+            case "move_note" -> moveNote(args, userId);
+            case "search_explore" -> Map.of("results", explore.search(args.path("query").asText("")));
             default -> Map.of("error", "未知工具：" + name);
         };
     }
@@ -444,8 +467,14 @@ public class AgentController {
         String kind = kindOf(args.path("kind").asText("")).name();
         String visibility = visibilityOf(args.path("visibility").asText("")).name();
         String summary = args.path("summary").asText("");
+        // 分类是页签：能对上就用用户现有的，对不上留空走该 kind 的默认分类
+        String category = args.path("category").asText("").trim();
+        String categorySlug = category.isEmpty() ? null : category;
+        if (categorySlug != null && categories.find(userId, categorySlug).isEmpty()) {
+            return Map.of("error", "没有这个分类：" + categorySlug + "（先用 list_categories 查）");
+        }
         Proposal p = new Proposal(java.util.UUID.randomUUID().toString(), userId, "create",
-                freeSlug(userId), title, body, kind, visibility, summary, null,
+                freeSlug(userId), title, body, kind, visibility, summary, null, categorySlug,
                 System.currentTimeMillis() + PROPOSAL_TTL);
         proposals.put(p.id(), p);
         made.add(view(p));
@@ -483,12 +512,71 @@ public class AgentController {
         }
         Proposal p = new Proposal(java.util.UUID.randomUUID().toString(), userId, "update",
                 item.getSlug(), title, body, item.getKind().name(),
-                item.getVisibility().name(), summary, oldBody,
+                item.getVisibility().name(), summary, oldBody, null,
                 System.currentTimeMillis() + PROPOSAL_TTL);
         proposals.put(p.id(), p);
         made.add(view(p));
         return Map.of("ok", true, "proposal_id", p.id(), "action", "update",
                 "message", "已生成待确认的修改建议，等用户在页面上点写入");
+    }
+
+    // ---------- 分类：直接生效（改的是页签结构，不是正文），删除要求 confirm ----------
+
+    private Map<String, Object> createCategory(JsonNode args, long userId) {
+        try {
+            NoteCategory created = categories.create(userId, args.path("name").asText(""));
+            Map<String, Object> out = new LinkedHashMap<>();
+            out.put("ok", true);
+            out.put("slug", created.getSlug());
+            out.put("name", created.getName());
+            return out;
+        } catch (ResponseStatusException e) {
+            return Map.of("error", e.getReason() == null ? "参数不合法" : e.getReason());
+        }
+    }
+
+    private Map<String, Object> renameCategory(JsonNode args, long userId) {
+        String slug = args.path("slug").asText("").trim();
+        NoteCategory existing = categories.find(userId, slug).orElse(null);
+        if (existing == null) {
+            return Map.of("error", "没有这个分类：" + slug);
+        }
+        NoteCategory saved = categories.rename(userId, existing.getId(), args.path("name").asText(""));
+        return Map.of("ok", true, "slug", saved.getSlug(), "name", saved.getName());
+    }
+
+    private Map<String, Object> deleteCategory(JsonNode args, long userId) {
+        String slug = args.path("slug").asText("").trim();
+        NoteCategory existing = categories.find(userId, slug).orElse(null);
+        if (existing == null) {
+            return Map.of("error", "没有这个分类：" + slug);
+        }
+        if (!args.path("confirm").asBoolean(false)) {
+            return Map.of("error", "删除分类要先把分类名和里面有几条告诉用户、得到同意，再传 confirm=true");
+        }
+        int moved;
+        try {
+            moved = categories.delete(userId, existing.getId());
+        } catch (ResponseStatusException e) {
+            return Map.of("error", e.getReason() == null ? "删不掉" : e.getReason());
+        }
+        return Map.of("ok", true, "deleted", existing.getSlug(), "moved", moved);
+    }
+
+    private Map<String, Object> moveNote(JsonNode args, long userId) {
+        String slug = args.path("slug").asText("").trim();
+        String category = args.path("category").asText("").trim();
+        ContentItem item = items.findByOwnerIdAndSlug(userId, slug).orElse(null);
+        if (item == null) {
+            return Map.of("error", "没有这篇笔记：" + slug);
+        }
+        NoteCategory target = categories.find(userId, category).orElse(null);
+        if (target == null) {
+            return Map.of("error", "没有这个分类：" + category + "（先用 list_categories 查）");
+        }
+        item.setCategoryId(target.getId());
+        items.save(item);
+        return Map.of("ok", true, "slug", item.getSlug(), "category", target.getSlug());
     }
 
     private static Map<String, Object> view(Proposal p) {
@@ -502,6 +590,7 @@ public class AgentController {
         out.put("visibility", p.visibility());
         out.put("summary", p.summary());
         out.put("oldBody", p.oldBody());
+        out.put("category", p.category());
         return out;
     }
 
@@ -549,6 +638,7 @@ public class AgentController {
                 Map.of("title", Map.of("type", "string"),
                         "body", Map.of("type", "string"),
                         "kind", Map.of("type", "string", "enum", List.of("note", "project", "bagu", "interview", "algo")),
+                        "category", Map.of("type", "string"),
                         "visibility", Map.of("type", "string", "enum", List.of("PUBLIC", "MEMBER", "PRIVATE")),
                         "summary", Map.of("type", "string")),
                 List.of("title", "body")));
@@ -558,6 +648,21 @@ public class AgentController {
                         "body", Map.of("type", "string"),
                         "summary", Map.of("type", "string")),
                 List.of("slug")));
+        defs.add(fn("list_categories", "列出用户自己的笔记分类（页面上的页签）和每个分类的条数",
+                Map.of(), List.of()));
+        defs.add(fn("create_category", "新建一个笔记分类（页签），会直接生效；名字要先问用户",
+                Map.of("name", Map.of("type", "string")), List.of("name")));
+        defs.add(fn("rename_category", "给分类改名，会直接生效",
+                Map.of("slug", Map.of("type", "string"),
+                        "name", Map.of("type", "string")), List.of("slug", "name")));
+        defs.add(fn("delete_category", "删除分类，里面的笔记会移到「未分类」。必须先告诉用户分类名和里面有几条并得到同意，再传 confirm=true",
+                Map.of("slug", Map.of("type", "string"),
+                        "confirm", Map.of("type", "boolean")), List.of("slug", "confirm")));
+        defs.add(fn("move_note", "把一篇笔记挪到另一个分类",
+                Map.of("slug", Map.of("type", "string"),
+                        "category", Map.of("type", "string")), List.of("slug", "category")));
+        defs.add(fn("search_explore", "在技术广场里搜（只有公开且进了推荐栏的内容），只读",
+                Map.of("query", Map.of("type", "string")), List.of("query")));
         return defs;
     }
 

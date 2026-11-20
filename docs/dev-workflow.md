@@ -677,6 +677,28 @@ sudo /opt/deploy/sync-db.sh    # 正式库整库覆盖到测试库
 - 注册开关：`/opt/apps/notes-app-test/app.env` 里的 `REGISTER_ENABLED=false` 关掉（关掉后 `/register` 直接 404），同 IP 每小时最多注册 3 个
 - 会话超时 24h，另有 remember-me 30 天：**重启进程不会把用户踢下线**（会话本身在内存里，重启会清空，靠 cookie 自动恢复）
 
+## 笔记分类（`/app/c/<slug>`）
+
+「我的笔记」上面的那排页签，2026-11-20 起是每个用户自己的一组分类，不再写死五个分区：
+
+- **表结构**（`V32__category.sql`）：`note_category(owner_id, slug, name, kind, sort_order, builtin)`，
+  `content_item.category_id`。迁移按 `kind` 把老内容回填到各自的默认分类。
+- **kind 还在**：分类决定「放在哪个页签」，条目自己的 `kind` 决定模板、详情路由、配色。
+  所以分类只是上面一层组织，改分类不动内容语义。
+- **默认五个**：`CategoryService.ensure()` 在注册、账号种子和每次取分类时兜底补齐，
+  slug 固定 `note / project / bagu / algo / interview`，老链接靠它继续能用。
+- **路由**：列表 `/c/<分类 slug>`；详情 `/c/<分类 slug>/<条目 slug>`。
+  老的 `/notes`、`/bagu` 这些对登录用户映射到自己的默认分类（游客仍然按 kind 看推荐内容），
+  这样 AI 把某篇挪到别的分类后，不会同时挂在两个页签下。
+- **管理入口**：设置页「笔记分类」（改名 / 上下移 / 删除），列表页签末尾的「+」就地新建。
+  默认分类能改名、能排序，删不掉；删自己的分类时，里面的条目 `category_id` 置空，落到「未分类」页签。
+- **新建条目**：`AdminController`、`AiController`、`AgentController`、`RecommendService` 建完都调
+  `categories.attachDefault(item)`，没指定分类就落到该 kind 的默认分类；左树「+」会把当前页签的
+  `data-category` 一起提交（`tree-admin.js`）。
+- **AI 工具**：MCP 有 `notes_categories / category_create / category_rename / category_delete / note_move /
+  notes_explore`（远端 `McpController` 与本地 `mcp/notes-mcp.mjs` 两处要一起改）；站内助手有同名工具，
+  分类操作直接生效、删除要 `confirm`。`notes_explore` 只读，搜的是公开且进了推荐栏的内容。
+
 ## 正文里那几个手写标记
 
 正文存的是 Markdown，页面上看到的效果全是渲染出来的。除了标准语法，站里还认三个自己加的标记：

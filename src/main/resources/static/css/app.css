@@ -1394,6 +1394,103 @@ body.cmt-off .cmt-pane {
     border-bottom-color: hsl(var(--kh) var(--k-sat) var(--k-l-bar));
 }
 
+/* 页签末尾的「+」：就地建一个新分类，尺寸跟着页签走，别做成一个抢眼的按钮 */
+.mine-tab-add {
+    align-self: center;
+    padding: 0 0.15rem;
+    border: none;
+    background: none;
+    color: var(--fg-3);
+    font: inherit;
+    font-size: 1.1rem;
+    line-height: 1;
+    cursor: pointer;
+    transition: color 0.14s ease;
+}
+
+.mine-tab-add:hover {
+    color: var(--fg);
+}
+
+/* 页签上就地输入的新分类名 */
+.mine-tab-input {
+    width: 7rem;
+    padding: 0.1rem 0.3rem;
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    background: var(--bg-1);
+    color: var(--fg);
+    font: inherit;
+    font-size: 0.95rem;
+}
+
+/* 设置页的「笔记分类」：一行一个分类，改名 / 上下移 / 删除都在右边 */
+.cat-row {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    padding: 0.45rem 0;
+    border-bottom: 1px solid var(--line);
+}
+
+.cat-row:last-child {
+    border-bottom: none;
+}
+
+.cat-name {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    flex: 1 1 14rem;
+    min-width: 0;
+}
+
+.cat-name input[type="text"],
+.cat-new input[type="text"] {
+    flex: 1 1 auto;
+    min-width: 0;
+    padding: 0.3rem 0.45rem;
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    background: var(--bg-1);
+    color: var(--fg);
+    font: inherit;
+    font-size: 0.86rem;
+}
+
+.cat-btn {
+    flex: none;
+    padding: 0.25rem 0.55rem;
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    background: none;
+    color: var(--fg-2);
+    font: inherit;
+    font-size: 0.82rem;
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+.cat-btn:hover {
+    color: var(--fg);
+    border-color: var(--fg-3);
+}
+
+.cat-btn:disabled {
+    opacity: 0.35;
+    cursor: default;
+}
+
+.cat-btn-del:hover {
+    color: #e5484d;
+    border-color: #e5484d;
+}
+
+.cat-new {
+    border-bottom: none;
+}
+
 .count {
     color: hsl(var(--kh) var(--k-sat) var(--k-l-fg));
     background: hsl(var(--kh) var(--k-sat-soft) var(--k-l-bg));

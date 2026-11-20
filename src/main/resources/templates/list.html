@@ -4,9 +4,10 @@
 <body>
 <header th:replace="~{fragments/layout :: nav}"></header>
 
-<div class="with-tree" th:classappend="${#lists.isEmpty(tree)} ? 'no-tree' : ''"
+<div class="with-tree" th:classappend="${#lists.isEmpty(tree) and categorySlug == null} ? 'no-tree' : ''"
      th:attr="data-area=${#strings.toLowerCase(kind.name())}">
-    <aside class="tree-pane" th:attr="data-kind=${#strings.toLowerCase(kind.name())}" th:if="${!#lists.isEmpty(tree)}">
+    <aside class="tree-pane" th:attr="data-kind=${#strings.toLowerCase(kind.name())},data-category=${categorySlug}"
+           th:if="${!#lists.isEmpty(tree) or categorySlug != null}">
         <div class="tree-head">
             <span class="tree-head-text">我的目录</span>
             <button sec:authorize="isAuthenticated()" type="button" class="tree-act tree-add"
@@ -80,7 +81,8 @@
 
 <script th:src="@{/js/list.js(v=8)}" defer></script>
 <script th:src="@{/js/rate.js(v=3)}" defer></script>
-<script th:src="@{/js/tree-admin.js(v=5)}" defer></script>
+<script th:src="@{/js/tree-admin.js(v=6)}" defer></script>
+<script sec:authorize="isAuthenticated()" th:src="@{/js/category-tabs.js(v=2)}" defer></script>
 <footer th:replace="~{fragments/layout :: foot}"></footer>
 </body>
 </html>

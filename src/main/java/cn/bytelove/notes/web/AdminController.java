@@ -5,6 +5,7 @@ import cn.bytelove.notes.domain.ContentItem;
 import cn.bytelove.notes.domain.ContentKind;
 import cn.bytelove.notes.domain.Visibility;
 import cn.bytelove.notes.repo.ContentItemRepository;
+import cn.bytelove.notes.service.CategoryService;
 import cn.bytelove.notes.service.MarkdownRenderer;
 import cn.bytelove.notes.service.NoteTreeService;
 import cn.bytelove.notes.service.ProjectMetaService;
@@ -83,10 +84,11 @@ public class AdminController {
     private final TrashService trash;
     private final TagService tags;
     private final MarkdownRenderer markdown;
+    private final CategoryService categories;
 
     public AdminController(ContentItemRepository items, NoteTreeService tree, ViewerService viewers,
                            ProjectMetaService meta, TrashService trash, TagService tags,
-                           MarkdownRenderer markdown) {
+                           MarkdownRenderer markdown, CategoryService categories) {
         this.items = items;
         this.tree = tree;
         this.viewers = viewers;
@@ -94,6 +96,7 @@ public class AdminController {
         this.trash = trash;
         this.tags = tags;
         this.markdown = markdown;
+        this.categories = categories;
     }
 
     @ModelAttribute("kinds")
@@ -268,6 +271,7 @@ public class AdminController {
         // 公开 = 上广场：选 PUBLIC 就自动进技术广场（副本不走这条路，否则广场上会出现好几份同名分组）。
         // 管理员建的 MEMBER 仍然默认推荐，这样「把链接发给别人」的老用法不受影响
         item.setRecommended(viewer.admin() || form.getVisibility() == Visibility.PUBLIC);
+        categories.attachDefault(item);
         ContentItem saved = items.save(item);
         saveProjectDoc(saved, form);
         applySupplement(saved, form);
@@ -535,6 +539,7 @@ public class AdminController {
     @PostMapping("/quick")
     public String quickCreate(@RequestParam(name = "parentId", required = false) Long parentId,
                               @RequestParam(name = "kind", required = false) String kind,
+                              @RequestParam(name = "category", required = false) String category,
                               @RequestParam(name = "title") String title,
                               @RequestParam(name = "back", required = false) String back,
                               Authentication auth) {
@@ -558,6 +563,13 @@ public class AdminController {
         ContentItem item = new ContentItem(ownerId, k, quickSlug(ownerId),
                 name.length() > 200 ? name.substring(0, 200) : name, null, "", Visibility.MEMBER);
         item.setParentId(parent == null ? null : parent.getId());
+        // 分类：跟着父节点走；顶层新建就用当前页签的分类，没传就落这个 kind 的默认分类
+        if (parent != null) {
+            item.setCategoryId(parent.getCategoryId());
+        } else if (category != null && !category.isBlank()) {
+            categories.find(ownerId, category).ifPresent(c -> item.setCategoryId(c.getId()));
+        }
+        categories.attachDefault(item);
         item.setSortOrder(nextSortOrder(ownerId, item.getParentId(), k));
         item.setRecommended(viewer.admin());
         item.setFolder(false);
@@ -685,6 +697,7 @@ public class AdminController {
                     uniqueSupplementSlug(item.getOwnerId(), item.getSlug() + "-detail"),
                     title, null, body, item.getVisibility());
             note.setParentId(item.getParentId());
+            note.setCategoryId(item.getCategoryId());
             note.setSortOrder(item.getSortOrder());
             note.setRecommended(item.isRecommended());
             note.setSupplementOfId(item.getId());

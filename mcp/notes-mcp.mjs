@@ -27,7 +27,7 @@ const PROTOCOL = '2025-06-18';
 const INSTRUCTIONS = `你是「byte-love 笔记站」的助手，帮用户把各种内容存进他的笔记库：聊天里聊出来的东西，或者他电脑上散落各处的笔记、文件，都算。
 
 用户一般不想逐项做选择题，所以每一件都先给出你的判断和默认值，问一句「这样行不行」；他说「可以 / 没问题 / 就这样」就直接按默认值写，别再问第二遍：
-1. 存到哪：先调 notes_folders 看现有目录，自己挑最像的那个（比如讲 JVM 就放「JVM 与反射」）；确实没有合适的，再问他新分类叫什么，建好拿返回的 slug 当 parent。
+1. 存到哪：先调 notes_categories 看用户自己的分类（页面上的页签），能对上就传 category；再看 notes_folders 挑目录（比如讲 JVM 就放「JVM 与反射」）；确实没有合适的，再问他新目录叫什么，建好拿返回的 slug 当 parent。分类不够用时才提新建分类，别默认替他建。
 2. 内容类型：你自己判断 —— note 闪念（一段想法、零散记录）/ bagu 八股（面试问答）/ algo 算法（题解）/ project 项目。
 3. 谁能看：默认 MEMBER（登录用户能看、不进技术广场）。他明确说要公开，或者这篇本来就该给所有人看，才用 PUBLIC（会直接进技术广场）；明确要私密才用 PRIVATE。
 4. 几颗星：你自己判断 0~3 —— 3 星面试高频、迟早会被问到；2 星值得复习；1 星有空再看；0 先不评。
@@ -36,7 +36,8 @@ const INSTRUCTIONS = `你是「byte-love 笔记站」的助手，帮用户把各
 确认时把结论摆成一小段（标题 / 目录 / 类型 / 可见性 / 几颗星）让他一句话回；他纠正哪项就改哪项。
 如果一次拿来一堆散落的文件或笔记，先列个清单（一行一篇：标题 → 目录）整体确认，再逐篇落库。
 
-其它：摘要和标签站里自动生成，不用问；标题尽量 20 字以内；**正文第一行不要再写一遍标题**（页面上标题已经有了，重复一次看着像出错）；正文用 Markdown，代码放 \`\`\` 里；note_create 只新建不覆盖；写完回一句话加一个 url，别把正文再贴一遍。`;
+其它：摘要和标签站里自动生成，不用问；标题尽量 20 字以内；**正文第一行不要再写一遍标题**（页面上标题已经有了，重复一次看着像出错）；正文用 Markdown，代码放 \`\`\` 里；note_create 只新建不覆盖；写完回一句话加一个 url，别把正文再贴一遍。
+用户问「技术广场里有没有…」用 notes_explore 搜，那是别人的公开内容，只读，不要当他的笔记。`;
 
 // stdout 只允许出现 JSON-RPC 消息，日志一律走 stderr
 const log = (...args) => console.error('[notes-mcp]', ...args);
@@ -67,6 +68,66 @@ const TOOLS = [
     name: 'notes_folders',
     description: '列出我自己笔记的目录（slug / 标题 / 完整路径）。新建笔记前用它挑 parent。',
     inputSchema: { type: 'object', properties: {} },
+  },
+  {
+    name: 'notes_categories',
+    description: '列出我的笔记分类（页面上的页签）：slug / 名字 / 条数。要决定一篇笔记放哪个页签时先看它。',
+    inputSchema: { type: 'object', properties: {} },
+  },
+  {
+    name: 'notes_explore',
+    description:
+      '在技术广场里按关键词搜（只读：只有公开且进了推荐栏的内容）。用户问「广场里有没有…」时用它，别把广场内容当成用户自己的笔记。',
+    inputSchema: {
+      type: 'object',
+      properties: { q: { type: 'string', description: '关键词，留空表示按更新时间取最近几条' } },
+    },
+  },
+  {
+    name: 'category_create',
+    description: '新建一个笔记分类（页签）。名字先问用户，别自己起。',
+    inputSchema: {
+      type: 'object',
+      properties: { name: { type: 'string', description: '分类名，用户怎么说就怎么用' } },
+      required: ['name'],
+    },
+  },
+  {
+    name: 'category_rename',
+    description: '给分类改名（slug 不变，老链接照旧）。',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        slug: { type: 'string', description: '分类的 slug' },
+        name: { type: 'string', description: '新名字' },
+      },
+      required: ['slug', 'name'],
+    },
+  },
+  {
+    name: 'category_delete',
+    description:
+      '删除一个分类；里面的笔记会移到「未分类」，不会跟着删掉。默认五个分类删不掉。删除前必须把分类名和里面有几条告诉用户并得到同意，再传 confirm=true。',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        slug: { type: 'string', description: '分类的 slug' },
+        confirm: { type: 'boolean', description: '用户同意删除后传 true' },
+      },
+      required: ['slug', 'confirm'],
+    },
+  },
+  {
+    name: 'note_move',
+    description: '把一篇笔记挪到另一个分类（页签）。',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        slug: { type: 'string', description: '笔记 slug' },
+        category: { type: 'string', description: '目标分类的 slug，可用 notes_categories 查' },
+      },
+      required: ['slug', 'category'],
+    },
   },
   {
     name: 'notes_search',
@@ -109,6 +170,10 @@ const TOOLS = [
           enum: ['PUBLIC', 'MEMBER', 'PRIVATE'],
         },
         kind: { type: 'string', description: '内容类型，默认 note', enum: ['note', 'bagu', 'algo', 'project'] },
+        category: {
+          type: 'string',
+          description: '放到哪个分类（页签）的 slug，用 notes_categories 查；能在现有分类里对上就传，对不上才商量新建分类',
+        },
         rating: {
           type: 'integer',
           minimum: 0,
@@ -175,6 +240,26 @@ async function callTool(name, args = {}) {
   switch (name) {
     case 'notes_folders':
       return api('/api/ai/folders');
+    case 'notes_categories':
+      return api('/api/ai/categories');
+    case 'notes_explore':
+      return api('/api/ai/explore' + (args.q ? '?q=' + encodeURIComponent(args.q) : ''));
+    case 'category_create':
+      return api('/api/ai/categories', { method: 'POST', body: { name: args.name } });
+    case 'category_rename':
+      return api('/api/ai/categories/' + encodeURIComponent(args.slug), {
+        method: 'PUT',
+        body: { name: args.name },
+      });
+    case 'category_delete': {
+      const q = args.confirm ? '?confirm=true' : '';
+      return api('/api/ai/categories/' + encodeURIComponent(args.slug) + q, { method: 'DELETE' });
+    }
+    case 'note_move':
+      return api('/api/ai/notes/' + encodeURIComponent(args.slug) + '/category', {
+        method: 'POST',
+        body: { category: args.category },
+      });
     case 'notes_search':
       return api('/api/ai/search' + (args.q ? '?q=' + encodeURIComponent(args.q) : ''));
     case 'note_get':

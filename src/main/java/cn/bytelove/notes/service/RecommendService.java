@@ -29,13 +29,15 @@ public class RecommendService {
     private final TagService tags;
     private final HighlightService highlights;
     private final TrashService trash;
+    private final CategoryService categories;
 
     public RecommendService(ContentItemRepository items, TagService tags, HighlightService highlights,
-                            TrashService trash) {
+                            TrashService trash, CategoryService categories) {
         this.items = items;
         this.tags = tags;
         this.highlights = highlights;
         this.trash = trash;
+        this.categories = categories;
     }
 
     /** 广场上的一张卡片。count 是这条加它下面所有子孙的条数。 */
@@ -226,6 +228,7 @@ public class RecommendService {
             // 复制出来的先只属于自己，不进推荐栏
             copy.setRecommended(false);
             copy.setCopiedFromId(src.getId());
+            categories.attachDefault(copy);
             ContentItem saved = items.save(copy);
             tags.copy(src.getId(), saved.getId());
             // 高亮也跟着走：原作者标在正文里的重点，复制过来还看得见
