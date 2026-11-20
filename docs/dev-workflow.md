@@ -658,7 +658,7 @@ sudo /opt/deploy/sync-db.sh    # 正式库整库覆盖到测试库
 
 ## 正文里那几个手写标记
 
-正文存的是 Markdown，页面上看到的效果全是渲染出来的。除了标准语法，站里还认两个自己加的标记：
+正文存的是 Markdown，页面上看到的效果全是渲染出来的。除了标准语法，站里还认三个自己加的标记：
 
 - `%%这样包起来的文字%%`：作者写给自己的隐私段。**对作者**渲染成 `filter: blur(0.55px)` 的 span
   （很淡的一层模糊当标记，字还读得出来）；**对其他人**这段原文压根不写进 HTML —— `MarkdownRenderer.restoreHidden`
@@ -668,6 +668,9 @@ sudo /opt/deploy/sync-db.sh    # 正式库整库覆盖到测试库
 - **行首 1~3 个空格**：这一行在页面上往右缩一层（`<div class="indent">`，`margin-left: 1.8em`）。
   CommonMark 自己会把段落开头那几个空格当排版噪音吞掉，所以 `MarkdownRenderer.splitIndented` 先把它抠出来、
   渲染完再包回去；序列化时 `doc-edit.js` 的 `indentOf()` 从元素原文里读回这几格。**4 个空格以上不碰** —— 那是代码块。
+- **`[[img:/app/img/xxx.svg]]`**：项目页「说明」里插图。说明文本会过术语标注，直接写 `<img>` 会被标注打断
+  （路径里的词被包成 span），所以用这个标记，`project.js` 渲染时展开成 `<img>`；文件名也要避开术语表里的词
+  （例如用 `four-nodes.svg`，别用带 `langgraph` 的名字）。
 - **回车和退格的规矩**（2026-11-16 用户反馈「引用块 / 列表里增删一堆 bug」后重写，`doc-edit.js`）：
     - 列表项里回车 = 再起一项（拆成两个 `<li>`）。以前是往 `<ul>` 里塞 `<p>`，存库时那段文字会被整段丢掉；
     - 空列表项里回车 = 退出列表，变回普通段落；
@@ -704,6 +707,15 @@ Java / SQL / JS / Python / Shell，其余默认 Java，猜出来写成 `language
 
 表结构是 V30 的 `quest_progress`（每题过关次数与正确率）和 `quest_point`（总分、连续天数）。
 章节就是 BAGU 树里最顶上那层分类；有子条目的节点和目录节点都不算关卡。
+
+## 学习统计（`/app/stats`）
+
+- 计时脚本 `static/js/study-timer.js`：只在前台累计，按路由落到 `algo / bagu / project / notes / interview`；
+- 每 20 分钟提醒一次，点「知道了」进入 1 分钟远眺；切后台 5 秒–40 分钟会补记到离开时的分区，超过 40 分钟不补；
+- 右下角闹钟由同一脚本生成；设置页「番茄钟」开关只关提醒，不影响计时；
+- 表 `study_time(user_id, day, category, seconds)`，接口 `POST /app/api/study/tick`、`GET /app/api/study/stats?days=N`；
+- 2026-10-26 ~ 11-19 是拿 nginx 日志估算回填的（两次请求间隔，2 小时以上算离开）；11-05 日志已轮转，保留原估算；
+- 已知边界：后台补记上限 40 分钟；同一用户多标签只记主标签。
 
 ## 约定
 
