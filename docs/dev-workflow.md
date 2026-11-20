@@ -737,6 +737,18 @@ Java / SQL / JS / Python / Shell，其余默认 Java，猜出来写成 `language
 - 2026-10-26 ~ 11-19 是拿 nginx 日志估算回填的（两次请求间隔，2 小时以上算离开）；11-05 日志已轮转，保留原估算；
 - 已知边界：后台补记上限 40 分钟；同一用户多标签只记主标签。
 
+## 站内助手（`/app/agent`）
+
+- 页面 `agent.html` + `static/js/agent.js`；用浏览器自己的 DeepSeek key（sessionStorage `agent-key`），
+  每次请求放 `X-Agent-Key` 头，服务端只在 `AgentController` 里拼到上游 `Authorization`，**不落库、不写日志**；
+- `POST /app/api/agent/chat`：服务端跑工具循环（最多 6 轮，DeepSeek `deepseek-chat`），
+  工具 `search_notes / read_note / create_note / update_note`，全部按 `owner_id` 过滤，别人的条目当不存在；
+- 写入不直接发生：`create_note` / `update_note` 只返回 proposal（内存 30 分钟），
+  前端点「写入」调 `POST /app/api/agent/apply` 才落库；update 前把旧版本写进 `content_revision(source='AGENT')`；
+- 新建默认 `kind=NOTE`、`visibility=PRIVATE`，slug 形如 `ai-YYYYMMDD-8位hex`；
+- 上游地址可覆盖：`notes.agent.upstream`（环境变量 `NOTES_AGENT_UPSTREAM`），自测时可指向本地假服务；
+- 页面入口在「我的」页；key 不填时接口回 400，上游报错回 502 且 key 打码（只留首尾）。
+
 ## 约定
 
 - **不要直接往 `main` 推**，`main` 只接 `dev` 的合并
