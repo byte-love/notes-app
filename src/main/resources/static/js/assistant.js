@@ -26,13 +26,14 @@
     fab.setAttribute('aria-label', 'AI 助手');
     fab.innerHTML = `
         <svg viewBox="0 0 48 48" aria-hidden="true">
-            <path d="M24 8v5"></path>
-            <circle cx="24" cy="6" r="2.5"></circle>
-            <rect x="11" y="13" width="26" height="22" rx="8"></rect>
-            <circle cx="18" cy="24" r="2.6" class="ai-eye"></circle>
-            <circle cx="30" cy="24" r="2.6" class="ai-eye"></circle>
-            <path d="M19 30h10"></path>
-            <path d="M7 22v6M41 22v6"></path>
+            <circle cx="24" cy="5.5" r="2.2" class="ai-antenna"></circle>
+            <path d="M24 8v4"></path>
+            <rect x="10" y="12" width="28" height="24" rx="9"></rect>
+            <path d="M6 21v7M42 21v7"></path>
+            <rect x="15" y="19" width="18" height="11" rx="5.5" class="ai-screen"></rect>
+            <circle cx="20" cy="24.5" r="1.9" class="ai-eye"></circle>
+            <circle cx="28" cy="24.5" r="1.9" class="ai-eye"></circle>
+            <path d="M21 34h6"></path>
         </svg>`;
     document.body.appendChild(fab);
 
@@ -40,6 +41,7 @@
     panel.className = 'ai-panel';
     panel.hidden = true;
     panel.innerHTML = `
+        <div class="ai-resize" aria-hidden="true"></div>
         <div class="ai-bar">
             <span class="ai-title">AI 助手</span>
             <span class="ai-ctx" hidden></span>
@@ -79,12 +81,82 @@
     const input = panel.querySelector('textarea');
     const sendBtn = panel.querySelector('.ai-send');
     const closeBtn = panel.querySelector('.ai-x');
+    const grip = panel.querySelector('.ai-resize');
+
+    const HIST = 'agent-chat:' + user;
+    const PEND = 'agent-pending:' + user;
+    const SIZE = 'agent-size:' + user;
+    const loadJson = (k) => {
+        try {
+            return JSON.parse(localStorage.getItem(k) || 'null');
+        } catch (e) {
+            return null;
+        }
+    };
+    const saveJson = (k, v) => {
+        try {
+            localStorage.setItem(k, JSON.stringify(v));
+        } catch (e) {}
+    };
 
     let mode = 'ask';
     let kind = '';
     let locked = context;
     let sending = false;
-    const history = [];
+    let history = loadJson(HIST) || [];
+    let pending = loadJson(PEND) || [];
+
+    const saveChat = () => {
+        history = history.slice(-40);
+        pending = pending.slice(-12);
+        saveJson(HIST, history);
+        saveJson(PEND, pending);
+    };
+
+    const narrow = window.matchMedia('(max-width: 560px)');
+    const applySize = () => {
+        if (narrow.matches) {
+            panel.style.width = '';
+            panel.style.height = '';
+            panel.style.maxHeight = '';
+            return;
+        }
+        const s = loadJson(SIZE);
+        if (s && s.w && s.h) {
+            panel.style.width = s.w + 'px';
+            panel.style.height = s.h + 'px';
+            panel.style.maxHeight = 'none';
+        }
+    };
+    applySize();
+    narrow.addEventListener('change', applySize);
+
+    grip.addEventListener('pointerdown', (e) => {
+        if (narrow.matches) return;
+        e.preventDefault();
+        e.stopPropagation();
+        const r = panel.getBoundingClientRect();
+        const start = { x: e.clientX, y: e.clientY, w: r.width, h: r.height };
+        try {
+            grip.setPointerCapture(e.pointerId);
+        } catch (err) {}
+        const move = (ev) => {
+            const w = Math.min(Math.max(340, start.w + (start.x - ev.clientX)),
+                Math.min(760, window.innerWidth - 24));
+            const h = Math.min(Math.max(320, start.h + (start.y - ev.clientY)),
+                window.innerHeight - 24);
+            panel.style.width = w + 'px';
+            panel.style.height = h + 'px';
+            panel.style.maxHeight = 'none';
+        };
+        const up = () => {
+            grip.removeEventListener('pointermove', move);
+            grip.removeEventListener('pointerup', up);
+            saveJson(SIZE, { w: panel.offsetWidth, h: panel.offsetHeight });
+        };
+        grip.addEventListener('pointermove', move);
+        grip.addEventListener('pointerup', up);
+    });
 
     const key = () => readKey();
     const hasKey = () => !!readKey();
@@ -112,6 +184,12 @@
         const ok = hasKey();
         keyBox.hidden = ok;
         panel.classList.toggle('need-key', !ok);
+        if (ok) {
+            applySize();
+        } else {
+            panel.style.height = '';
+            panel.style.maxHeight = '';
+        }
     };
 
     const renderCtx = () => {
@@ -140,6 +218,15 @@
         const el = document.createElement('div');
         el.className = 'ai-msg ' + cls;
         el.textContent = text;
+        msgs.appendChild(el);
+        msgs.scrollTop = msgs.scrollHeight;
+        return el;
+    };
+
+    const thinking = () => {
+        const el = document.createElement('div');
+        el.className = 'ai-msg ai-thinking';
+        el.innerHTML = '<span></span><span></span><span></span>';
         msgs.appendChild(el);
         msgs.scrollTop = msgs.scrollHeight;
         return el;
@@ -181,12 +268,18 @@
                 link.href = data.url;
                 link.textContent = p.title || data.slug;
                 card.appendChild(link);
+                pending = pending.filter((x) => x.id !== p.id);
+                saveChat();
             } catch (e) {
                 append('error', '写入失败');
                 write.disabled = false;
             }
         });
-        ignore.addEventListener('click', () => card.remove());
+        ignore.addEventListener('click', () => {
+            card.remove();
+            pending = pending.filter((x) => x.id !== p.id);
+            saveChat();
+        });
 
         actions.append(write, ignore);
         card.append(title, body, actions);
@@ -224,9 +317,11 @@
         input.value = '';
         const userMsg = { role: 'user', content: text };
         history.push(userMsg);
+        saveChat();
         append('user', text);
         sending = true;
         updateSend();
+        const think = thinking();
         try {
             const res = await post('/app/api/agent/chat', {
                 messages: history.slice(-20),
@@ -242,10 +337,15 @@
             const reply = (data && data.reply) || '';
             history.push({ role: 'assistant', content: reply });
             if (reply) append('assistant', reply);
-            ((data && data.proposals) || []).forEach(renderProposal);
+            ((data && data.proposals) || []).forEach((p) => {
+                if (!pending.some((x) => x.id === p.id)) pending.push(p);
+                renderProposal(p);
+            });
+            saveChat();
         } catch (e) {
             append('error', '请求失败');
         } finally {
+            think.remove();
             sending = false;
             updateSend();
         }
@@ -301,6 +401,10 @@
 
     renderCtx();
     setMode('ask');
+
+    history.forEach((m) => append(m.role === 'user' ? 'user' : 'assistant', m.content));
+    pending.forEach(renderProposal);
+    msgs.scrollTop = msgs.scrollHeight;
 
     if (window.Float) {
         window.Float.attach(fab, 'assistant', open);

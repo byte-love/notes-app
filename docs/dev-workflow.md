@@ -739,10 +739,13 @@ Java / SQL / JS / Python / Shell，其余默认 Java，猜出来写成 `language
 
 ## 站内助手（右下角浮球）
 
-- `static/js/float.js`：两个浮球共用行为——桌面右键隐藏；手机第一次点先出「打开 / 隐藏」菜单，
-  勾过「不再显示此提示」后直接打开，长按可以再叫出菜单；隐藏状态存 `float:assistant` / `float:timer`；
+- `static/js/float.js`：两个浮球共用行为——可以拖动换位置（`float-pos:<id>`）；桌面右键隐藏；
+  手机第一次点先出「打开 / 隐藏」菜单，勾过「不再显示此提示」后直接打开，长按可以再叫出菜单；
+  隐藏状态存 `float:assistant` / `float:timer`；
 - `static/js/assistant.js`：机器人球 + 面板。正文页从模板的 `data-note-slug / data-note-kind / data-note-title`
-  读当前笔记并默认锁定（chip 可点 × 取消），列表页不锁；
+  读当前笔记并默认锁定（chip 可点 × 取消），列表页不锁；球可以拖动，位置存 `float-pos:assistant`；
+  面板默认 420×520，拖左上角可改大小（`agent-size:<账号>`）；聊天记录和待写入建议存 `agent-chat:<账号>` /
+  `agent-pending:<账号>`，换页面不会丢（上限 40 条 / 12 条建议）；
 - key 存 `localStorage` 的 `agent-key:<username>`（按账号分开，只在这台设备/浏览器里，换设备要重填）；
   每次请求放 `X-Agent-Key`，服务端只在 `AgentController` 里拼到上游 `Authorization`，**不落库、不写日志**；
 - `POST /app/api/agent/chat` 带 `mode`（ask / create / edit / search）、`kind`、`contextSlug`；

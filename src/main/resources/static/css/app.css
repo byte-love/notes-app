@@ -6802,12 +6802,21 @@ html[data-theme='dark'] .cl-latest {
     padding: 0;
     border: 1px solid var(--line);
     border-radius: 50%;
-    background: color-mix(in srgb, var(--bg-2) 84%, transparent);
+    background:
+        radial-gradient(120% 120% at 30% 18%, color-mix(in srgb, #58a6ff 16%, transparent), transparent 62%),
+        color-mix(in srgb, var(--bg-2) 86%, transparent);
     color: var(--fg);
-    cursor: pointer;
+    cursor: grab;
+    touch-action: none;
     backdrop-filter: blur(8px);
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
-    transition: transform 0.15s ease, border-color 0.15s ease;
+    box-shadow:
+        0 8px 24px rgba(0, 0, 0, 0.18),
+        0 0 0 1px color-mix(in srgb, #58a6ff 10%, transparent);
+    transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.ai-fab:active {
+    cursor: grabbing;
 }
 
 .ai-fab:hover {
@@ -6820,18 +6829,50 @@ html[data-theme='dark'] .cl-latest {
 }
 
 .ai-fab svg {
-    width: 32px;
-    height: 32px;
+    width: 34px;
+    height: 34px;
     fill: none;
     stroke: currentColor;
     stroke-width: 2;
     stroke-linecap: round;
     stroke-linejoin: round;
+    animation: ai-float 4.8s ease-in-out infinite;
+}
+
+.ai-fab .ai-screen {
+    fill: currentColor;
+    stroke: none;
+    opacity: 0.14;
 }
 
 .ai-fab .ai-eye {
     fill: currentColor;
     stroke: none;
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: ai-blink 5.4s infinite;
+    filter: drop-shadow(0 0 2px currentColor);
+}
+
+.ai-fab .ai-antenna {
+    fill: currentColor;
+    stroke: none;
+    animation: ai-pulse 2.6s ease-in-out infinite;
+}
+
+@keyframes ai-blink {
+    0%, 93%, 100% { transform: scaleY(1); }
+    96% { transform: scaleY(0.12); }
+}
+
+@keyframes ai-pulse {
+    0%, 100% { opacity: 0.35; }
+    50% { opacity: 1; }
+}
+
+@keyframes ai-float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-1.5px); }
 }
 
 /* 助手占最下面，计时器往上挪一格 */
@@ -6846,13 +6887,40 @@ html[data-theme='dark'] .cl-latest {
     z-index: 71;
     display: flex;
     flex-direction: column;
-    width: min(380px, calc(100vw - 1.6rem));
-    max-height: min(640px, calc(100vh - 6.4rem));
+    width: min(420px, calc(100vw - 1.6rem));
+    height: min(520px, calc(100vh - 6.4rem));
     overflow: hidden;
     background: var(--bg);
     border: 1px solid var(--line);
     border-radius: 14px;
     box-shadow: 0 18px 50px rgba(0, 0, 0, 0.28);
+}
+
+.ai-resize {
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 2;
+    width: 16px;
+    height: 16px;
+    cursor: nwse-resize;
+}
+
+.ai-resize::before {
+    content: '';
+    position: absolute;
+    top: 4px;
+    left: 4px;
+    width: 8px;
+    height: 8px;
+    border-top: 1px solid var(--line);
+    border-left: 1px solid var(--line);
+    opacity: 0.7;
+}
+
+.ai-panel:hover .ai-resize::before {
+    border-color: var(--fg-2);
+    opacity: 1;
 }
 
 .ai-panel[hidden] {
@@ -6912,10 +6980,6 @@ html[data-theme='dark'] .cl-latest {
     overflow-y: auto;
 }
 
-.ai-msgs:empty {
-    display: none;
-}
-
 .ai-msg {
     padding: 0.5rem 0.65rem;
     border-radius: 10px;
@@ -6934,6 +6998,35 @@ html[data-theme='dark'] .cl-latest {
     padding: 0 0.2rem;
     background: none;
     color: var(--danger);
+}
+
+.ai-thinking {
+    display: inline-flex;
+    gap: 4px;
+    align-items: center;
+    width: fit-content;
+    padding: 0.6rem 0.75rem;
+}
+
+.ai-thinking span {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: var(--fg-2);
+    animation: ai-dot 1s infinite;
+}
+
+.ai-thinking span:nth-child(2) {
+    animation-delay: 0.15s;
+}
+
+.ai-thinking span:nth-child(3) {
+    animation-delay: 0.3s;
+}
+
+@keyframes ai-dot {
+    0%, 60%, 100% { opacity: 0.25; transform: translateY(0); }
+    30% { opacity: 1; transform: translateY(-2px); }
 }
 
 .ai-modes,
@@ -7002,6 +7095,10 @@ html[data-theme='dark'] .cl-latest {
 .ai-panel.need-key .ai-kinds,
 .ai-panel.need-key .ai-compose {
     display: none;
+}
+
+.ai-panel.need-key {
+    height: auto;
 }
 
 .ai-compose {
@@ -7119,6 +7216,10 @@ html[data-theme='dark'] .cl-latest {
         bottom: 4.6rem;
         left: 0.5rem;
         width: min(380px, calc(100% - 1rem));
-        max-height: calc(100vh - 5.4rem);
+        height: min(520px, calc(100vh - 5.4rem));
+    }
+
+    .ai-resize {
+        display: none;
     }
 }
