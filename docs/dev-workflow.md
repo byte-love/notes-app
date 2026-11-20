@@ -269,7 +269,7 @@ sudo /opt/deploy/sync-db.sh    # 正式库整库覆盖到测试库
   **技术广场（`/explore`）只收 `PUBLIC + recommended`**：卡片（`RecommendService.cards`）和分组页
   （`RecommendService.group`）都按这个卡，`MEMBER` / `PRIVATE` 的分组进来是 404——那两种只走「作者把链接发出来」
 - 顶栏四项（我的笔记 / 技术广场 / 用户指南 / 更新日志）只改文案不动路由：闪念 = `NOTE`、地址仍是 `/notes`；
-  四类内容共用 `list.html`，页面上那排「闪念 / 项目 / 八股 / 算法」是 `fragments/layout :: mineTabs`
+  五类内容共用 `list.html`，页面上那排「闪念 / 项目 / 八股 / 算法 / 面试」是 `fragments/layout :: mineTabs`
 - 收藏夹是 `content_star(user_id, item_id)`，不是内容上的一个布尔值——标记属于「谁标的」
 - 书签是 `content_bookmark(user_id, item_id, anchor)`：`anchor` 为空是整篇，非空是正文里某个标题
   （标题 id 由标题文字生成，见 `MarkdownRenderer.slugOf`；以前用 h1/h2 序位号，插标题会错位）
@@ -287,13 +287,14 @@ sudo /opt/deploy/sync-db.sh    # 正式库整库覆盖到测试库
   `systemctl reload nginx`（配置备份在 `/root/nginx-backup/`），验证：
   `curl -sk --http2 -o /dev/null -w '%{http_version}' https://byte-love.cn/app/bagu` 应该打 `2`。
   测试站 8180 是明文端口，浏览器不会对 h2c 协商，所以没开
-- **分区配色**（2026-11-04）：四个分区各一个色相——闪念 170 松绿 / 项目 214 靛 / 八股 34 琥珀 / 算法 272 紫。
+- **分区配色**（2026-11-04）：现有五个分区，闪念 170 松绿 / 项目 214 靛 / 八股 34 琥珀 / 算法 272 紫；
+  面试（2026-11 新增）还没有自己的色相，沿用根上的默认 170（和闪念同色，待补）。
   容器上写 `data-area="note|project|bagu|algo"`（`list.html`/`detail.html` 的 `.with-tree`、`explore.html` 的每个
   `<section>`、`explore-group.html`/`project.html` 的 `<main>`），里面用
   `hsl(var(--kh) var(--k-sat) var(--k-l-fg))` 现算；`--k-sat` / `--k-l-*` 是跟主题走的旋钮，在 `:root`、
   `@media dark`、`html[data-theme=light|dark|sepia]` 各写一份。
   ⚠ 别写成 `--kfg: hsl(var(--kh) …)` 再到处 `var(--kfg)`：自定义属性里的 `var()` 在声明它的元素上就替换完了，
-  继承下去不会跟着 `--kh` 变，四个分区会全用一个颜色。钩子也别用 `data-kind`（树的行、评论锚点、高亮都在用）
+  继承下去不会跟着 `--kh` 变，所有分区会全用一个颜色。钩子也别用 `data-kind`（树的行、评论锚点、高亮都在用）
 - **正文提示块按提词分色**（2026-11-04）：`> ` 引用块由 `MarkdownRenderer.calloutTone` 看**第一段开头 12 个字**，
   给 `data-tone`：`warn` 注意/警告/切记/务必/别忘/踩坑/风险/小心（红）、`answer` 回答/答案/结论/总结（绿）、
   `example` 示例/举例/例子/代码/用法/使用方式（蓝），其余不给属性、走默认暖米。色相在 `app.css` 的
@@ -770,7 +771,7 @@ Java / SQL / JS / Python / Shell，其余默认 Java，猜出来写成 `language
   首次使用显示「DeepSeek API Key」和获取链接，标题栏的钥匙图标可以随时更换或清空；
   每次请求放 `X-Agent-Key`，服务端只在 `AgentController` 里拼到上游 `Authorization`，**不落库、不写日志**；
 - 删除会话走站内 `uiConfirm` 二次确认；`chat.pinned` 置顶，`search` 按标题过滤；
-- `POST /app/api/agent/chat` 只带 `messages` 和 `contextSlug`；服务端把当前笔记正文（截断 8000 字）
+- `POST /app/api/agent/chat` 带 `messages`、`contextSlug` 和 `model`；服务端把当前笔记正文（截断 8000 字）
   拼进 system prompt，工具 `search_notes / read_note / create_note / update_note` 仍按 `owner_id` 过滤。
   面板上没有「答疑 / 记一条」这些模式按钮，用户直接说需求；空会话时显示一条招呼语说明能做什么；
 - 写入不直接发生：`create_note` / `update_note` 只返回 proposal（内存 30 分钟），点「写入」才落库；
