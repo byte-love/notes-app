@@ -52,18 +52,20 @@ import java.util.concurrent.ConcurrentHashMap;
 @Controller
 public class AgentController {
 
-    private static final String MODEL = "deepseek-chat";
-    /** 系统提示词决定它什么时候查、什么时候给建议；写操作永远只生成 proposal。 */
     private static final String SYSTEM = """
             你是笔记站的站内助手，只服务当前登录用户。
             需要找资料时调用 search_notes / read_note；要新建或修改笔记时调用 create_note / update_note。
             这两个工具只生成待用户确认的建议，不要声称已经写入，也不要在回复里重复整篇正文。
+            用户可能发图片，直接看图回答。
             回答用中文，简短直接。
             """;
     private static final int MAX_ROUNDS = 6;
     private static final int MAX_BODY = 200_000;
     private static final int MAX_TITLE = 200;
     private static final int READ_CLIP = 20_000;
+    private static final int CONTEXT_LIMIT = 1_000_000;
+    private static final int MAX_IMAGES = 6;
+    private static final int MAX_IMAGE_CHARS = 16 * 1024 * 1024;
     private static final long PROPOSAL_TTL = 30 * 60 * 1000L;
     private static final DateTimeFormatter STAMP =
             DateTimeFormatter.ofPattern("yyyyMMdd").withZone(ZoneId.systemDefault());
@@ -71,6 +73,9 @@ public class AgentController {
 
     @Value("${notes.agent.upstream:https://api.deepseek.com/chat/completions}")
     private String upstream;
+
+    @Value("${notes.agent.model:deepseek-flash}")
+    private String model;
 
     private final ContentItemRepository items;
     private final JdbcTemplate jdbc;
@@ -91,7 +96,7 @@ public class AgentController {
         this.tags = tags;
     }
 
-    public record Msg(String role, String content) {
+    public record Msg(String role, JsonNode content) {
     }
 
     public record ChatIn(List<Msg> messages, String contextSlug) {
@@ -125,13 +130,9 @@ public class AgentController {
             if (!Set.of("user", "assistant").contains(role)) {
                 continue;
             }
-            String content = m.content() == null ? "" : m.content();
-            if (content.length() > 20_000) {
-                content = content.substring(0, 20_000);
-            }
             Map<String, Object> row = new LinkedHashMap<>();
             row.put("role", role);
-            row.put("content", content);
+            row.put("content", cleanContent(role, m.content()));
             apiMessages.add(row);
         }
         if (apiMessages.isEmpty() || !"user".equals(apiMessages.get(apiMessages.size() - 1).get("role"))) {
@@ -148,13 +149,17 @@ public class AgentController {
         List<Map<String, Object>> made = new ArrayList<>();
         List<String> toolsUsed = new ArrayList<>();
         String reply = "";
+        JsonNode lastUsage = null;
         for (int round = 0; round < MAX_ROUNDS; round++) {
             Map<String, Object> body = new LinkedHashMap<>();
-            body.put("model", MODEL);
+            body.put("model", model);
             body.put("messages", apiMessages);
             body.put("tools", toolDefs());
             body.put("tool_choice", "auto");
             JsonNode resp = call(key, body);
+            if (!resp.path("usage").isMissingNode()) {
+                lastUsage = resp.path("usage");
+            }
 
             JsonNode message = resp.path("choices").path(0).path("message");
             String content = message.path("content").asText("");
@@ -190,6 +195,10 @@ public class AgentController {
         out.put("reply", reply);
         out.put("proposals", made);
         out.put("tools", toolsUsed);
+        out.put("contextLimit", CONTEXT_LIMIT);
+        if (lastUsage != null) {
+            out.put("usage", lastUsage);
+        }
         return out;
     }
 
@@ -251,6 +260,51 @@ public class AgentController {
         body.put("status", e.getStatusCode().value());
         body.put("error", e.getReason() == null ? e.getStatusCode().toString() : e.getReason());
         return ResponseEntity.status(e.getStatusCode()).body(body);
+    }
+
+    /** 文本原样传；图片按 OpenAI 兼容的 content block 传，只收 data:image / http(s) 地址。 */
+    private JsonNode cleanContent(String role, JsonNode content) {
+        if (content == null || content.isNull()) {
+            return mapper.getNodeFactory().textNode("");
+        }
+        if (content.isTextual()) {
+            String text = content.asText();
+            return mapper.getNodeFactory().textNode(
+                    text.length() > 20_000 ? text.substring(0, 20_000) : text);
+        }
+        if (!content.isArray() || "assistant".equals(role)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "content 格式不对");
+        }
+        var out = mapper.createArrayNode();
+        int images = 0;
+        for (JsonNode block : content) {
+            String type = block.path("type").asText("");
+            if ("text".equals(type)) {
+                String text = block.path("text").asText("");
+                if (text.length() > 20_000) {
+                    text = text.substring(0, 20_000);
+                }
+                var node = out.addObject();
+                node.put("type", "text");
+                node.put("text", text);
+            } else if ("image_url".equals(type)) {
+                String url = block.path("image_url").path("url").asText("");
+                boolean ok = url.startsWith("data:image/") || url.startsWith("http://") || url.startsWith("https://");
+                if (!ok) {
+                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "图片地址不合法");
+                }
+                if (url.length() > MAX_IMAGE_CHARS) {
+                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "图片太大");
+                }
+                if (++images > MAX_IMAGES) {
+                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "一次最多 6 张图");
+                }
+                out.add(block);
+            } else {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "只支持文本和图片");
+            }
+        }
+        return out;
     }
 
     /**

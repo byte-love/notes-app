@@ -6945,11 +6945,170 @@ html[data-theme='dark'] .cl-latest {
 .ai-bar {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
-    padding: 0.55rem 0.7rem;
+    gap: 0.4rem;
+    padding: 0.5rem 0.6rem;
     border-bottom: 1px solid var(--line);
     cursor: move;
     user-select: none;
+}
+
+.ai-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: none;
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    border: 0;
+    border-radius: 6px;
+    background: none;
+    color: var(--fg-2);
+    cursor: pointer;
+}
+
+.ai-icon:hover {
+    background: var(--bg-2);
+    color: var(--fg);
+}
+
+.ai-icon svg {
+    width: 16px;
+    height: 16px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+}
+
+.ai-usage {
+    flex: none;
+    color: var(--fg-2);
+    font-size: 0.72rem;
+    white-space: nowrap;
+}
+
+.ai-usage.warn {
+    color: #d29922;
+}
+
+.ai-usage.danger {
+    color: var(--danger);
+}
+
+.ai-usage[hidden] {
+    display: none;
+}
+
+.ai-chatlist {
+    position: absolute;
+    top: 41px;
+    right: 0;
+    left: 0;
+    z-index: 5;
+    max-height: 60%;
+    overflow-y: auto;
+    padding: 0.35rem;
+    background: var(--bg);
+    border-bottom: 1px solid var(--line);
+    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.18);
+}
+
+.ai-chatlist[hidden] {
+    display: none;
+}
+
+.ai-chat-row {
+    display: flex;
+    align-items: center;
+    gap: 0.2rem;
+    border-radius: 7px;
+}
+
+.ai-chat-row:hover,
+.ai-chat-row.on {
+    background: var(--bg-2);
+}
+
+.ai-chat-pick {
+    flex: 1;
+    min-width: 0;
+    padding: 0.45rem 0.5rem;
+    overflow: hidden;
+    border: 0;
+    background: none;
+    color: var(--fg);
+    font: inherit;
+    font-size: 0.83rem;
+    text-align: left;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    cursor: pointer;
+}
+
+.ai-chat-del {
+    flex: none;
+    width: 24px;
+    height: 24px;
+    margin-right: 0.2rem;
+    border: 0;
+    border-radius: 5px;
+    background: none;
+    color: var(--fg-2);
+    font: inherit;
+    cursor: pointer;
+    opacity: 0;
+}
+
+.ai-chat-row:hover .ai-chat-del {
+    opacity: 1;
+}
+
+.ai-chat-del:hover {
+    background: var(--line);
+    color: var(--fg);
+}
+
+.ai-attach {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    padding: 0.45rem 0.7rem 0;
+}
+
+.ai-attach[hidden] {
+    display: none;
+}
+
+.ai-thumb {
+    position: relative;
+    width: 44px;
+    height: 44px;
+    border: 1px solid var(--line);
+    border-radius: 7px;
+    overflow: hidden;
+}
+
+.ai-thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.ai-thumb button {
+    position: absolute;
+    top: 1px;
+    right: 1px;
+    width: 15px;
+    height: 15px;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.55);
+    color: #fff;
+    font-size: 11px;
+    line-height: 15px;
+    cursor: pointer;
 }
 
 .ai-title {
@@ -6991,6 +7150,7 @@ html[data-theme='dark'] .cl-latest {
     display: flex;
     flex: 1;
     flex-direction: column;
+    align-items: flex-start;
     gap: 0.5rem;
     min-height: 72px;
     padding: 0.7rem;
@@ -6998,6 +7158,7 @@ html[data-theme='dark'] .cl-latest {
 }
 
 .ai-msg {
+    max-width: 88%;
     padding: 0.5rem 0.65rem;
     border-radius: 10px;
     background: var(--bg-2);
@@ -7008,7 +7169,12 @@ html[data-theme='dark'] .cl-latest {
 }
 
 .ai-msg.user {
+    align-self: flex-end;
     background: var(--accent-soft);
+}
+
+.ai-msg.assistant {
+    align-self: flex-start;
 }
 
 .ai-msg.error {
@@ -7018,6 +7184,7 @@ html[data-theme='dark'] .cl-latest {
 }
 
 .ai-greeting {
+    max-width: 100%;
     background: color-mix(in srgb, #58a6ff 9%, var(--bg-2));
     border: 1px solid color-mix(in srgb, #58a6ff 22%, var(--line));
 }
@@ -7028,6 +7195,26 @@ html[data-theme='dark'] .cl-latest {
     align-items: center;
     width: fit-content;
     padding: 0.6rem 0.75rem;
+}
+
+.ai-msg.ai-pics {
+    align-self: flex-end;
+    width: fit-content;
+    max-width: 88%;
+    padding: 0;
+    background: none;
+    border: 0;
+}
+
+.ai-msg.ai-pics a {
+    display: block;
+}
+
+.ai-msg.ai-pics img {
+    display: block;
+    max-width: 100%;
+    max-height: 180px;
+    border-radius: 8px;
 }
 
 .ai-thinking span {
@@ -7219,5 +7406,11 @@ html[data-theme='dark'] .cl-latest {
 
     .ai-bar {
         cursor: default;
+    }
+}
+
+@media (hover: none) {
+    .ai-chat-del {
+        opacity: 1;
     }
 }
