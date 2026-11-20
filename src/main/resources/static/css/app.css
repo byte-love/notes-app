@@ -7341,6 +7341,23 @@ html[data-theme='dark'] .cl-latest {
     font-size: 0.8rem;
 }
 
+.ai-keyrow {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.4rem;
+}
+
+.ai-keyrow a {
+    color: #58a6ff;
+    font-size: 0.75rem;
+    text-decoration: none;
+}
+
+.ai-keyrow a:hover {
+    text-decoration: underline;
+}
+
 .ai-keybox input {
     padding: 0.45rem 0.55rem;
     border: 1px solid var(--line);
@@ -7356,7 +7373,6 @@ html[data-theme='dark'] .cl-latest {
 
 .ai-panel.need-key .ai-msgs,
 .ai-panel.need-key .ai-compose,
-.ai-panel.need-key .ai-foot,
 .ai-panel.need-key .ai-attach {
     display: none;
 }

@@ -48,7 +48,7 @@
             } catch (e) {}
         })();
     </script>
-    <link rel="stylesheet" th:href="@{/css/app.css(v=210)}">
+    <link rel="stylesheet" th:href="@{/css/app.css(v=211)}">
     <!-- 通用小工具（CSRF / POST / 转义）：页面自己的脚本都要用它，所以放 head 里先加载 -->
     <script th:src="@{/js/base.js(v=2)}"></script>
 </head>
@@ -106,7 +106,7 @@
 <th:block th:fragment="foot">
 <script sec:authorize="isAuthenticated()" th:src="@{/js/float.js(v=2)}" defer></script>
 <script sec:authorize="isAuthenticated()" th:src="@{/js/study-timer.js(v=8)}" defer></script>
-<script sec:authorize="isAuthenticated()" th:src="@{/js/assistant.js(v=10)}" defer></script>
+<script sec:authorize="isAuthenticated()" th:src="@{/js/assistant.js(v=11)}" defer></script>
 <script th:src="@{/js/csrf.js(v=1)}"></script>
 <script th:src="@{/js/confirm.js(v=1)}"></script>
     <script th:src="@{/js/act-menu.js(v=1)}"></script>

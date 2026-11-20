@@ -206,6 +206,7 @@
     const iconMenu = svg('M4 6h16M4 12h16M4 18h16');
     const iconPlus = svg('M12 5v14M5 12h14');
     const iconPin = svg('M9 4h6l-1 6 4 4H6l4-4zM12 14v6');
+    const iconKey = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="8.5" cy="12" r="3"/><path d="M11.5 12H20M17 12v3"/></svg>';
 
     const panel = document.createElement('section');
     panel.className = 'ai-panel';
@@ -223,6 +224,7 @@
             <button type="button" class="ai-icon ai-side-toggle" aria-label="会话列表">${iconMenu}</button>
             <span class="ai-title">AI 助手</span>
             <span class="ai-ctx" hidden></span>
+            <button type="button" class="ai-icon ai-key" aria-label="API Key">${iconKey}</button>
             <button type="button" class="ai-x" aria-label="关闭">×</button>
         </div>
         <div class="ai-shell">
@@ -235,7 +237,10 @@
                 <div class="ai-msgs"></div>
                 <button type="button" class="ai-down" aria-label="回到底部">↓</button>
                 <div class="ai-keybox">
-                    <label>API Key</label>
+                    <div class="ai-keyrow">
+                        <label>DeepSeek API Key</label>
+                        <a href="https://platform.deepseek.com/api_keys" target="_blank" rel="noopener">获取</a>
+                    </div>
                     <input type="password" autocomplete="off" spellcheck="false">
                     <button type="button" class="btn-quiet ai-keysave">保存</button>
                 </div>
@@ -285,6 +290,7 @@
     let reqId = 0;
     let lastPick = '';
     let lastPickAt = 0;
+    let keyOpen = false;
 
     // 点按钮会把选区清掉，所以先在 selectionchange 里记一份
     document.addEventListener('selectionchange', () => {
@@ -543,8 +549,13 @@
             del.className = 'ai-chat-del';
             del.setAttribute('aria-label', '删除对话');
             del.textContent = '×';
-            del.addEventListener('click', (e) => {
+            del.addEventListener('click', async (e) => {
                 e.stopPropagation();
+                const name = c.title || '新对话';
+                const ok = window.uiConfirm
+                    ? await window.uiConfirm(`删除「${name}」？`, { ok: '删除' })
+                    : true;
+                if (!ok) return;
                 chats = chats.filter((x) => x.id !== c.id);
                 if (!chats.length) chats.push(newChat());
                 if (chat.id === c.id) {
@@ -1013,7 +1024,8 @@
 
     const renderKey = () => {
         const ok = hasKey();
-        keyBox.hidden = ok;
+        if (!ok) keyOpen = true;
+        keyBox.hidden = ok && !keyOpen;
         panel.classList.toggle('need-key', !ok);
         if (!ok) {
             panel.style.height = 'auto';
@@ -1075,11 +1087,31 @@
 
     keyBox.querySelector('.ai-keysave').addEventListener('click', () => {
         const value = keyInput.value.trim();
-        if (!value) return;
-        writeRaw(KEY, value);
+        if (value) {
+            writeRaw(KEY, value);
+        } else if (hasKey()) {
+            try {
+                localStorage.removeItem(KEY);
+            } catch (e) {}
+        }
         keyInput.value = '';
+        keyOpen = false;
         renderKey();
         input.focus();
+    });
+
+    panel.querySelector('.ai-key').addEventListener('click', (e) => {
+        e.stopPropagation();
+        keyOpen = !keyOpen;
+        if (keyOpen) {
+            keyInput.value = readRaw(KEY) || '';
+            renderKey();
+            keyInput.focus();
+            keyInput.select();
+        } else {
+            keyInput.value = '';
+            renderKey();
+        }
     });
 
     panel.querySelector('.ai-side-toggle').addEventListener('click', (e) => {

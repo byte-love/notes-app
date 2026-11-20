@@ -762,7 +762,9 @@ Java / SQL / JS / Python / Shell，其余默认 Java，猜出来写成 `language
 - 每次响应把上游 `usage.prompt_tokens / completion_tokens` 写进当前会话，底部显示
   「上下文 8.2k / 1M · ≈$0.003」，超过 70% 变黄、90% 变红；价格按峰值价估算；
 - key 存 `localStorage` 的 `agent-key:<username>`（按账号分开，只在这台设备/浏览器里，换设备要重填）；
+  首次使用显示「DeepSeek API Key」和获取链接，标题栏的钥匙图标可以随时更换或清空；
   每次请求放 `X-Agent-Key`，服务端只在 `AgentController` 里拼到上游 `Authorization`，**不落库、不写日志**；
+- 删除会话走站内 `uiConfirm` 二次确认；`chat.pinned` 置顶，`search` 按标题过滤；
 - `POST /app/api/agent/chat` 只带 `messages` 和 `contextSlug`；服务端把当前笔记正文（截断 8000 字）
   拼进 system prompt，工具 `search_notes / read_note / create_note / update_note` 仍按 `owner_id` 过滤。
   面板上没有「答疑 / 记一条」这些模式按钮，用户直接说需求；空会话时显示一条招呼语说明能做什么；
