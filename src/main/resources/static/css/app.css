@@ -7549,6 +7549,13 @@ html[data-theme='dark'] .cl-latest {
     display: none;
 }
 
+/* 还没填 Key 时只有一件事可做：配置 Key。会话列表和模型选择这时候都是空的，留着只会让人以为坏了 */
+.ai-panel.need-key .ai-side,
+.ai-panel.need-key .ai-foot,
+.ai-panel.need-key .ai-side-toggle {
+    display: none;
+}
+
 .ai-panel.need-key {
     height: auto;
 }
