@@ -95,6 +95,26 @@ scp notes-src-prod.tar.gz root@47.104.210.93:/srv/deploy/
 
 部署脚本会自动：解压源码 → Maven 编译 → 备份旧 jar（`.bak`）→ 停服 → 换包 → 启动 → 等健康检查 → 报告状态码。编译失败会直接退出，**不会把服务搞停**。
 
+### 本地编译 + 只传 jar（2026-11-20 起）
+
+服务器只有 1.7G 内存，在上面跑 Maven 会吃到 swap。现在可以在本机编译、只传 53MB 的 jar：
+
+```powershell
+cd notes-app
+.\build.ps1              # mvn package -> scp 到 /root/notes-app.jar -> 删本地 target
+.\build.ps1 -KeepTarget  # 保留 target 排查
+```
+
+```bash
+ssh root@47.104.210.93 "bash /opt/deploy/app.sh dev --jar /root/notes-app.jar"
+ssh root@47.104.210.93 "bash /opt/deploy/app.sh prod --jar /root/notes-app.jar"
+```
+
+`--jar` 模式跳过解压和编译，其余（备份 `.bak`、停服、换包、健康检查、预热）与源码模式一致。
+本机需要 JDK 21（`build.ps1` 里写死 `D:\User\study\Java\jdk\jdk-21`）；上传 53MB 大约 2 分钟，比服务器编译省内存但慢。
+注意 `dev` 账号的 sudo 白名单是精确匹配 `sudo /opt/deploy/app.sh dev`，**带 `--jar` 会匹配不上**，协作者用 root 或让 root 执行。
+源码模式仍然保留（`app.sh dev` 不带参数），两条路选一条即可。
+
 验收 OK 之后再上正式：
 
 ```bash
