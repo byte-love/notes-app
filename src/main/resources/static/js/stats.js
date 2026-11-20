@@ -4,7 +4,8 @@
         ['algo', '算法'],
         ['bagu', '八股'],
         ['project', '项目'],
-        ['notes', '笔记'],
+        ['notes', '闪念'],
+        ['interview', '面试'],
     ];
     const NAME = Object.fromEntries(CATS);
 

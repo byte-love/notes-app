@@ -15,7 +15,7 @@ import java.util.Set;
 public class StudyTimeService {
 
     /** 只认这四个分类，别的一律当非法请求丢掉。 */
-    private static final Set<String> CATEGORIES = Set.of("algo", "bagu", "project", "notes");
+    private static final Set<String> CATEGORIES = Set.of("algo", "bagu", "project", "notes", "interview");
 
     private final JdbcTemplate jdbc;
 

@@ -32,7 +32,7 @@ import java.util.Map;
 public class StudyController {
 
     private static final ZoneId ZONE = ZoneId.of("Asia/Shanghai");
-    private static final List<String> CATEGORIES = List.of("algo", "bagu", "project", "notes");
+    private static final List<String> CATEGORIES = List.of("algo", "bagu", "project", "notes", "interview");
     private static final int MAX_DAYS = 90;
 
     private final StudyTimeService study;

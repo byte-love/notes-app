@@ -3960,6 +3960,7 @@ html[data-read-size='lg'] .markdown {
 .c-bagu { color: #3fb950; }
 .c-project { color: #bc8cff; }
 .c-notes { color: #d29922; }
+.c-interview { color: #f778ba; }
 
 .stats-split {
     display: grid;

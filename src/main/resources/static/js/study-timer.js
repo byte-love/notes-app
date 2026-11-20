@@ -30,6 +30,7 @@
         ['/app/bagu', 'bagu'],
         ['/app/projects', 'project'],
         ['/app/notes', 'notes'],
+        ['/app/interview', 'interview'],
     ];
     const hit = ROUTES.find(([p]) => path === p || path.startsWith(p + '/'));
     if (!hit) return;
