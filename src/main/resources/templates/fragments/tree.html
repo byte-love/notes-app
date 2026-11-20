@@ -11,7 +11,7 @@
                       data-kind=${#strings.toLowerCase(n.item.kind.name())},
                       data-url=${basePath + '/' + n.item.slug}">
             <button th:if="${n.hasChildren() or n.lazy()}" type="button" class="tree-group"
-                    th:attr="data-key=${n.item.slug},data-lazy=${n.lazy()} ? ${treeBase + '?parent=' + n.item.slug} : null"
+                    th:attr="data-key=${n.item.slug},data-lazy=${n.lazy()} ? ${treeBase + (#strings.contains(treeBase, '?') ? '&parent=' : '?parent=') + n.item.slug} : null"
                     th:classappend="${activeId != null and activeId == n.item.id} ? 'on'">
                 <span class="tree-group-title" th:text="${n.item.title}">分组</span>
                 <!-- 分组标题右侧给个条数，一行里有点信息量，不至于只有一串标题 -->

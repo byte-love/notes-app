@@ -95,6 +95,26 @@ scp notes-src-prod.tar.gz root@47.104.210.93:/srv/deploy/
 
 部署脚本会自动：解压源码 → Maven 编译 → 备份旧 jar（`.bak`）→ 停服 → 换包 → 启动 → 等健康检查 → 报告状态码。编译失败会直接退出，**不会把服务搞停**。
 
+### 本地编译 + 只传 jar（2026-11-20 起）
+
+服务器只有 1.7G 内存，在上面跑 Maven 会吃到 swap。现在可以在本机编译、只传 53MB 的 jar：
+
+```powershell
+cd notes-app
+.\build.ps1              # mvn package -> scp 到 /root/notes-app.jar -> 删本地 target
+.\build.ps1 -KeepTarget  # 保留 target 排查
+```
+
+```bash
+ssh root@47.104.210.93 "bash /opt/deploy/app.sh dev --jar /root/notes-app.jar"
+ssh root@47.104.210.93 "bash /opt/deploy/app.sh prod --jar /root/notes-app.jar"
+```
+
+`--jar` 模式跳过解压和编译，其余（备份 `.bak`、停服、换包、健康检查、预热）与源码模式一致。
+本机需要 JDK 21（`build.ps1` 里写死 `D:\User\study\Java\jdk\jdk-21`）；上传 53MB 大约 2 分钟，比服务器编译省内存但慢。
+注意 `dev` 账号的 sudo 白名单是精确匹配 `sudo /opt/deploy/app.sh dev`，**带 `--jar` 会匹配不上**，协作者用 root 或让 root 执行。
+源码模式仍然保留（`app.sh dev` 不带参数），两条路选一条即可。
+
 验收 OK 之后再上正式：
 
 ```bash
@@ -249,7 +269,7 @@ sudo /opt/deploy/sync-db.sh    # 正式库整库覆盖到测试库
   **技术广场（`/explore`）只收 `PUBLIC + recommended`**：卡片（`RecommendService.cards`）和分组页
   （`RecommendService.group`）都按这个卡，`MEMBER` / `PRIVATE` 的分组进来是 404——那两种只走「作者把链接发出来」
 - 顶栏四项（我的笔记 / 技术广场 / 用户指南 / 更新日志）只改文案不动路由：闪念 = `NOTE`、地址仍是 `/notes`；
-  四类内容共用 `list.html`，页面上那排「闪念 / 项目 / 八股 / 算法」是 `fragments/layout :: mineTabs`
+  五类内容共用 `list.html`，页面上那排「闪念 / 项目 / 八股 / 算法 / 面试」是 `fragments/layout :: mineTabs`
 - 收藏夹是 `content_star(user_id, item_id)`，不是内容上的一个布尔值——标记属于「谁标的」
 - 书签是 `content_bookmark(user_id, item_id, anchor)`：`anchor` 为空是整篇，非空是正文里某个标题
   （标题 id 由标题文字生成，见 `MarkdownRenderer.slugOf`；以前用 h1/h2 序位号，插标题会错位）
@@ -267,13 +287,14 @@ sudo /opt/deploy/sync-db.sh    # 正式库整库覆盖到测试库
   `systemctl reload nginx`（配置备份在 `/root/nginx-backup/`），验证：
   `curl -sk --http2 -o /dev/null -w '%{http_version}' https://byte-love.cn/app/bagu` 应该打 `2`。
   测试站 8180 是明文端口，浏览器不会对 h2c 协商，所以没开
-- **分区配色**（2026-11-04）：四个分区各一个色相——闪念 170 松绿 / 项目 214 靛 / 八股 34 琥珀 / 算法 272 紫。
+- **分区配色**（2026-11-04）：现有五个分区，闪念 170 松绿 / 项目 214 靛 / 八股 34 琥珀 / 算法 272 紫；
+  面试（2026-11 新增）还没有自己的色相，沿用根上的默认 170（和闪念同色，待补）。
   容器上写 `data-area="note|project|bagu|algo"`（`list.html`/`detail.html` 的 `.with-tree`、`explore.html` 的每个
   `<section>`、`explore-group.html`/`project.html` 的 `<main>`），里面用
   `hsl(var(--kh) var(--k-sat) var(--k-l-fg))` 现算；`--k-sat` / `--k-l-*` 是跟主题走的旋钮，在 `:root`、
   `@media dark`、`html[data-theme=light|dark|sepia]` 各写一份。
   ⚠ 别写成 `--kfg: hsl(var(--kh) …)` 再到处 `var(--kfg)`：自定义属性里的 `var()` 在声明它的元素上就替换完了，
-  继承下去不会跟着 `--kh` 变，四个分区会全用一个颜色。钩子也别用 `data-kind`（树的行、评论锚点、高亮都在用）
+  继承下去不会跟着 `--kh` 变，所有分区会全用一个颜色。钩子也别用 `data-kind`（树的行、评论锚点、高亮都在用）
 - **正文提示块按提词分色**（2026-11-04）：`> ` 引用块由 `MarkdownRenderer.calloutTone` 看**第一段开头 12 个字**，
   给 `data-tone`：`warn` 注意/警告/切记/务必/别忘/踩坑/风险/小心（红）、`answer` 回答/答案/结论/总结（绿）、
   `example` 示例/举例/例子/代码/用法/使用方式（蓝），其余不给属性、走默认暖米。色相在 `app.css` 的
@@ -656,6 +677,28 @@ sudo /opt/deploy/sync-db.sh    # 正式库整库覆盖到测试库
 - 注册开关：`/opt/apps/notes-app-test/app.env` 里的 `REGISTER_ENABLED=false` 关掉（关掉后 `/register` 直接 404），同 IP 每小时最多注册 3 个
 - 会话超时 24h，另有 remember-me 30 天：**重启进程不会把用户踢下线**（会话本身在内存里，重启会清空，靠 cookie 自动恢复）
 
+## 笔记分类（`/app/c/<slug>`）
+
+「我的笔记」上面的那排页签，2026-11-20 起是每个用户自己的一组分类，不再写死五个分区：
+
+- **表结构**（`V32__category.sql`）：`note_category(owner_id, slug, name, kind, sort_order, builtin)`，
+  `content_item.category_id`。迁移按 `kind` 把老内容回填到各自的默认分类。
+- **kind 还在**：分类决定「放在哪个页签」，条目自己的 `kind` 决定模板、详情路由、配色。
+  所以分类只是上面一层组织，改分类不动内容语义。
+- **新账号从空开始**：注册不再建任何分类（`CategoryService` 里没有补种逻辑），用户自己决定要几个页签；
+  老账号保留迁移时补的五个，改名 / 排序 / 删除都随意，删了不会自动长回来。
+- **路由**：列表 `/c/<分类 slug>`；详情 `/c/<分类 slug>/<条目 slug>`。
+  老的 `/notes`、`/bagu` 这些对登录用户映射到自己的默认分类（游客仍然按 kind 看推荐内容），
+  默认分类被删掉时退回「按 kind 全量」的老行为；顶栏「我的笔记」指向第一个页签，没有分类才回 `/notes`。
+- **管理入口**：设置页「笔记分类」（改名 / 上下移 / 删除），列表页签末尾的「+」就地新建。
+  删任何分类都会把里面的条目落到「未分类」页签（`category_id` 置空），内容不跟着删。
+- **新建条目**：`AdminController`、`AiController`、`AgentController`、`RecommendService` 建完都调
+  `categories.attachDefault(item)`，没指定分类就落到该 kind 的默认分类，没有默认分类就留空（进「未分类」）；
+  左树「+」会把当前页签的 `data-category` 一起提交（`tree-admin.js`）。
+- **AI 工具**：MCP 有 `notes_categories / category_create / category_rename / category_delete / note_move /
+  notes_explore`（远端 `McpController` 与本地 `mcp/notes-mcp.mjs` 两处要一起改）；站内助手有同名工具，
+  分类操作直接生效、删除要 `confirm`。`notes_explore` 只读，搜的是公开且进了推荐栏的内容。
+
 ## 正文里那几个手写标记
 
 正文存的是 Markdown，页面上看到的效果全是渲染出来的。除了标准语法，站里还认三个自己加的标记：
@@ -716,6 +759,48 @@ Java / SQL / JS / Python / Shell，其余默认 Java，猜出来写成 `language
 - 表 `study_time(user_id, day, category, seconds)`，接口 `POST /app/api/study/tick`、`GET /app/api/study/stats?days=N`；
 - 2026-10-26 ~ 11-19 是拿 nginx 日志估算回填的（两次请求间隔，2 小时以上算离开）；11-05 日志已轮转，保留原估算；
 - 已知边界：后台补记上限 40 分钟；同一用户多标签只记主标签。
+
+## 站内助手（右下角浮球）
+
+- `static/js/float.js`：两个浮球共用行为——可以拖动换位置（`float-pos:<id>`）；桌面右键隐藏；
+  手机第一次点先出「打开 / 隐藏」菜单，勾过「不再显示此提示」后直接打开，长按可以再叫出菜单；
+  隐藏状态存 `float:assistant` / `float:timer`；
+- `static/js/assistant.js`：机器人球 + 悬浮窗。正文页从模板的 `data-note-slug / data-note-kind / data-note-title`
+  读当前笔记并默认锁定（chip 可点 × 取消），项目页这类没写 data 属性的按 URL 兜底；列表页不锁；
+  球可以拖动（`float-pos:assistant`）；窗口可以拖标题栏移动、拖八条边/四角缩放，位置和尺寸存
+  `agent-geo:<账号>`，默认 720×560；打开面板时如果正文有选中文字，会自动以 `> ` 引用进输入框；
+- 会话在左侧栏：`agent-chats:<账号>` 存一组 `{id,title,messages,pending,usage,pinned,at}`，当前会话 id 存
+  `agent-active:<账号>`；标题取第一条用户消息前 24 字，可以搜索、双击重命名、置顶、删除、新建；
+  聊天记录上限 40 条；窄屏（<560）侧栏变抽屉，点标题栏的 ☰ 开合；
+- 输入框回车发送、Shift+回车换行；发送中按钮变「停止」（AbortController），停止后消息下方出现
+  「重新生成」；切换会话/新建会话会先取消进行中的请求，并用请求序号丢弃过期响应；
+- 图片从剪贴板粘贴，前端先缩到最长边 1280 的 JPEG（质量 0.82），一次最多 6 张；图片存 IndexedDB
+  （库 `agent-img`，消息里只留 `{type:'image', id}`），存不下才退回 data URL；发送时再拼成
+  OpenAI 兼容的 `image_url` block；服务端 `cleanContent` 只放行文本和 `data:image/`、`http(s)` 图片；
+- 附件：`POST /app/api/agent/extract`（multipart，字段 `file`）读 md / txt / pdf（PDFBox，最多 60 页、
+  截断 5 万字），结果拼进消息文本，不落库；
+- 模型在面板底部切换：`deepseek-flash`（官方定位「更强、更快、更普惠」，支持图片，输入 $0.15–0.30 /
+  输出 $0.60–1.20 每百万 tokens）和 `deepseek-v4-pro`（V4 系列旧旗舰，不支持图片，输入 $0.66–1.32 /
+  输出 $1.98–3.96）；高峰价是非高峰的 2 倍；服务端只接受这两个值，默认值 `notes.agent.model`；
+  模型选择存 `agent-model:<账号>`；
+- 输入框随内容自动长高（最高 200px）；消息悬停有「复制 / 引用」：复制成功图标变勾 1.2 秒，
+  引用会在输入框上方出现一条引用条（截前 160 字），发送后消息里带 `quote` block，请求时转成 `> ` 引用；
+  复制走 Clipboard API，非 HTTPS 用 execCommand 兜底；
+- 图片（粘贴的缩略图和已发送的）点击走 `ai-lightbox` 看大图，Esc 或点遮罩关闭；
+- 每次响应把上游 `usage.prompt_tokens / completion_tokens` 写进当前会话，底部显示
+  「上下文 8.2k / 1M · ≈$0.003」，超过 70% 变黄、90% 变红；价格按峰值价估算；
+- key 存 `localStorage` 的 `agent-key:<username>`（按账号分开，只在这台设备/浏览器里，换设备要重填）；
+  首次使用显示「DeepSeek API Key」和获取链接，标题栏的钥匙图标可以随时更换或清空；
+  每次请求放 `X-Agent-Key`，服务端只在 `AgentController` 里拼到上游 `Authorization`，**不落库、不写日志**；
+- 删除会话走站内 `uiConfirm` 二次确认；`chat.pinned` 置顶，`search` 按标题过滤；
+- `POST /app/api/agent/chat` 带 `messages`、`contextSlug` 和 `model`；服务端把当前笔记正文（截断 8000 字）
+  拼进 system prompt，工具 `search_notes / read_note / create_note / update_note` 仍按 `owner_id` 过滤。
+  面板上没有「答疑 / 记一条」这些模式按钮，用户直接说需求；空会话时显示一条招呼语说明能做什么；
+- 写入不直接发生：`create_note` / `update_note` 只返回 proposal（内存 30 分钟），点「写入」才落库；
+  update 前把旧版本写进 `content_revision(source='AGENT')`；
+- 新建默认 `visibility=PRIVATE`，slug 形如 `ai-YYYYMMDD-8位hex`；
+- 隐藏后可在「设置 → 浮动按钮」重新打开；旧的整页 `/app/agent` 已删除，入口只在浮球上；
+- 上游地址可覆盖：`notes.agent.upstream`（环境变量 `NOTES_AGENT_UPSTREAM`），自测时可指向本地假服务。
 
 ## 约定
 

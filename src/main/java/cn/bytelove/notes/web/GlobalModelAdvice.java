@@ -1,7 +1,9 @@
 package cn.bytelove.notes.web;
 
 import cn.bytelove.notes.config.AppProperties;
+import cn.bytelove.notes.service.CategoryService;
 import cn.bytelove.notes.service.UserBadge;
+import cn.bytelove.notes.service.ViewerService;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ModelAttribute;
@@ -14,9 +16,13 @@ public class GlobalModelAdvice {
     }
 
     private final AppProperties props;
+    private final ViewerService viewers;
+    private final CategoryService categories;
 
-    public GlobalModelAdvice(AppProperties props) {
+    public GlobalModelAdvice(AppProperties props, ViewerService viewers, CategoryService categories) {
         this.props = props;
+        this.viewers = viewers;
+        this.categories = categories;
     }
 
     @ModelAttribute("tabProjectsHref")
@@ -38,6 +44,19 @@ public class GlobalModelAdvice {
         }
         String name = auth.getName();
         return new NavUser(name, UserBadge.initial(name), UserBadge.hue(name));
+    }
+
+    /**
+     * 顶栏「我的笔记」的落点：分类是自己排的，所以指向第一个页签；
+     * 一个分类都没有（新账号或全删了）才退回老列表页。
+     */
+    @ModelAttribute("mineHome")
+    public String mineHome(Authentication auth) {
+        Long userId = viewers.current(auth).userId();
+        if (userId == null) {
+            return "/notes";
+        }
+        return categories.homePath(userId);
     }
 
     /** 术语解释可以在页面上的浮窗里直接改，只有管理员看得到入口。 */

@@ -50,6 +50,10 @@ public class ContentItem {
     @Column(nullable = false, length = 16)
     private Visibility visibility;
 
+    /** 属于哪个分类（页签）。老数据在迁移里按 kind 回填；删除分类时置空，落到「未分类」。 */
+    @Column(name = "category_id")
+    private Long categoryId;
+
     @Column(name = "parent_id")
     private Long parentId;
 
@@ -173,6 +177,14 @@ public class ContentItem {
 
     public void setVisibility(Visibility visibility) {
         this.visibility = visibility;
+    }
+
+    public Long getCategoryId() {
+        return categoryId;
+    }
+
+    public void setCategoryId(Long categoryId) {
+        this.categoryId = categoryId;
     }
 
     public Long getParentId() {

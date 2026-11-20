@@ -218,10 +218,21 @@
         panel.querySelector('b').textContent = todayText;
     };
 
-    fab.addEventListener('click', (e) => {
-        e.stopPropagation();
+    const togglePanel = () => {
         panel.hidden = !panel.hidden;
         if (!panel.hidden) loadToday();
+    };
+
+    if (window.Float) {
+        window.Float.attach(fab, 'timer', togglePanel);
+        document.addEventListener('float-change', (e) => {
+            if (e.detail.id === 'timer') fab.hidden = e.detail.hidden || !pomodoroOn();
+        });
+    }
+
+    fab.addEventListener('click', (e) => {
+        e.stopPropagation();
+        togglePanel();
     });
 
     document.addEventListener('click', (e) => {
@@ -264,7 +275,7 @@
         onBreak = false;
         breakTitle.textContent = '休息结束，继续吧';
         breakTime.textContent = '00:00';
-        if (pomodoroOn()) fab.hidden = false;
+        if (pomodoroOn() && !(window.Float && window.Float.isHidden('timer'))) fab.hidden = false;
         setTimeout(() => {
             if (!onBreak) breakCard.hidden = true;
         }, 1500);

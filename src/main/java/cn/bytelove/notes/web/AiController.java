@@ -2,9 +2,12 @@ package cn.bytelove.notes.web;
 
 import cn.bytelove.notes.domain.ContentItem;
 import cn.bytelove.notes.domain.ContentKind;
+import cn.bytelove.notes.domain.NoteCategory;
 import cn.bytelove.notes.domain.Visibility;
 import cn.bytelove.notes.repo.ContentItemRepository;
 import cn.bytelove.notes.service.ApiTokenService;
+import cn.bytelove.notes.service.CategoryService;
+import cn.bytelove.notes.service.ExploreSearchService;
 import cn.bytelove.notes.service.RatingService;
 import cn.bytelove.notes.service.TagService;
 import cn.bytelove.notes.service.TrashService;
@@ -83,21 +86,30 @@ public class AiController {
     private final TrashService trash;
     private final JdbcTemplate jdbc;
     private final RatingService ratings;
+    private final CategoryService categories;
+    private final ExploreSearchService explore;
 
     public AiController(ContentItemRepository items, ApiTokenService tokens, TagService tags,
-                        TrashService trash, JdbcTemplate jdbc, RatingService ratings) {
+                        TrashService trash, JdbcTemplate jdbc, RatingService ratings,
+                        CategoryService categories, ExploreSearchService explore) {
         this.items = items;
         this.tokens = tokens;
         this.tags = tags;
         this.trash = trash;
         this.jdbc = jdbc;
         this.ratings = ratings;
+        this.categories = categories;
+        this.explore = explore;
     }
 
     /** 新建或更新请求体；字段都可选，只有 title/body 是新建时必填。 */
     public record NoteIn(String title, String body, String summary, String slug,
                          String parent, String visibility, String kind, Boolean confirm, Boolean folder,
-                         Integer rating) {
+                         Integer rating, String category) {
+    }
+
+    /** 分类相关的入参：create/rename 用 name，移动笔记用 category（分类 slug）。 */
+    public record CategoryIn(String name, String category) {
     }
 
     @GetMapping("/me")
@@ -205,9 +217,17 @@ public class AiController {
                 ? (in.body() == null ? "" : in.body().strip())
                 : bodyOf(in.body());
         ContentKind kind = kindOf(in.kind());
+        NoteCategory category = categoryOf(userId, in.category());
+        if (category != null) {
+            kind = category.getKind();
+        }
         ContentItem item = new ContentItem(userId, kind, freeSlug(userId),
                 title, summaryOf(in.summary(), body), body, visibilityOf(in.visibility()));
         item.setParentId(parentIdOf(userId, in.parent()));
+        if (category != null) {
+            item.setCategoryId(category.getId());
+        }
+        categories.attachDefault(item);
         item.setSortOrder(nextSortOrder(userId));
         item.setFolder(folder);
         // 和站内新建同一套规则：PUBLIC 就进技术广场（AI 建的不会是副本）
@@ -265,6 +285,9 @@ public class AiController {
         if (in.parent() != null) {
             item.setParentId(parentIdOf(userId, in.parent()));
         }
+        if (in.category() != null && !in.category().isBlank()) {
+            item.setCategoryId(categories.idOf(userId, in.category()));
+        }
         ContentItem saved = items.save(item);
         tags.retag(saved.getId(), saved.getTitle(), saved.getBody());
         if (in.rating() != null) {
@@ -300,6 +323,96 @@ public class AiController {
         out.put("deleted", item.getSlug());
         out.put("note", "已移入回收站，30 天内可以在站点的「回收站」里恢复");
         return out;
+    }
+
+    // ---------- 分类 ----------
+
+    /** 我自己的一组分类（页签），带每个分类的条数。 */
+    @GetMapping("/categories")
+    public List<Map<String, Object>> listCategories(@RequestHeader(name = "Authorization", required = false) String auth) {
+        Long userId = requireUser(auth);
+        return categories.view(userId);
+    }
+
+    @PostMapping("/categories")
+    public Map<String, Object> createCategory(@RequestHeader(name = "Authorization", required = false) String auth,
+                                              @RequestBody CategoryIn in) {
+        Long userId = requireUser(auth);
+        write(userId);
+        NoteCategory created = categories.create(userId, in == null ? null : in.name());
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("ok", true);
+        out.put("slug", created.getSlug());
+        out.put("name", created.getName());
+        return out;
+    }
+
+    @PutMapping("/categories/{slug}")
+    public Map<String, Object> renameCategory(@RequestHeader(name = "Authorization", required = false) String auth,
+                                              @PathVariable String slug, @RequestBody CategoryIn in) {
+        Long userId = requireUser(auth);
+        write(userId);
+        NoteCategory existing = categories.find(userId, slug)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "没有这个分类：" + slug));
+        NoteCategory saved = categories.rename(userId, existing.getId(), in == null ? null : in.name());
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("ok", true);
+        out.put("slug", saved.getSlug());
+        out.put("name", saved.getName());
+        return out;
+    }
+
+    /**
+     * 删分类：默认五个删不掉；自己的分类删掉后里面的笔记落到「未分类」，不会一起没。
+     * 和删笔记一样要求 confirm，且提示里让 AI 先把分类名和条数念给用户。
+     */
+    @DeleteMapping("/categories/{slug}")
+    public Map<String, Object> deleteCategory(@RequestHeader(name = "Authorization", required = false) String auth,
+                                              @PathVariable String slug,
+                                              @RequestParam(name = "confirm", defaultValue = "false") boolean confirm) {
+        Long userId = requireUser(auth);
+        write(userId);
+        if (!confirm) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "删除分类必须带 confirm=true（请先把这个分类的名字和里面有几条告诉用户并得到同意）");
+        }
+        NoteCategory existing = categories.find(userId, slug)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "没有这个分类：" + slug));
+        categories.delete(userId, existing.getId());
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("ok", true);
+        out.put("deleted", existing.getSlug());
+        out.put("note", "分类已删除，里面的笔记都移到了「未分类」");
+        return out;
+    }
+
+    /** 把一篇笔记挪到另一个分类（按分类 slug）。 */
+    @PostMapping("/notes/{slug}/category")
+    public Map<String, Object> moveNote(@RequestHeader(name = "Authorization", required = false) String auth,
+                                        @PathVariable String slug, @RequestBody CategoryIn in,
+                                        HttpServletRequest request) {
+        Long userId = requireUser(auth);
+        write(userId);
+        if (in == null || in.category() == null || in.category().isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "缺 category：要挪到哪个分类的 slug");
+        }
+        ContentItem item = mine(userId, slug);
+        item.setCategoryId(categories.idOf(userId, in.category()));
+        ContentItem saved = items.save(item);
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("ok", true);
+        out.put("slug", saved.getSlug());
+        out.put("category", in.category());
+        out.put("url", urlOf(saved, request));
+        return out;
+    }
+
+    /** 技术广场只读查询：只搜公开且进了推荐栏的内容，碰不到别人的私有笔记。 */
+    @GetMapping("/explore")
+    public List<Map<String, Object>> explore(@RequestHeader(name = "Authorization", required = false) String auth,
+                                             @RequestParam(name = "q", required = false) String q) {
+        requireUser(auth);
+        return explore.search(q);
     }
 
     /** 插图：和正文编辑器同一个上传目录，返回能直接写进 Markdown 的地址。 */
@@ -412,8 +525,16 @@ public class AiController {
         }
     }
 
-    private Long parentIdOf(Long userId, String parentSlug) {
-        if (parentSlug == null || parentSlug.isBlank()) {
+    /** 分类 slug → 分类；不传或者传空就当没指定。 */
+    private NoteCategory categoryOf(Long userId, String slug) {
+        if (slug == null || slug.isBlank()) {
+            return null;
+        }
+        return categories.find(userId, slug)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "没有这个分类：" + slug));
+    }
+
+    private Long parentIdOf(Long userId, String parentSlug) {        if (parentSlug == null || parentSlug.isBlank()) {
             return null;
         }
         return mine(userId, parentSlug.trim()).getId();

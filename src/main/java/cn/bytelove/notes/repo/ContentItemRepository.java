@@ -31,6 +31,15 @@ public interface ContentItemRepository
     @Query(CARD_COLUMNS + "where i.ownerId = :ownerId and i.kind = :kind order by i.updatedAt desc")
     List<ContentCard> findCardsByOwnerAndKind(@Param("ownerId") Long ownerId, @Param("kind") ContentKind kind);
 
+    /** 自己某个分类下的全部条目（分类页签的内容池）。 */
+    @Query(CARD_COLUMNS + "where i.ownerId = :ownerId and i.categoryId = :categoryId order by i.updatedAt desc")
+    List<ContentCard> findCardsByOwnerAndCategory(@Param("ownerId") Long ownerId,
+                                                  @Param("categoryId") Long categoryId);
+
+    /** 没有归到任何分类的条目（删掉分类以后剩下的那些）。 */
+    @Query(CARD_COLUMNS + "where i.ownerId = :ownerId and i.categoryId is null order by i.updatedAt desc")
+    List<ContentCard> findCardsByOwnerUncategorized(@Param("ownerId") Long ownerId);
+
     /** 推荐栏（游客看的内容池）。 */
     @Query(CARD_COLUMNS + "where i.kind = :kind and i.recommended = true order by i.updatedAt desc")
     List<ContentCard> findRecommendedCards(@Param("kind") ContentKind kind);

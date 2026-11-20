@@ -48,7 +48,7 @@
             } catch (e) {}
         })();
     </script>
-    <link rel="stylesheet" th:href="@{/css/app.css(v=198)}">
+    <link rel="stylesheet" th:href="@{/css/app.css(v=219)}">
     <!-- 通用小工具（CSRF / POST / 转义）：页面自己的脚本都要用它，所以放 head 里先加载 -->
     <script th:src="@{/js/base.js(v=2)}"></script>
 </head>
@@ -61,8 +61,9 @@
 <header th:fragment="nav" class="site-header">
     <div class="header-inner">
         <nav class="tabs" aria-label="站点分区">
-            <a class="tab" th:href="@{/notes}"
-               th:classappend="${tabActive == 'note' or tabActive == 'project' or tabActive == 'bagu' or tabActive == 'interview' or tabActive == 'algo'} ? 'is-active'">我的笔记</a>
+            <a class="tab" th:href="@{${mineHome}}"
+               th:classappend="${tabActive == 'note' or tabActive == 'project' or tabActive == 'bagu' or tabActive == 'interview' or tabActive == 'algo'
+                   or (tabActive != null and #strings.startsWith(tabActive, 'c:'))} ? 'is-active'">我的笔记</a>
             <a class="tab" th:href="@{/explore}"
                th:classappend="${tabActive == 'explore'} ? 'is-active'">技术广场</a>
             <a sec:authorize="isAuthenticated()" class="tab" th:href="@{/quest}"
@@ -88,23 +89,33 @@
     </div>
 </header>
 
-<!-- 「我的笔记」下的五个分区。路由不变，这里只是同一个列表页的几种内容。
+<!-- 「我的笔记」下的分类页签：登录用户看自己建的那组（默认五个，可增删改名排序），
+     游客看站点固定的五个分区。路由不变，这里只是同一个列表页的几种内容。
      用 div 不用 nav：顶栏那个片段的选取器就是 nav，同名会被 Thymeleaf 按标签名一并选中 -->
 <div th:fragment="mineTabs" class="mine-tabs" role="navigation" aria-label="我的笔记分区">
-    <a class="mine-tab" th:href="@{/notes}"
-       th:classappend="${tabActive == 'note'} ? 'on'">闪念</a>
-    <a class="mine-tab" th:href="@{/projects}"
-       th:classappend="${tabActive == 'project'} ? 'on'">项目</a>
-    <a class="mine-tab" th:href="@{/bagu}"
-       th:classappend="${tabActive == 'bagu'} ? 'on'">八股</a>
-    <a class="mine-tab" th:href="@{/algo}"
-       th:classappend="${tabActive == 'algo'} ? 'on'">算法</a>
-    <a class="mine-tab" th:href="@{/interview}"
-       th:classappend="${tabActive == 'interview'} ? 'on'">面试</a>
+    <th:block th:if="${mineTabsOwned}">
+        <a class="mine-tab" th:each="t : ${mineTabs}" th:href="@{${t.href()}}"
+           th:classappend="${t.active()} ? 'on'" th:text="${t.name()}">闪念</a>
+        <button type="button" class="mine-tab-add" aria-label="新建分类">+</button>
+    </th:block>
+    <th:block th:unless="${mineTabsOwned}">
+        <a class="mine-tab" th:href="@{/notes}"
+           th:classappend="${tabActive == 'note'} ? 'on'">闪念</a>
+        <a class="mine-tab" th:href="@{/projects}"
+           th:classappend="${tabActive == 'project'} ? 'on'">项目</a>
+        <a class="mine-tab" th:href="@{/bagu}"
+           th:classappend="${tabActive == 'bagu'} ? 'on'">八股</a>
+        <a class="mine-tab" th:href="@{/algo}"
+           th:classappend="${tabActive == 'algo'} ? 'on'">算法</a>
+        <a class="mine-tab" th:href="@{/interview}"
+           th:classappend="${tabActive == 'interview'} ? 'on'">面试</a>
+    </th:block>
 </div>
 
 <th:block th:fragment="foot">
-<script sec:authorize="isAuthenticated()" th:src="@{/js/study-timer.js(v=7)}" defer></script>
+<script sec:authorize="isAuthenticated()" th:src="@{/js/float.js(v=2)}" defer></script>
+<script sec:authorize="isAuthenticated()" th:src="@{/js/study-timer.js(v=8)}" defer></script>
+<script sec:authorize="isAuthenticated()" th:src="@{/js/assistant.js(v=16)}" defer></script>
 <script th:src="@{/js/csrf.js(v=1)}"></script>
 <script th:src="@{/js/confirm.js(v=1)}"></script>
     <script th:src="@{/js/act-menu.js(v=1)}"></script>

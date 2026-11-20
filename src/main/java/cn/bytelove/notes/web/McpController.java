@@ -39,8 +39,10 @@ public class McpController {
 
             用户一般不想逐项做选择题，所以每一件都先给出你的判断和默认值，问一句「这样行不行」；\
             他说「可以 / 没问题 / 就这样」就直接按默认值写，别再问第二遍：
-            1. 存到哪：先调 notes_folders 看现有目录，自己挑最像的那个（比如讲 JVM 就放「JVM 与反射」）；\
-            确实没有合适的，再问他新分类叫什么，建好拿返回的 slug 当 parent。
+            1. 存到哪：先调 notes_categories 看用户自己的分类（页面上的页签），能对上就传 category；\
+            他一个分类都没有就先问他要不要建一个（新账号默认是空的）。\
+            再看 notes_folders 挑目录（比如讲 JVM 就放「JVM 与反射」），确实没有合适的，\
+            再问他新目录叫什么，建好拿返回的 slug 当 parent。分类不够用时才提新建分类，别默认替他建。
             2. 内容类型：你自己判断 —— note 闪念（一段想法、零散记录）/ bagu 八股（面试问答）/ \
             algo 算法（题解）/ project 项目。
             3. 谁能看：默认 MEMBER（登录用户能看、不进技术广场）。他明确说要公开，或者这篇本来就该给所有人看，\
@@ -54,7 +56,8 @@ public class McpController {
 
             其它：摘要和标签站里自动生成，不用问；标题尽量 20 字以内；**正文第一行不要再写一遍标题**\
             （页面上标题已经有了，重复一次看着像出错）；正文用 Markdown，代码放 ``` 里；\
-            note_create 只新建不覆盖；写完回一句话加一个 url，别把正文再贴一遍。
+            note_create 只新建不覆盖；写完回一句话加一个 url，别把正文再贴一遍。\
+            用户问「技术广场里有没有…」用 notes_explore 搜，那是别人的公开内容，只读，不要当他的笔记。\
             """;
 
     private final AiController ai;
@@ -177,16 +180,28 @@ public class McpController {
 
         Object out = switch (name) {
             case "notes_folders" -> ai.folders(auth);
+            case "notes_categories" -> ai.listCategories(auth);
             case "notes_search" -> ai.search(auth, str(args, "q"));
+            case "notes_explore" -> ai.explore(auth, str(args, "q"));
+            case "category_create" -> ai.createCategory(auth,
+                    new AiController.CategoryIn(str(args, "name"), null));
+            case "category_rename" -> ai.renameCategory(auth, str(args, "slug"),
+                    new AiController.CategoryIn(str(args, "name"), null));
+            case "category_delete" -> ai.deleteCategory(auth, str(args, "slug"),
+                    Boolean.TRUE.equals(args.get("confirm")));
+            case "note_move" -> ai.moveNote(auth, str(args, "slug"),
+                    new AiController.CategoryIn(null, str(args, "category")), request);
             case "note_get" -> ai.get(auth, str(args, "slug"), request);
             case "note_create" -> ai.create(auth, new AiController.NoteIn(
                     str(args, "title"), str(args, "body"), str(args, "summary"), null,
                     str(args, "parent"), str(args, "visibility"), str(args, "kind"), null,
-                    Boolean.TRUE.equals(args.get("folder")), num(args, "rating")), request);
+                    Boolean.TRUE.equals(args.get("folder")), num(args, "rating"),
+                    str(args, "category")), request);
             case "note_update" -> ai.update(auth, str(args, "slug"), new AiController.NoteIn(
                     str(args, "title"), str(args, "body"), str(args, "summary"), null,
                     str(args, "parent"), str(args, "visibility"), str(args, "kind"),
-                    Boolean.TRUE.equals(args.get("confirm")), null, num(args, "rating")), request);
+                    Boolean.TRUE.equals(args.get("confirm")), null, num(args, "rating"),
+                    str(args, "category")), request);
             case "note_delete" -> ai.delete(auth, str(args, "slug"),
                     Boolean.TRUE.equals(args.get("confirm")));
             default -> throw new Rpc(-32602, "没有这个工具: " + name);
@@ -224,6 +239,24 @@ public class McpController {
         List<Map<String, Object>> tools = new ArrayList<>();
         tools.add(tool("notes_folders", "列出我自己笔记的目录（slug / 标题 / 完整路径 / 类型）。新建笔记前用它挑 parent。",
                 props(Map.of())));
+        tools.add(tool("notes_categories", "列出我的笔记分类（页面上的页签）：slug / 名字 / 条数。要决定一篇笔记放哪个页签时先看它。",
+                props(Map.of())));
+        tools.add(tool("category_create", "新建一个笔记分类（页签）。名字先问用户，别自己起。",
+                props(Map.of("name", str("分类名，用户怎么说就怎么用，20 字以内")), "name")));
+        tools.add(tool("category_rename", "给分类改名（slug 不变，老链接照旧）。",
+                props(Map.of("slug", str("分类的 slug"),
+                        "name", str("新名字")), "slug", "name")));
+        tools.add(tool("category_delete", "删除一个分类；里面的笔记会移到「未分类」，不会跟着删掉。"
+                        + "**必须先把这个分类的名字和里面有几条告诉用户并得到同意**，再传 confirm=true。",
+                props(Map.of("slug", str("分类的 slug"),
+                        "confirm", Map.of("type", "boolean", "description", "用户同意删除后传 true")),
+                        "slug", "confirm")));
+        tools.add(tool("note_move", "把一篇笔记挪到另一个分类（页签）。",
+                props(Map.of("slug", str("笔记 slug"),
+                        "category", str("目标分类的 slug，可用 notes_categories 查")), "slug", "category")));
+        tools.add(tool("notes_explore", "在技术广场里按关键词搜（只读：只有公开且进了推荐栏的内容）。"
+                        + "用户问「广场里有没有…」时用它，别把广场内容当成用户自己的笔记。",
+                props(Map.of("q", str("关键词，可留空表示按更新时间取最近几条")))));
         tools.add(tool("notes_search", "在我自己的笔记里按关键词搜（标题、摘要、正文都搜）。用来查重，只搜自己名下的。",
                 props(Map.of("q", str("关键词，可留空表示全部")))));
         tools.add(tool("note_get", "读一篇我自己笔记的完整内容。",
@@ -242,6 +275,8 @@ public class McpController {
                         "visibility", str("可见性，你自己定：默认 MEMBER（登录可见、不进广场）/ PUBLIC 会进技术广场 / "
                                 + "PRIVATE 仅自己。定好告诉他一句，他没意见就用这个"),
                         "kind", str("内容类型：note（默认）/ bagu / algo / project"),
+                        "category", str("放到哪个分类（页签）的 slug，用 notes_categories 查；" +
+                                "能在用户现有分类里对上就传，对不上才商量新建分类"),
                         "rating", Map.of("type", "integer", "minimum", 0, "maximum", 3,
                                 "description", "星级 0~3，你自己判断并告诉他：3 星面试高频、迟早会被问到；"
                                         + "2 星值得复习；1 星有空再看；0 先不评。他说没问题就按这个来"),

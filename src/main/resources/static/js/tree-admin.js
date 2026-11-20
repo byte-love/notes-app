@@ -85,7 +85,7 @@
                 closeEdit();
                 return;
             }
-            await post('/admin/quick', { parentId, title, kind: pane.dataset.kind || '' });
+            await post('/admin/quick', { parentId, title, kind: pane.dataset.kind || '', category: pane.dataset.category || '' });
             location.reload();
         };
         input.addEventListener('keydown', (e) => {

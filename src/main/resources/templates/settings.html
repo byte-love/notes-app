@@ -87,6 +87,26 @@
     </section>
 
     <section class="me-section">
+        <h2>浮动按钮</h2>
+
+        <div class="me-row">
+            <span class="me-label">AI 助手</span>
+            <div class="seg" data-setting="float-assistant">
+                <button type="button" data-value="on">开</button>
+                <button type="button" data-value="off">关</button>
+            </div>
+        </div>
+
+        <div class="me-row">
+            <span class="me-label">学习计时器</span>
+            <div class="seg" data-setting="float-timer">
+                <button type="button" data-value="on">开</button>
+                <button type="button" data-value="off">关</button>
+            </div>
+        </div>
+    </section>
+
+    <section class="me-section">
         <h2>番茄钟</h2>
 
         <div class="me-row">
@@ -96,6 +116,39 @@
                 <button type="button" data-value="off">关</button>
             </div>
         </div>
+    </section>
+    <section class="me-section" th:if="${myCategories != null}">
+        <h2>笔记分类</h2>
+
+        <div class="cat-row" th:each="c, st : ${myCategories}">
+            <form class="cat-name" method="post" th:action="@{/settings/categories/{id}/rename(id=${c.id})}">
+                <input type="hidden" name="_csrf" th:value="${_csrf.token}">
+                <input type="text" name="name" maxlength="40" th:value="${c.name}" aria-label="分类名">
+                <button type="submit" class="cat-btn">改名</button>
+            </form>
+            <form method="post" th:action="@{/settings/categories/{id}/move(id=${c.id})}">
+                <input type="hidden" name="_csrf" th:value="${_csrf.token}">
+                <input type="hidden" name="dir" value="up">
+                <button type="submit" class="cat-btn" th:disabled="${st.first}" aria-label="上移">↑</button>
+            </form>
+            <form method="post" th:action="@{/settings/categories/{id}/move(id=${c.id})}">
+                <input type="hidden" name="_csrf" th:value="${_csrf.token}">
+                <input type="hidden" name="dir" value="down">
+                <button type="submit" class="cat-btn" th:disabled="${st.last}" aria-label="下移">↓</button>
+            </form>
+            <form class="cat-del" method="post"
+                  th:action="@{/settings/categories/{id}/delete(id=${c.id})}"
+                  th:attr="data-name=${c.name},data-count=${catCounts.get(c.id) == null ? 0 : catCounts.get(c.id)}">
+                <input type="hidden" name="_csrf" th:value="${_csrf.token}">
+                <button type="submit" class="cat-btn cat-btn-del">删除</button>
+            </form>
+        </div>
+
+        <form class="cat-row cat-new" method="post" th:action="@{/settings/categories}">
+            <input type="hidden" name="_csrf" th:value="${_csrf.token}">
+            <input type="text" name="name" maxlength="40" placeholder="新分类" aria-label="新分类名">
+            <button type="submit" class="cat-btn">新建</button>
+        </form>
     </section>
 </main>
 
@@ -155,7 +208,7 @@
             }
         };
 
-        const DEFAULTS = { theme: 'dark', 'read-size': 'md', bg: 'aurora', terms: 'on', indent: 'on', 'tree-num': 'on', pomodoro: 'on' };
+        const DEFAULTS = { theme: 'dark', 'read-size': 'md', bg: 'aurora', terms: 'on', indent: 'on', 'tree-num': 'on', pomodoro: 'on', 'float-assistant': 'on', 'float-timer': 'on' };
         const userName = (document.querySelector('meta[name="user-name"]') || {}).content || '';
 
         const mark = (group, value) => {
@@ -186,8 +239,21 @@
                     applyIndent(value);
                 } else if (key === 'tree-num') {
                     applyTreeNum(value);
+                } else if (key === 'float-assistant' || key === 'float-timer') {
+                    if (window.Float) {
+                        window.Float.setHidden(key === 'float-assistant' ? 'assistant' : 'timer', value === 'off');
+                    }
                 }
                 mark(group, value);
+            });
+        });
+
+        // 浮球的键是 Float 在管（float:assistant / float:timer），defer 脚本在 inline 之后才跑，
+        // 所以等 load 再按真实状态回填一次
+        window.addEventListener('load', () => {
+            document.querySelectorAll('.seg[data-setting^="float-"]').forEach((group) => {
+                const id = group.dataset.setting === 'float-assistant' ? 'assistant' : 'timer';
+                if (window.Float) mark(group, window.Float.isHidden(id) ? 'off' : 'on');
             });
         });
 
@@ -211,6 +277,20 @@
         // 选「跟随系统」时，系统主题变了要立刻反映
         mq.addEventListener('change', () => {
             if ((read('theme') || 'system') === 'system') applyTheme('system');
+        });
+
+        // 删分类：先说清楚里面有多少篇、删完它们去哪
+        document.querySelectorAll('form.cat-del').forEach((form) => {
+            form.addEventListener('submit', async (e) => {
+                if (form.dataset.ok === '1') return;
+                e.preventDefault();
+                const ask = '删除「' + form.dataset.name + '」？里面的 ' + (form.dataset.count || '0')
+                    + ' 篇会移到「未分类」。';
+                const ok = window.uiConfirm ? await window.uiConfirm(ask) : window.confirm(ask);
+                if (!ok) return;
+                form.dataset.ok = '1';
+                form.submit();
+            });
         });
     })();
 </script>

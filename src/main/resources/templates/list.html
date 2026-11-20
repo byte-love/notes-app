@@ -4,9 +4,10 @@
 <body>
 <header th:replace="~{fragments/layout :: nav}"></header>
 
-<div class="with-tree" th:classappend="${#lists.isEmpty(tree)} ? 'no-tree' : ''"
+<div class="with-tree" th:classappend="${#lists.isEmpty(tree) and categorySlug == null} ? 'no-tree' : ''"
      th:attr="data-area=${#strings.toLowerCase(kind.name())}">
-    <aside class="tree-pane" th:attr="data-kind=${#strings.toLowerCase(kind.name())}" th:if="${!#lists.isEmpty(tree)}">
+    <aside class="tree-pane" th:attr="data-kind=${#strings.toLowerCase(kind.name())},data-category=${categorySlug}"
+           th:if="${!#lists.isEmpty(tree) or categorySlug != null}">
         <div class="tree-head">
             <span class="tree-head-text">我的目录</span>
             <button sec:authorize="isAuthenticated()" type="button" class="tree-act tree-add"
@@ -20,6 +21,10 @@
             <nav th:replace="~{fragments/layout :: mineTabs}"></nav>
             <span class="count" th:text="${#lists.size(items)} + ' 篇'">0 篇</span>
         </div>
+
+        <p class="mine-empty" th:if="${mineTabsOwned and #lists.isEmpty(mineTabs)}">
+            还没有分类：点上面的 + 新建一个，或者直接让右下角的智能助手帮你建——它没配 API Key 时会告诉你怎么申请。
+        </p>
 
         <p class="last-read" th:if="${lastRead != null}">
             上次看到 · <a th:href="${basePath + '/' + lastRead.slug}" th:text="${lastRead.title}">标题</a>
@@ -80,7 +85,8 @@
 
 <script th:src="@{/js/list.js(v=8)}" defer></script>
 <script th:src="@{/js/rate.js(v=3)}" defer></script>
-<script th:src="@{/js/tree-admin.js(v=5)}" defer></script>
+<script th:src="@{/js/tree-admin.js(v=6)}" defer></script>
+<script sec:authorize="isAuthenticated()" th:src="@{/js/category-tabs.js(v=2)}" defer></script>
 <footer th:replace="~{fragments/layout :: foot}"></footer>
 </body>
 </html>
