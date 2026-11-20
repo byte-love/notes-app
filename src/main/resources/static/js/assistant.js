@@ -246,6 +246,8 @@
                         <label>DeepSeek API Key</label>
                         <a href="https://platform.deepseek.com/api_keys" target="_blank" rel="noopener">获取</a>
                     </div>
+                    <p class="ai-keytip">还没有 Key？点「获取」打开 DeepSeek 开放平台，登录后进 API keys 新建一个，
+                        把生成的那串 Key 粘到下面保存就行。</p>
                     <input type="password" autocomplete="off" spellcheck="false">
                     <button type="button" class="btn-quiet ai-keysave">保存</button>
                 </div>
@@ -1141,6 +1143,8 @@
         const ok = hasKey();
         if (!ok) keyOpen = true;
         keyBox.hidden = ok && !keyOpen;
+        const keyTip = keyBox.querySelector('.ai-keytip');
+        if (keyTip) keyTip.hidden = ok;
         panel.classList.toggle('need-key', !ok);
         if (!ok) {
             panel.style.height = 'auto';

@@ -1491,6 +1491,22 @@ body.cmt-off .cmt-pane {
     border-bottom: none;
 }
 
+/* 新账号还没有任何分类时的那句说明：跟着页签走，不抢正文 */
+.mine-empty {
+    margin: 0.2rem 0 1rem;
+    color: var(--fg-3);
+    font-size: 0.86rem;
+    line-height: 1.7;
+}
+
+/* 助手没填 Key 时的申请说明 */
+.ai-keytip {
+    margin: 0 0 0.5rem;
+    color: var(--fg-3);
+    font-size: 0.78rem;
+    line-height: 1.65;
+}
+
 .count {
     color: hsl(var(--kh) var(--k-sat) var(--k-l-fg));
     background: hsl(var(--kh) var(--k-sat-soft) var(--k-l-bg));

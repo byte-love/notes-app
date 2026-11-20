@@ -22,6 +22,10 @@
             <span class="count" th:text="${#lists.size(items)} + ' 篇'">0 篇</span>
         </div>
 
+        <p class="mine-empty" th:if="${mineTabsOwned and #lists.isEmpty(mineTabs)}">
+            还没有分类：点上面的 + 新建一个，或者直接让右下角的智能助手帮你建——它没配 API Key 时会告诉你怎么申请。
+        </p>
+
         <p class="last-read" th:if="${lastRead != null}">
             上次看到 · <a th:href="${basePath + '/' + lastRead.slug}" th:text="${lastRead.title}">标题</a>
         </p>
