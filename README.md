@@ -68,7 +68,7 @@ src/main/java/cn/bytelove/notes/
               GlossaryEditController、ChangelogController…
 src/main/resources/
   application.yml        全部配置；密码只从环境变量读；上传上限也在这里
-  db/migration/          Flyway 脚本（V1 建表 … V28 AI token，共 28 个）
+  db/migration/          Flyway 脚本（V1 建表 … V32 笔记分类，共 32 个）
   glossary.json          术语表种子（表为空时导入，之后以库里为准）
   tags.json              标签词表：{标签: [关键词…]}
   subgroups.json         大分类的二级分档规则
