@@ -269,7 +269,8 @@ sudo /opt/deploy/sync-db.sh    # 正式库整库覆盖到测试库
   **技术广场（`/explore`）只收 `PUBLIC + recommended`**：卡片（`RecommendService.cards`）和分组页
   （`RecommendService.group`）都按这个卡，`MEMBER` / `PRIVATE` 的分组进来是 404——那两种只走「作者把链接发出来」
 - 顶栏四项（我的笔记 / 技术广场 / 用户指南 / 更新日志）只改文案不动路由：闪念 = `NOTE`、地址仍是 `/notes`；
-  五类内容共用 `list.html`，页面上那排「闪念 / 项目 / 八股 / 算法 / 面试」是 `fragments/layout :: mineTabs`
+  五类内容共用 `list.html`；页面那排「我的笔记」页签是用户自己的分类（`fragments/layout :: mineTabs`，
+  游客才显示固定的闪念 / 项目 / 八股 / 算法 / 面试五个），分类本身见下面「笔记分类」一节
 - 收藏夹是 `content_star(user_id, item_id)`，不是内容上的一个布尔值——标记属于「谁标的」
 - 书签是 `content_bookmark(user_id, item_id, anchor)`：`anchor` 为空是整篇，非空是正文里某个标题
   （标题 id 由标题文字生成，见 `MarkdownRenderer.slugOf`；以前用 h1/h2 序位号，插标题会错位）
@@ -277,7 +278,7 @@ sudo /opt/deploy/sync-db.sh    # 正式库整库覆盖到测试库
   `progress` 是 0~1 的滚动比例，离开页面时由 `sendBeacon` 上报，下次打开按比例滚回去（短于一屏时为 0，不跳）
 - 列表页（笔记/八股/算法/项目）**分批加载**：服务端按分类整组切约 40 条，滚到底再用
   `?from=N&fragment=true` 取下一批；左侧树超过 60 个节点时只渲染顶层 + 当前路径，展开时调
-  `/api/tree/{kind}?parent=<slug>` 补子节点
+  `/api/tree/{kind}?parent=<slug>`（分类页再加 `&category=<分类 slug>`）补子节点
 - 静态资源带 `?v=` 版本号；**css/js 走 `Cache-Control: no-cache`**（每次回源校验，正常回 304），
   图片等其它静态资源仍是 `max-age=31536000`。nginx 开了 `gzip_types`（css/js），
   nginx 到应用是长连接（`upstream ... keepalive` + `Connection ""`）。
@@ -287,9 +288,9 @@ sudo /opt/deploy/sync-db.sh    # 正式库整库覆盖到测试库
   `systemctl reload nginx`（配置备份在 `/root/nginx-backup/`），验证：
   `curl -sk --http2 -o /dev/null -w '%{http_version}' https://byte-love.cn/app/bagu` 应该打 `2`。
   测试站 8180 是明文端口，浏览器不会对 h2c 协商，所以没开
-- **分区配色**（2026-11-04）：现有五个分区，闪念 170 松绿 / 项目 214 靛 / 八股 34 琥珀 / 算法 272 紫；
+- **分区配色**（2026-11-04）：按内容 kind 分色（和分类页签无关），闪念 170 松绿 / 项目 214 靛 / 八股 34 琥珀 / 算法 272 紫；
   面试（2026-11 新增）还没有自己的色相，沿用根上的默认 170（和闪念同色，待补）。
-  容器上写 `data-area="note|project|bagu|algo"`（`list.html`/`detail.html` 的 `.with-tree`、`explore.html` 的每个
+  容器上写 `data-area="note|project|bagu|algo|interview"`（`list.html`/`detail.html` 的 `.with-tree`、`explore.html` 的每个
   `<section>`、`explore-group.html`/`project.html` 的 `<main>`），里面用
   `hsl(var(--kh) var(--k-sat) var(--k-l-fg))` 现算；`--k-sat` / `--k-l-*` 是跟主题走的旋钮，在 `:root`、
   `@media dark`、`html[data-theme=light|dark|sepia]` 各写一份。
@@ -693,8 +694,8 @@ sudo /opt/deploy/sync-db.sh    # 正式库整库覆盖到测试库
 - **管理入口**：设置页「笔记分类」（改名 / 上下移 / 删除），列表页签末尾的「+」就地新建。
   删任何分类都会把里面的条目落到「未分类」页签（`category_id` 置空），内容不跟着删。
 - **新建条目**：`AdminController`、`AiController`、`AgentController`、`RecommendService` 建完都调
-  `categories.attachDefault(item)`，没指定分类就落到该 kind 的默认分类，没有默认分类就留空（进「未分类」）；
-  左树「+」会把当前页签的 `data-category` 一起提交（`tree-admin.js`）。
+  `categories.attachDefault(item)`，没指定分类就落到该 kind 的默认分类；默认分类被删了就落到**同类第一个页签**，
+  同类一个都没有才留空（进「未分类」）；左树「+」会把当前页签的 `data-category` 一起提交（`tree-admin.js`）。
 - **AI 工具**：MCP 有 `notes_categories / category_create / category_rename / category_delete / note_move /
   notes_explore`（远端 `McpController` 与本地 `mcp/notes-mcp.mjs` 两处要一起改）；站内助手有同名工具，
   分类操作直接生效、删除要 `confirm`。`notes_explore` 只读，搜的是公开且进了推荐栏的内容。
@@ -1013,3 +1014,14 @@ Maven 编译会产出损坏的 jar，服务起不来（`Error: Invalid or corrup
 直接溢出到浮窗外面。给 `.gl-tip` / `.ann-tip-text` / `.cmt-text` / `.ann-form textarea` 都加了
 `overflow-wrap: anywhere; word-break: break-word`。验证办法：塞 120 个 `3` 进去，
 量 `scrollWidth === clientWidth` 才算过。
+
+**别在读取路径里补种默认数据（2026-11-20 踩过）**：分类最初写成「`CategoryService.ensure()` 每次取分类时，
+一个都没有就补五个默认的」，结果用户把分类删光，下一次打开页面又长回五个——用户要的是「自己决定要几个页签」，
+这个设计直接让「全删」不可能成立。现在默认数据只在迁移（`V32`）里补一次，读取路径纯读；
+`attachDefault()` 找不到默认分类就落到同类第一个页签，再没有就留空进「未分类」。
+以后凡是「默认要有几条」的数据，先想清楚**用户能不能删到零**，能删就别在请求路径里补。
+
+**Windows 上拼 `psql -c "select count(*)"` 走 ssh 会被 PowerShell 解析炸（2026-11-20 连炸三次）**：
+`(*)`、`%L`、中文引号都会让 PowerShell 在本地先报语法错，或者把参数拆坏（`bash: unexpected EOF`）。
+可靠做法是**把 SQL / 命令写成本地文件 → `scp` 到 `/root/` → 服务器上 `bash xxx.sh` 或
+`docker exec -i notes-pg psql … < xxx.sql`**；实在要一行，就用 `bash -s` 从 stdin 传，别在 `-c` 里套引号。
